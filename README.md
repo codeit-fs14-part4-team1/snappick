@@ -9,7 +9,7 @@
 
 ## 기술 스택
 
-- 프론트엔드: Next.js (App Router) + TypeScript, Axios, TanStack Query
+- 프론트엔드: Next.js (App Router) + TypeScript, TanStack Query
 - 백엔드: Node.js + Express + TypeScript, Prisma
 - 데이터베이스: PostgreSQL
 - 배포: AWS (세부 구성은 확정 전)
