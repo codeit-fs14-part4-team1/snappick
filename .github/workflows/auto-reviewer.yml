@@ -1,0 +1,160 @@
+name: Auto Reviewer
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+    branches: [develop]
+
+permissions:
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: auto-reviewer-${{ github.event.pull_request.user.login }}
+  cancel-in-progress: false
+
+jobs:
+  assign:
+    name: Assign reviewers
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Request reviewers
+        uses: actions/github-script@v8
+        with:
+          script: |
+            // 같은 행이 FE·BE 고정 페어, 같은 열이 동일 직군이다.
+            const TEAM = [
+              { fe: 'LeeSeoyoon', be: 'Happy-DCS' },
+              { fe: 'yein0528', be: 'youngsecondbrain' },
+              { fe: 'shoooongs', be: 'yoney0' },
+            ];
+            const BOT = 'github-actions[bot]';
+            const HISTORY_LIMIT = 20;
+
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            const row = TEAM.find((r) => r.fe === author || r.be === author);
+            if (!row) {
+              core.notice(`${author}은(는) 팀 구성에 없어 자동 배정을 건너뜁니다.`);
+              return;
+            }
+            const role = row.fe === author ? 'fe' : 'be';
+            const pair = role === 'fe' ? row.be : row.fe;
+            const peers = TEAM.map((r) => r[role]).filter((id) => id !== author);
+
+            async function botRequests(number) {
+              const events = await github.paginate(
+                github.rest.issues.listEventsForTimeline,
+                { owner, repo, issue_number: number, per_page: 100 },
+              );
+              return events
+                .filter(
+                  (e) =>
+                    e.event === 'review_requested' &&
+                    e.actor?.login === BOT &&
+                    e.requested_reviewer?.login,
+                )
+                .map((e) => ({
+                  reviewer: e.requested_reviewer.login,
+                  at: e.created_at,
+                }));
+            }
+
+            async function request(reviewer) {
+              try {
+                const { data } = await github.rest.pulls.requestReviewers({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  reviewers: [reviewer],
+                });
+                if (data.requested_reviewers.some((u) => u.login === reviewer)) {
+                  return true;
+                }
+                core.warning(`${reviewer}: 요청이 응답에 반영되지 않았습니다.`);
+              } catch (error) {
+                core.warning(`${reviewer}: 리뷰어 지정 실패 (${error.status ?? ''} ${error.message})`);
+              }
+              return false;
+            }
+
+            // Draft 전환 후 다시 Ready가 되면 이미 자동 배정된 자리는 건너뛴다.
+            const current = (await botRequests(pr.number)).map((r) => r.reviewer);
+            const pairDone = current.includes(pair);
+            const peerDone = current.find((id) => peers.includes(id));
+
+            // 작성자의 최근 PR에서 자동 배정된 동일 직군 리뷰어 중 가장 최근 기록을 찾는다.
+            let order = peers;
+            if (!peerDone) {
+              const { data: pulls } = await github.rest.pulls.list({
+                owner,
+                repo,
+                base: 'develop',
+                state: 'all',
+                sort: 'created',
+                direction: 'desc',
+                per_page: 100,
+              });
+              const history = pulls
+                .filter((p) => p.user.login === author && p.number !== pr.number)
+                .slice(0, HISTORY_LIMIT);
+
+              let last;
+              for (const p of history) {
+                for (const r of await botRequests(p.number)) {
+                  if (peers.includes(r.reviewer) && (!last || r.at > last.at)) {
+                    last = r;
+                  }
+                }
+              }
+              if (last) {
+                order = [...peers.filter((id) => id !== last.reviewer), last.reviewer];
+              }
+              core.info(`직전 자동 배정 동일 직군 리뷰어: ${last?.reviewer ?? '없음'}`);
+            }
+
+            const results = [];
+
+            if (pairDone) {
+              results.push(['고정 페어', pair, '이미 배정됨']);
+            } else {
+              results.push(['고정 페어', pair, (await request(pair)) ? '배정' : '실패']);
+            }
+
+            if (peerDone) {
+              results.push(['동일 직군', peerDone, '이미 배정됨']);
+            } else {
+              let assigned;
+              for (const candidate of order) {
+                if (await request(candidate)) {
+                  assigned = candidate;
+                  break;
+                }
+              }
+              if (assigned && assigned !== order[0]) {
+                core.warning(`${order[0]} 지정에 실패해 ${assigned}(으)로 대체했습니다.`);
+              }
+              results.push(['동일 직군', assigned ?? order.join(', '), assigned ? '배정' : '실패']);
+            }
+
+            await core.summary
+              .addHeading(`PR #${pr.number} 리뷰어 자동 배정`, 3)
+              .addTable([
+                [
+                  { data: '구분', header: true },
+                  { data: '리뷰어', header: true },
+                  { data: '결과', header: true },
+                ],
+                ...results,
+              ])
+              .write();
+
+            if (results.some(([, , status]) => status === '실패')) {
+              core.setFailed('일부 리뷰어를 지정하지 못했습니다. 수동으로 지정해 주세요.');
+            }
