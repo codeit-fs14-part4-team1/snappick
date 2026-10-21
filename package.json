@@ -1,25 +1,26 @@
 {
-    "name": "snappick",
-    "version": "1.0.0",
-    "private": true,
-    "description": "",
-    "scripts": {
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
-        "dev": "pnpm --parallel --filter web --filter api dev",
-        "dev:web": "pnpm --filter web dev",
-        "dev:api": "pnpm --filter api dev",
-        "build": "pnpm -r --if-present build",
-        "typecheck": "pnpm -r --if-present typecheck"
-    },
-    "keywords": [],
-    "author": "",
-    "packageManager": "pnpm@10.34.7",
-    "devDependencies": {
-        "prettier": "^3.9.10"
-    },
-    "engines": {
-        "node": ">=24.16.0 <25",
-        "pnpm": ">=10 <11"
-    }
+  "name": "snappick",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "pnpm --parallel --filter web --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build"
+  },
+  "keywords": [],
+  "author": "",
+  "packageManager": "pnpm@10.34.7",
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  },
+  "engines": {
+    "node": ">=24.16.0 <25",
+    "pnpm": ">=10 <11"
+  }
 }
