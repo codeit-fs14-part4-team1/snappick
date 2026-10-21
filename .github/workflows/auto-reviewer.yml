@@ -28,7 +28,7 @@ jobs:
           script: |
             // 같은 행이 FE·BE 고정 페어, 같은 열이 동일 직군이다.
             const TEAM = [
-              { fe: 'LeeSeoyoon', be: 'Happy-DCS' },
+              { fe: 'yoon2e', be: 'Happy-DCS' },
               { fe: 'yein0528', be: 'youngsecondbrain' },
               { fe: 'shoooongs', be: 'yoney0' },
             ];
