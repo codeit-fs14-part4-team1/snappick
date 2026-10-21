@@ -11,12 +11,17 @@
     "dev:api": "pnpm --filter api dev",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "build": "pnpm -r --if-present build"
+    "build": "pnpm -r --if-present build",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "packageManager": "pnpm@10.34.7",
   "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.9.10"
   },
   "engines": {
