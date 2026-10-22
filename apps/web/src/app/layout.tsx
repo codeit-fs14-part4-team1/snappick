@@ -16,7 +16,14 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <a className="skip-link" href="#main-content">
+            본문 바로가기
+          </a>
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );

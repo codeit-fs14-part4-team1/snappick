@@ -1,0 +1,12 @@
+.container {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.default {
+  max-width: 1200px;
+}
+
+.wide {
+  max-width: 1440px;
+}
