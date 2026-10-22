@@ -4,9 +4,9 @@
 }
 
 .default {
-  max-width: 1200px;
+  max-width: var(--container-default);
 }
 
 .wide {
-  max-width: 1440px;
+  max-width: var(--container-wide);
 }

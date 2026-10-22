@@ -5,7 +5,7 @@ type PageContainerProps = ComponentPropsWithoutRef<'div'> & {
   width?: 'default' | 'wide';
 };
 
-/** 기본 화면은 1200px, 탐색 화면은 wide(1440px)를 사용합니다. */
+/** 기본 화면은 1200px, 탐색 화면은 wide(1440px) 사용 **/
 export default function PageContainer({
   width = 'default',
   className,
