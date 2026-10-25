@@ -92,7 +92,16 @@ resource "aws_elastic_beanstalk_environment" "api" {
     name      = "DB_CREDENTIALS"
     value     = aws_db_instance.postgres.master_user_secret[0].secret_arn
   }
+
+
+  setting {
+    namespace = "aws:elasticbeanstalk:command"
+    name      = "Timeout"
+    value     = "1200"
+  }
 }
+
+
 
 output "api_environment_cname" {
   description = "Elastic Beanstalk API environment hostname"
