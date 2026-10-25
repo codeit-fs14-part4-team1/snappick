@@ -57,3 +57,6 @@ yarn-error.log*
 # Terraform CLI configuration may contain credentials
 .terraformrc
 terraform.rc
+
+#Prisma generated client
+/apps/api/src/generated/prisma
