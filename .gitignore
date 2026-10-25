@@ -60,3 +60,6 @@ terraform.rc
 
 #Prisma generated client
 /apps/api/src/generated/prisma
+
+# AWS public RDS CA certificate
+!/apps/api/certs/ap-southeast-2-bundle.pem

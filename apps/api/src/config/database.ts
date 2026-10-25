@@ -1,5 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { readFileSync } from 'node:fs';
+import type { PoolConfig } from 'pg';
 
 type DatabaseCredentials = {
   username: string;
@@ -44,14 +46,31 @@ function getDatabaseUrl(): string {
   url.hostname = host;
   url.port = port;
   url.pathname = database;
-  url.searchParams.set('sslmode', 'require');
 
-  // postgresql://사용자명:비밀번호@DB주소:포트/데이터베이스명?sslmode=require
+  // postgresql://사용자명:비밀번호@DB주소:포트/데이터베이스명
   return url.toString();
 }
 
-const adapter = new PrismaPg({
+const usesRds = !process.env.DATABASE_URL;
+
+const connectionConfig: PoolConfig = {
   connectionString: getDatabaseUrl(),
-});
+};
+
+if (usesRds) {
+  const certificatePath = new URL(
+    '../../certs/ap-southeast-2-bundle.pem',
+    import.meta.url,
+  );
+
+  const certificate = readFileSync(certificatePath, 'utf8');
+
+  connectionConfig.ssl = {
+    ca: certificate,
+    rejectUnauthorized: true,
+  };
+}
+
+const adapter = new PrismaPg(connectionConfig);
 
 export const prisma = new PrismaClient({ adapter });
