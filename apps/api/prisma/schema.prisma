@@ -20,7 +20,7 @@ enum AccountType {
 }
 
 model auth_accounts {
-  id           String      @id @default(uuid())
+  id           String      @id @default(uuid(7)) @db.Uuid
   account_type AccountType
   created_at   DateTime    @default(now())
   updated_at   DateTime    @updatedAt
@@ -43,8 +43,8 @@ enum Provider {
 }
 
 model auth_providers {
-  id               String        @id @default(uuid())
-  auth_account_id  String
+  id               String        @id @default(uuid(7)) @db.Uuid
+  auth_account_id  String        @db.Uuid
   provider         Provider
   provider_email   String
   password_hash    String?
@@ -58,23 +58,25 @@ model auth_providers {
 
 // auth_refresh_tokens
 model auth_refresh_tokens {
-  id              String    @id @default(uuid())
-  auth_account_id String
+  id              String    @id @default(uuid(7)) @db.Uuid
+  auth_account_id String    @db.Uuid
   token_hash      String    @unique
-  family_id       String
+  family_id       String    @default(uuid(7)) @db.Uuid
   revoked_at      DateTime?
-  replaced_by_id  String?   @unique
+  replaced_by_id  String?   @unique @db.Uuid
   created_at      DateTime  @default(now())
 
   auth_account auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
   replaced_by  auth_refresh_tokens? @relation("TokenReplacement", fields: [replaced_by_id], references: [id], onDelete: SetNull)
   replace      auth_refresh_tokens? @relation("TokenReplacement")
+
+  @@index([family_id])
 }
 
 // users
 model users {
-  id                String   @id @default(uuid())
-  auth_account_id   String   @unique
+  id                String   @id @default(uuid(7)) @db.Uuid
+  auth_account_id   String   @unique @db.Uuid
   nickname          String
   profile_image_url String?
   created_at        DateTime @default(now())
@@ -91,25 +93,26 @@ model users {
 
 // photographers
 model photographers {
-  id                String   @id @default(uuid())
-  auth_account_id   String   @unique
+  id                String   @id @default(uuid(7)) @db.Uuid
+  auth_account_id   String   @unique @db.Uuid
   profile_image_url String?
   nickname          String
-  career            Int
+  career            Int?
   regions           String[]
   introduction      String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  auth_account     auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
-  product          products[]
-  photo            photos[]
-  photographerSave photographer_saves[]
-  chatRoom         chat_rooms[]
-  quote            quotes[]
-  payment          payments[]
-  reviewReply      review_replies[]
-  reservation      reservations[]
+  auth_account         auth_accounts           @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
+  product              products[]
+  photo                photos[]
+  photographerSave     photographer_saves[]
+  chatRoom             chat_rooms[]
+  quote                quotes[]
+  payment              payments[]
+  reservation          reservations[]
+  reviews              reviews[]
+  representativePhotos representative_photos[]
 }
 
 // reservations
@@ -122,16 +125,15 @@ enum ReservationStatus {
 }
 
 model reservations {
-  id              String            @id @default(uuid())
-  quote_id        String?           @unique
-  payment_id      String?           @unique
-  user_id         String?
-  photographer_id String?
+  id              String            @id @default(uuid(7)) @db.Uuid
+  quote_id        String?           @unique @db.Uuid
+  payment_id      String?           @unique @db.Uuid
+  user_id         String?           @db.Uuid
+  photographer_id String?           @db.Uuid
   status          ReservationStatus
   shoot_at        DateTime
   location        String
   total_amount    Int
-  request_memo    String?
   created_at      DateTime          @default(now())
   updated_at      DateTime          @updatedAt
 
@@ -157,23 +159,23 @@ enum CancelStatus {
 }
 
 model reservation_cancel_requests {
-  id             String       @id @default(uuid())
-  reservation_id String
-  requested_by   String
-  reason         String
-  status         CancelStatus
-  processed_at   DateTime?
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
+  id                      String       @id @default(uuid(7)) @db.Uuid
+  reservation_id          String       @db.Uuid
+  requested_by_account_id String       @db.Uuid
+  reason                  String
+  status                  CancelStatus
+  processed_at            DateTime?
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
 
-  auth_account auth_accounts @relation(fields: [requested_by], references: [id], onDelete: Cascade)
+  auth_account auth_accounts @relation(fields: [requested_by_account_id], references: [id], onDelete: Cascade)
   reservation  reservations  @relation(fields: [reservation_id], references: [id], onDelete: Cascade)
 }
 
 // deliverables
 model deliverables {
-  id                String   @id @default(uuid())
-  reservation_id    String   @unique
+  id                String   @id @default(uuid(7)) @db.Uuid
+  reservation_id    String   @unique @db.Uuid
   link              String
   expiration_period DateTime
   notice            String?
@@ -181,20 +183,18 @@ model deliverables {
   updated_at        DateTime @updatedAt
 
   reservation reservations @relation(fields: [reservation_id], references: [id], onDelete: Cascade)
-
-  @@index([reservation_id])
 }
 
 // products
 model products {
-  id                String   @id @default(uuid())
-  photographer_id   String
+  id                String   @id @default(uuid(7)) @db.Uuid
+  photographer_id   String   @db.Uuid
   name              String
   price             Int
   duration_minutes  Int
   photo_count       Int
   includes_original Boolean
-  description       String?
+  common_notice     String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
@@ -206,7 +206,7 @@ model products {
 // 용일님 파트
 // categories
 model categories {
-  id            String             @id @default(uuid())
+  id            String             @id @default(uuid(7)) @db.Uuid
   name          String
   created_at    DateTime           @default(now())
   photoCategory photo_categories[]
@@ -214,7 +214,7 @@ model categories {
 
 // styles
 model styles {
-  id         String         @id @default(uuid())
+  id         String         @id @default(uuid(7)) @db.Uuid
   name       String
   created_at DateTime       @default(now())
   photoStyle photo_styles[]
@@ -222,29 +222,29 @@ model styles {
 
 // photos
 model photos {
-  id               String   @id @default(uuid())
-  photographer_id  String
+  id               String   @id @default(uuid(7)) @db.Uuid
+  photographer_id  String   @db.Uuid
   description      String?
   storage_location String
-  file_size        BigInt
-  width            BigInt
-  height           BigInt
+  width            Int
+  height           Int
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  photographer  photographers      @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
-  photoStyle    photo_styles[]
-  photoCategory photo_categories[]
-  photoKeyword  photo_keywords[]
-  photoLike     photo_likes[]
+  photographer         photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
+  photoStyle           photo_styles[]
+  photoCategory        photo_categories[]
+  photoKeyword         photo_keywords[]
+  photoLike            photo_likes[]
+  representativePhotos representative_photos[]
 
   @@index([photographer_id])
 }
 
 // photo_styles & photo_categories & photo_keywords & photo_likes & photographer_saves
 model photo_styles {
-  photo_id String
-  style_id String
+  photo_id String @db.Uuid
+  style_id String @db.Uuid
 
   photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
   style styles @relation(fields: [style_id], references: [id], onDelete: Cascade)
@@ -254,8 +254,8 @@ model photo_styles {
 }
 
 model photo_categories {
-  photo_id    String
-  category_id String
+  photo_id    String @db.Uuid
+  category_id String @db.Uuid
 
   photo    photos     @relation(fields: [photo_id], references: [id], onDelete: Cascade)
   category categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
@@ -265,8 +265,8 @@ model photo_categories {
 }
 
 model photo_keywords {
-  id       String @id @default(uuid())
-  photo_id String
+  id       String @id @default(uuid(7)) @db.Uuid
+  photo_id String @db.Uuid
   keyword  String
 
   photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
@@ -276,8 +276,8 @@ model photo_keywords {
 }
 
 model photo_likes {
-  user_id    String
-  photo_id   String
+  user_id    String   @db.Uuid
+  photo_id   String   @db.Uuid
   created_at DateTime @default(now())
 
   photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
@@ -288,8 +288,8 @@ model photo_likes {
 }
 
 model photographer_saves {
-  user_id         String
-  photographer_id String
+  user_id         String   @db.Uuid
+  photographer_id String   @db.Uuid
   created_at      DateTime @default(now())
 
   photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
@@ -299,46 +299,64 @@ model photographer_saves {
   @@index([user_id])
 }
 
-// notifications
-enum noti_type {
-  NEW_MESSAGE
-  NEW_QUOTE
-  RESERVATION_CONFIRMED
+model representative_photos {
+  photographer_id String @db.Uuid
+  photo_id        String @db.Uuid
+
+  photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
+  photo        photos        @relation(fields: [photo_id], references: [id], onDelete: Cascade)
+
+  @@id([photographer_id, photo_id])
 }
 
-enum noti_target_type {
+// notifications
+enum NotiType {
+  NEW_MESSAGE
+  NEW_INQUIRY
+  NEW_QUOTE
+  RESERVATION_CONFIRMED
+  SHOOT_REMINDER
+  DELIVERY_COMPLETED
+  NEW_REVIEW
+  CANCEL_REQUESTED
+  CANCEL_REJECTED
+  RESERVATION_CANCELED
+}
+
+enum NotiTargetType {
   CHAT_ROOM
   RESERVATION
   PHOTOGRAPHER_PROFILE
 }
 
 model notifications {
-  id              String           @id @default(uuid())
-  auth_account_id String
-  type            noti_type
-  target_type     noti_target_type
+  id              String         @id @default(uuid(7)) @db.Uuid
+  auth_account_id String         @db.Uuid
+  type            NotiType
+  target_type     NotiTargetType
   target_id       String
   message         String
   scheduled_at    DateTime?
   read_at         DateTime?
-  created_at      DateTime         @default(now())
+  created_at      DateTime       @default(now())
 
   auth_account auth_accounts @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
+
+  @@index([auth_account_id, created_at])
 }
 
 // 영일님 파트
 // chat_rooms
 model chat_rooms {
-  id              String   @id @default(uuid())
-  user_id         String?
-  photographer_id String?
-  last_message_at DateTime
+  id              String   @id @default(uuid(7)) @db.Uuid
+  user_id         String?  @db.Uuid
+  photographer_id String?  @db.Uuid
+  last_message_at DateTime @default(now())
   created_at      DateTime @default(now())
 
   user         users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   chatMessage  chat_messages[]
-  payload      payloads?
   quote        quotes[]
 
   @@unique([user_id, photographer_id])
@@ -347,7 +365,7 @@ model chat_rooms {
 }
 
 // chat_message
-enum message_type {
+enum MessageType {
   TEXT
   INITIAL_REQUEST
   QUOTE
@@ -355,79 +373,62 @@ enum message_type {
 }
 
 model chat_messages {
-  id              String       @id @default(uuid())
-  chat_room_id    String
-  auth_account_id String?
-  message_type    message_type
-  content         String
-  payload_id      String?
-  reservation_id  String?
-  quote_id        String?
-  read_at         DateTime?
-  created_at      DateTime     @default(now())
+  id                   String      @id @default(uuid(7)) @db.Uuid
+  chat_room_id         String      @db.Uuid
+  recipient_account_id String?     @db.Uuid
+  message_type         MessageType
+  content              String
+  payload              Json?
+  reservation_id       String?     @db.Uuid
+  quote_id             String?     @db.Uuid
+  read_at              DateTime?
+  created_at           DateTime    @default(now())
 
   chat_room    chat_rooms     @relation(fields: [chat_room_id], references: [id], onDelete: Cascade)
-  auth_account auth_accounts? @relation(fields: [auth_account_id], references: [id], onDelete: SetNull)
-  payload      payloads?      @relation(fields: [payload_id], references: [id], onDelete: SetNull)
+  auth_account auth_accounts? @relation(fields: [recipient_account_id], references: [id], onDelete: SetNull)
   reservation  reservations?  @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)
-}
 
-// payloads
-model payloads {
-  id           String   @id @default(uuid())
-  chat_room_id String   @unique
-  date         String
-  region       String
-  concept      String[]
-  category     String[]
-  created_at   DateTime @default(now())
-
-  chat_room    chat_rooms      @relation(fields: [chat_room_id], references: [id], onDelete: Cascade)
-  chatMessages chat_messages[]
+  @@index([chat_room_id, created_at])
 }
 
 // quotes
 model quotes {
-  id                String   @id @default(uuid())
-  chat_room_id      String?
-  photographer_id   String?
-  name              String
+  id                String   @id @default(uuid(7)) @db.Uuid
+  chat_room_id      String?  @db.Uuid
+  photographer_id   String?  @db.Uuid
+  product_name      String
   version           Int
   shoot_at          DateTime
-  location          String
-  duration_minutes  Int
-  cost              Int
-  extra_fee         Int
-  photo_count       Int
+  location          String?
+  duration_minutes  Int?
+  price             Int?
+  extra_fee         Int?
+  photo_count       Int?
   includes_original Boolean
   additional_notice String?
-  common_notice     String
+  common_notice     String?
   created_at        DateTime @default(now())
 
   chat_room    chat_rooms?     @relation(fields: [chat_room_id], references: [id], onDelete: SetNull)
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   chatMessage  chat_messages[]
   reservation  reservations?
-  payment      payments?
+  payment      payments[]
 
   @@unique([chat_room_id, version])
 }
 
 // payments
-enum payment_methods {
+enum PaymentMethod {
   CARD
-  ACCOUNT
-  ETC
 }
 
-enum payment_provider {
+enum PaymentProvider {
   TOSS
-  KAKAO
-  ETC
 }
 
-enum payment_status {
+enum PaymentStatus {
   READY
   PENDING
   SUCCEEDED
@@ -436,20 +437,20 @@ enum payment_status {
 }
 
 model payments {
-  id              String           @id @default(uuid())
-  quote_id        String?          @unique
-  user_id         String?
-  photographer_id String?
+  id              String          @id @default(uuid(7)) @db.Uuid
+  quote_id        String?         @db.Uuid
+  user_id         String?         @db.Uuid
+  photographer_id String?         @db.Uuid
   amount          Int
-  payment_method  payment_methods
-  pg_provider     payment_provider
-  pg_order_id     String           @default(uuid())
-  pg_payment_id   String?
-  status          payment_status
+  payment_method  PaymentMethod
+  pg_provider     PaymentProvider
+  pg_order_id     String          @unique @default(uuid(7)) @db.Uuid
+  pg_payment_id   String?         @unique
+  status          PaymentStatus
   failure_code    String?
-  created_at      DateTime         @default(now())
+  created_at      DateTime        @default(now())
   paid_at         DateTime?
-  updated_at      DateTime         @updatedAt
+  updated_at      DateTime        @updatedAt
 
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)
   user         users?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
@@ -462,32 +463,33 @@ model payments {
 
 // reviews
 model reviews {
-  id             String    @id @default(uuid())
-  reservation_id String?   @unique
-  user_id        String?
-  rating         Int
-  comment        String
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
-  deleted_at     DateTime?
-
-  reservation reservations?   @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
-  user        users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  reviewReply review_replies?
-
-  @@index([user_id])
-}
-
-// review_replies
-model review_replies {
-  id              String    @id @default(uuid())
-  review_id       String?   @unique
-  photographer_id String?
+  id              String    @id @default(uuid(7)) @db.Uuid
+  reservation_id  String?   @unique @db.Uuid
+  user_id         String?   @db.Uuid
+  photographer_id String?   @db.Uuid
+  rating          Int
   comment         String
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
   deleted_at      DateTime?
 
-  review       reviews?       @relation(fields: [review_id], references: [id], onDelete: SetNull)
-  photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
+  reservation  reservations?   @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
+  user         users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
+  reviewReply  review_replies?
+
+  @@index([user_id])
+  @@index([photographer_id])
+}
+
+// review_replies
+model review_replies {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  review_id  String?   @unique @db.Uuid
+  comment    String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  review reviews? @relation(fields: [review_id], references: [id], onDelete: SetNull)
 }
