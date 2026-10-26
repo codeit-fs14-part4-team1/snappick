@@ -30,8 +30,8 @@ model auth_accounts {
   user                       users?
   photographer               photographers?
   reservation_cancel_request reservation_cancel_requests[]
-  notifications              notifications[]
-  chatMessages               chat_messages[]
+  notification               notifications[]
+  chatMessage                chat_messages[]
 }
 
 // auth_providers
@@ -68,7 +68,7 @@ model auth_refresh_tokens {
 
   auth_account auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
   replaced_by  auth_refresh_tokens? @relation("TokenReplacement", fields: [replaced_by_id], references: [id], onDelete: SetNull)
-  replaces     auth_refresh_tokens? @relation("TokenReplacement")
+  replace      auth_refresh_tokens? @relation("TokenReplacement")
 }
 
 // users
@@ -80,14 +80,13 @@ model users {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  auth_account      auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
-  reservations      reservations[]
-  deliverables      deliverables[]
-  photoLikes        photo_likes[]
-  photographerSaves photographer_saves[]
-  chatRooms         chat_rooms[]
-  payments          payments[]
-  reviews           reviews[]
+  auth_account     auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
+  photoLike        photo_likes[]
+  photographerSave photographer_saves[]
+  chatRoom         chat_rooms[]
+  payment          payments[]
+  review           reviews[]
+  reservation      reservations[]
 }
 
 // photographers
@@ -102,16 +101,15 @@ model photographers {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  auth_account      auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
-  reservation       reservations[]
-  deliverable       deliverables[]
-  product           products[]
-  photos            photos[]
-  photographerSaves photographer_saves[]
-  chatRooms         chat_rooms[]
-  quotes            quotes[]
-  payments          payments[]
-  reviewReplies     review_replies[]
+  auth_account     auth_accounts        @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
+  product          products[]
+  photo            photos[]
+  photographerSave photographer_saves[]
+  chatRoom         chat_rooms[]
+  quote            quotes[]
+  payment          payments[]
+  reviewReply      review_replies[]
+  reservation      reservations[]
 }
 
 // reservations
@@ -144,8 +142,8 @@ model reservations {
 
   reservation_cancel_request reservation_cancel_requests[]
   deliverable                deliverables?
-  chatMessages               chat_messages[]
-  reviews                    reviews[]
+  chatMessage                chat_messages[]
+  review                     reviews?
 
   @@index([user_id])
   @@index([photographer_id])
@@ -176,20 +174,15 @@ model reservation_cancel_requests {
 model deliverables {
   id                String   @id @default(uuid())
   reservation_id    String   @unique
-  photographer_id   String?
-  user_id           String?
   link              String
   expiration_period DateTime
   notice            String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  reservation  reservations   @relation(fields: [reservation_id], references: [id], onDelete: Cascade)
-  photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
-  user         users?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  reservation reservations @relation(fields: [reservation_id], references: [id], onDelete: Cascade)
 
-  @@index([user_id])
-  @@index([photographer_id])
+  @@index([reservation_id])
 }
 
 // products
@@ -221,10 +214,10 @@ model categories {
 
 // styles
 model styles {
-  id          String         @id @default(uuid())
-  name        String
-  created_at  DateTime       @default(now())
-  photoStyles photo_styles[]
+  id         String         @id @default(uuid())
+  name       String
+  created_at DateTime       @default(now())
+  photoStyle photo_styles[]
 }
 
 // photos
@@ -240,10 +233,10 @@ model photos {
   updated_at       DateTime @updatedAt
 
   photographer  photographers      @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
-  photoStyles   photo_styles[]
+  photoStyle    photo_styles[]
   photoCategory photo_categories[]
-  photoKeywords photo_keywords[]
-  photoLikes    photo_likes[]
+  photoKeyword  photo_keywords[]
+  photoLike     photo_likes[]
 
   @@index([photographer_id])
 }
@@ -344,9 +337,9 @@ model chat_rooms {
 
   user         users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
-  chatMessages chat_messages[]
-  payloads     payloads?
-  quotes       quotes[]
+  chatMessage  chat_messages[]
+  payload      payloads?
+  quote        quotes[]
 
   @@unique([user_id, photographer_id])
   @@index([user_id])
@@ -375,7 +368,7 @@ model chat_messages {
 
   chat_room    chat_rooms     @relation(fields: [chat_room_id], references: [id], onDelete: Cascade)
   auth_account auth_accounts? @relation(fields: [auth_account_id], references: [id], onDelete: SetNull)
-  //payload payloads? @relayion(fields: [payload_id], references: [id], onDelete: Setnull)
+  payload      payloads?      @relation(fields: [payload_id], references: [id], onDelete: SetNull)
   reservation  reservations?  @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)
 }
@@ -390,7 +383,8 @@ model payloads {
   category     String[]
   created_at   DateTime @default(now())
 
-  chat_room chat_rooms @relation(fields: [chat_room_id], references: [id], onDelete: Cascade)
+  chat_room    chat_rooms      @relation(fields: [chat_room_id], references: [id], onDelete: Cascade)
+  chatMessages chat_messages[]
 }
 
 // quotes
@@ -413,9 +407,9 @@ model quotes {
 
   chat_room    chat_rooms?     @relation(fields: [chat_room_id], references: [id], onDelete: SetNull)
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
-  chatMessages chat_messages[]
-  reservations reservations?
-  payments     payments[]
+  chatMessage  chat_messages[]
+  reservation  reservations?
+  payment      payments?
 
   @@unique([chat_room_id, version])
 }
@@ -460,7 +454,7 @@ model payments {
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)
   user         users?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
   photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
-  reservations reservations?
+  reservation  reservations?
 
   @@index([user_id])
   @@index([photographer_id])
@@ -477,9 +471,9 @@ model reviews {
   updated_at     DateTime  @updatedAt
   deleted_at     DateTime?
 
-  reservation   reservations?   @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
-  user          users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  reviewReplies review_replies?
+  reservation reservations?   @relation(fields: [reservation_id], references: [id], onDelete: SetNull)
+  user        users?          @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  reviewReply review_replies?
 
   @@index([user_id])
 }
