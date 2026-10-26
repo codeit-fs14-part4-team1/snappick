@@ -2,6 +2,11 @@
   display: flex;
   gap: 24px;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.list::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
