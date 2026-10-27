@@ -64,7 +64,6 @@ export default function ProfileMenu({ user }: ProfileMenuProps) {
         type="button"
         ref={buttonRef}
         aria-label="프로필 메뉴"
-        aria-haspopup="true"
         aria-expanded={isOpen}
         aria-controls="profile-menu"
         className={styles.profileButton}
@@ -80,7 +79,7 @@ export default function ProfileMenu({ user }: ProfileMenuProps) {
             className={styles.avatar}
           />
         ) : (
-          <span aria-hidden="true" className={styles.avatarFallback}>
+          <span aria-hidden="true" className={styles.avatarPlaceholder}>
             {user.nickname.charAt(0)}
           </span>
         )}
