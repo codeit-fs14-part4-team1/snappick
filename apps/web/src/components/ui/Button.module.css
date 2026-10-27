@@ -5,9 +5,7 @@
   justify-content: center;
   gap: 8px;
   max-width: 100%;
-  padding: 0 16px;
   border: 1px solid transparent;
-  border-radius: 8px;
   font-family: var(--font-main);
   font-weight: 700;
   line-height: 1;
@@ -40,34 +38,45 @@
 .outline {
   background: var(--color-bg-base);
   border-color: var(--color-border);
-  color: var(--color-primary);
+  color: var(--color-text-primary);
 }
 
 /* 배경과 테두리가 없는 텍스트 버튼 */
 .text {
   background: transparent;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
 }
 
 /* 작은 버튼 */
 .sm {
   height: 32px;
-  padding: 0 12px;
-  font-size: 12px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
 /* 중간 크기 버튼 */
 .md {
-  height: 40px;
-  padding: 0 16px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
   font-size: 14px;
 }
 
 /* 큰 버튼 */
 .lg {
-  height: 48px;
+  height: 52px;
   padding: 0 24px;
+  border-radius: 12px;
   font-size: 16px;
+}
+
+/* 아웃라인과 텍스트 버튼의 작은·중간 크기는 글자 굵기를 500으로 설정함 */
+.outline.sm,
+.outline.md,
+.text.sm,
+.text.md {
+  font-weight: 500;
 }
 
 /* 부모 요소의 너비를 가득 채우는 버튼 */

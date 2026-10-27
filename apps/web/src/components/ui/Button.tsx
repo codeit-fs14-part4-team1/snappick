@@ -1,5 +1,3 @@
-'use client';
-
 // 기본 HTML 버튼 속성과 아이콘에 사용할 React 타입을 가져옴
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import styles from './Button.module.css';
