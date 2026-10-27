@@ -40,6 +40,8 @@ export default function Tabs({
   className,
 }: TabsProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  // 배열 참조가 아닌 버튼의 추가·삭제·순서 변경에만 반응
+  const itemValuesKey = JSON.stringify(items.map((item) => item.value));
 
   useEffect(() => {
     const list = listRef.current;
@@ -49,7 +51,43 @@ export default function Tabs({
     if (!list || !selected) return;
 
     showButton(list, selected);
-  }, [value, items]);
+  }, [value]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+
+    let frame = 0;
+
+    function revealSelectedButton() {
+      if (!list) return;
+      const selected = list.querySelector<HTMLButtonElement>(
+        'button[aria-pressed="true"]',
+      );
+      if (selected) showButton(list, selected);
+    }
+
+    function scheduleReveal() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(revealSelectedButton);
+    }
+
+    const observer = new ResizeObserver(scheduleReveal);
+
+    observer.observe(list);
+    list
+      .querySelectorAll('button')
+      .forEach((button) => observer.observe(button));
+
+    window.addEventListener('resize', scheduleReveal);
+    scheduleReveal();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleReveal);
+      cancelAnimationFrame(frame);
+    };
+  }, [itemValuesKey]);
 
   return (
     <div
