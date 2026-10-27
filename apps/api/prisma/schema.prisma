@@ -103,16 +103,16 @@ model photographers {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  auth_account         auth_accounts           @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
-  product              products[]
-  photo                photos[]
-  photographerSave     photographer_saves[]
-  chatRoom             chat_rooms[]
-  quote                quotes[]
-  payment              payments[]
-  reservation          reservations[]
-  reviews              reviews[]
-  representativePhotos representative_photos[]
+  auth_account        auth_accounts          @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
+  product             products[]
+  photo               photos[]
+  photographerSave    photographer_saves[]
+  chatRoom            chat_rooms[]
+  quote               quotes[]
+  payment             payments[]
+  reservation         reservations[]
+  reviews             reviews[]
+  representativePhoto representative_photos?
 }
 
 // reservations
@@ -231,12 +231,12 @@ model photos {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  photographer         photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
-  photoStyle           photo_styles[]
-  photoCategory        photo_categories[]
-  photoKeyword         photo_keywords[]
-  photoLike            photo_likes[]
-  representativePhotos representative_photos[]
+  photographer        photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
+  photoStyle          photo_styles[]
+  photoCategory       photo_categories[]
+  photoKeyword        photo_keywords[]
+  photoLike           photo_likes[]
+  representativePhoto representative_photos[]
 
   @@index([photographer_id])
 }
@@ -300,13 +300,11 @@ model photographer_saves {
 }
 
 model representative_photos {
-  photographer_id String @db.Uuid
+  photographer_id String @id @db.Uuid
   photo_id        String @db.Uuid
 
   photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
   photo        photos        @relation(fields: [photo_id], references: [id], onDelete: Cascade)
-
-  @@id([photographer_id, photo_id])
 }
 
 // notifications
@@ -400,11 +398,11 @@ model quotes {
   product_name      String
   version           Int
   shoot_at          DateTime
-  location          String?
-  duration_minutes  Int?
-  price             Int?
+  location          String
+  duration_minutes  Int
+  price             Int
   extra_fee         Int?
-  photo_count       Int?
+  photo_count       Int
   includes_original Boolean
   additional_notice String?
   common_notice     String?
@@ -421,7 +419,7 @@ model quotes {
 
 // payments
 enum PaymentMethod {
-  CARD
+  EASY_PAY
 }
 
 enum PaymentProvider {
