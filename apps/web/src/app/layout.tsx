@@ -1,6 +1,7 @@
 import Providers from './providers';
 import type { Metadata } from 'next';
 import './globals.css';
+import Header from '@/components/layout/Header';
 
 export const metadata: Metadata = {
   title: 'SnapPick',
@@ -17,6 +18,8 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <Providers>
+          {/* TODO: 인증 API 연결 후 실제 사용자 정보 전달 */}
+          <Header user={null} hasUnreadNotifications={false} />
           <main id="main-content">{children}</main>
         </Providers>
       </body>
