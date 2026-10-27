@@ -1,0 +1,12 @@
+.container {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.default {
+  max-width: var(--container-default);
+}
+
+.wide {
+  max-width: var(--container-wide);
+}
