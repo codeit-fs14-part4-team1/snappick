@@ -69,7 +69,7 @@ export default function NotificationMenu({
           </p>
 
           {/* 알림 목록 */}
-          <p className={styles.emptyMessage}>새 알람이 없어요</p>
+          <p className={styles.emptyMessage}>새 알림이 없어요</p>
         </div>
       )}
     </div>
