@@ -1,0 +1,117 @@
+/* 모든 버튼에 공통으로 적용할 기본 스타일 */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  border: 1px solid transparent;
+  font-family: var(--font-main);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    filter 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* 기본 다크 버튼 */
+.primary {
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+}
+
+/* 올리브색 강조 버튼 */
+.accent {
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+}
+
+/* 삭제 및 위험 동작에 사용하는 버튼 */
+.danger {
+  background: var(--color-danger);
+  color: var(--color-bg-base);
+}
+
+/* 흰색 배경과 테두리가 있는 버튼 */
+.outline {
+  background: var(--color-bg-base);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* 배경과 테두리가 없는 텍스트 버튼 */
+.text {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+/* 작은 버튼 */
+.sm {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* 중간 크기 버튼 */
+.md {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+/* 큰 버튼 */
+.lg {
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+/* 아웃라인과 텍스트 버튼의 작은·중간 크기는 글자 굵기를 500으로 설정함 */
+.outline.sm,
+.outline.md,
+.text.sm,
+.text.md {
+  font-weight: 500;
+}
+
+/* 부모 요소의 너비를 가득 채우는 버튼 */
+.fullWidth {
+  width: 100%;
+}
+
+/* 버튼 텍스트 왼쪽의 아이콘 정렬 */
+.startIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 마우스를 올렸을 때 버튼을 살짝 어둡게 표시 */
+.button:not(:disabled):hover {
+  filter: brightness(0.95);
+}
+
+/* 키보드로 버튼을 선택했을 때 포커스 표시 */
+.button:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 비활성 버튼의 색상과 클릭 커서를 변경 */
+.button:disabled {
+  background: var(--color-bg-subtle);
+  border-color: transparent;
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* 비활성 텍스트 버튼은 배경을 투명하게 유지 */
+.text:disabled {
+  background: transparent;
+}
