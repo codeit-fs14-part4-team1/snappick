@@ -4,6 +4,7 @@ import { errorHandler } from './middlewares/error-handler.js';
 import { HttpError } from './utils/http-error.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { usersRouter } from './modules/users/users.routes.js';
 
 export const app: Express = express();
 
@@ -21,6 +22,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/users', usersRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {
