@@ -2,7 +2,7 @@ import express, { type Express } from 'express';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { HttpError } from './utils/http-error.js';
-
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
 export const app: Express = express();
@@ -14,6 +14,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'SnapPick API' });
