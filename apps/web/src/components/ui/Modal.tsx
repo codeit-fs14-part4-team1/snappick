@@ -160,6 +160,8 @@ export default function Modal({
       }}
       // ESC 키로 모달 닫기
       onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
+
         event.preventDefault();
         if (closeOnEscape) onClose();
       }}
