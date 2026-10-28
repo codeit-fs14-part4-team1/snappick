@@ -1,0 +1,121 @@
+.profile {
+  position: relative;
+}
+
+.profileButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.avatar,
+.avatarPlaceholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.nickname {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profileButton[aria-expanded='true'] .arrow {
+  transform: rotate(180deg);
+}
+
+.profileMenu {
+  position: absolute;
+  z-index: 500;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+}
+
+.menuList {
+  padding: 8px 0;
+  margin: 0;
+  list-style: none;
+}
+
+.menuLink {
+  display: block;
+  padding: 12px 20px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.menuLink:hover {
+  background: var(--color-bg-subtle);
+}
+
+.logoutButton {
+  width: 100%;
+  padding: 18px 20px;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+}
+
+.logoutButton:hover {
+  background: var(--color-bg-subtle);
+}
+
+@media (max-width: 767px) {
+  .nickname,
+  .badge,
+  .arrow {
+    display: none;
+  }
+
+  .profileMenu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(52vw, 320px);
+    min-width: 200px;
+    border-radius: 16px 0 0 16px;
+    overflow-y: auto;
+  }
+}
