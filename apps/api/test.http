@@ -1,0 +1,45 @@
+### 필수값 누락
+POST http://localhost:4000/auth/signup 
+Content-Type: application/json
+
+{
+  "account_type": "USER",
+  "provider": "BASIC",
+  "provider_email": "test3@example.com",
+  "nickname": "tester"
+}
+
+### 201 Pass
+POST http://localhost:4000/auth/signup
+Content-Type: application/json
+
+{
+  "account_type": "USER",
+  "provider": "BASIC",
+  "provider_email": "test3@example.com",
+  "password": "Password123",
+  "nickname": "tester"
+}
+
+### 409 이미 존재하는 계정
+POST http://localhost:4000/auth/signup
+Content-Type: application/json
+
+{
+  "account_type": "USER",
+  "provider": "BASIC",
+  "provider_email": "test3@example.com",
+  "password": "Password123",
+  "nickname": "tester"
+}
+
+### 501 아직 구현되지 않은 기능
+POST http://localhost:4000/auth/signup
+Content-Type: application/json
+
+{
+  "account_type": "PHOTOGRAPHER",
+  "provider": "KAKAO",
+  "provider_token": "",
+  "nickname": "tester"
+}
