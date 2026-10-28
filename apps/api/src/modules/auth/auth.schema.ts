@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { AccountType } from '../../generated/prisma/enums.js';
 
 const common = {
-  account_type: z.enum(['USER', 'PHOTOGRAPHER']),
+  account_type: z.enum(AccountType),
   nickname: z
     .string()
     .trim()

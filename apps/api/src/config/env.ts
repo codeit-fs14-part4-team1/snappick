@@ -6,7 +6,7 @@ function required(name: string): string {
 
 export const env = {
   jwtAccessSecret: required('JWT_ACCESS_SECRET'),
-  accessTokenTtl: process.env.ACESS_TOKEN_TTL ?? '15m',
+  accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? '15m',
   refreshTokenTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 14),
   isProduction: process.env.NODE_ENV === 'production',
 };
