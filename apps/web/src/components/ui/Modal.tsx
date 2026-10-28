@@ -2,6 +2,7 @@
 
 import { Children, useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { tabbable } from 'tabbable';
 import styles from './Modal.module.css';
 
 type ModalProps = {
@@ -133,7 +134,7 @@ export default function Modal({
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;
 
-        // 자식 모달에서 전달된 키보드 이벤트는 처리하지 않습니다.
+        // 자식 모달에서 전달된 키보드 이벤트는 처리하지 않음
         if (
           event.target instanceof Element &&
           event.target.closest('dialog') !== event.currentTarget
@@ -148,16 +149,9 @@ export default function Modal({
 
         if (event.key !== 'Tab') return;
 
-        const elements = Array.from(
-          event.currentTarget.querySelectorAll<HTMLElement>(
-            'button, a[href], input, select, textarea, [tabindex]',
-          ),
-        ).filter(
-          (element) =>
-            element.tabIndex >= 0 &&
-            !element.matches(':disabled') &&
-            element.getClientRects().length > 0 &&
-            !element.closest('[inert]'),
+        //Tab키 포커스 순환 처리
+        const elements = tabbable(event.currentTarget).filter(
+          (element) => element.closest('dialog') === event.currentTarget,
         );
         const first = elements[0];
         const last = elements[elements.length - 1];
@@ -165,11 +159,10 @@ export default function Modal({
         if (!first) {
           event.preventDefault();
           titleRef.current?.focus();
-        } else if (
-          event.shiftKey &&
-          (document.activeElement === first ||
-            document.activeElement === titleRef.current)
-        ) {
+        } else if (document.activeElement === titleRef.current) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        } else if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
