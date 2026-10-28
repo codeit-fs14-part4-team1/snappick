@@ -93,16 +93,16 @@ model users {
 
 // photographers
 model photographers {
-  id                String   @id @default(uuid(7)) @db.Uuid
-  auth_account_id   String   @unique @db.Uuid
+  id                String     @id @default(uuid(7)) @db.Uuid
+  auth_account_id   String     @unique @db.Uuid
   profile_image_url String?
   nickname          String
   career            Int?
-  regions           String[] @default([]) // 지역 코드 (@snappick/shared REGIONS)
-  categories        String[] @default([]) // 카테고리 코드 (@snappick/shared CATEGORIES)
+  regions           Region[]   @default([])
+  categories        Category[] @default([])
   introduction      String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
 
   auth_account        auth_accounts          @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
   product             products[]
@@ -205,18 +205,62 @@ model products {
 }
 
 // 용일님 파트
+// categories, styles, regions (화면 표시 순서대로 선언)
+enum Category {
+  WEDDING
+  COUPLE
+  FAMILY
+  FRIENDS
+  GRADUATION
+  PROFILE
+  EVENT
+  PET
+  ETC
+}
+
+enum Style {
+  NATURAL
+  BRIGHT
+  FILM
+  VINTAGE
+  CINEMATIC
+  MONOCHROME
+  MINIMAL
+  DREAMY
+}
+
+enum Region {
+  SEOUL
+  DAEGU
+  GWANGJU
+  ULSAN
+  GYEONGGI
+  CHUNGBUK
+  JEONBUK
+  GYEONGBUK
+  JEJU
+  BUSAN
+  INCHEON
+  DAEJEON
+  SEJONG
+  GANGWON
+  CHUNGNAM
+  JEONNAM
+  GYEONGNAM
+}
+
 // photos
 model photos {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  photographer_id  String   @db.Uuid
+  id               String     @id @default(uuid(7)) @db.Uuid
+  photographer_id  String     @db.Uuid
   description      String?
   storage_location String
   width            Int
   height           Int
-  categories       String[] @default([]) // 카테고리 코드 (@snappick/shared CATEGORIES)
-  styles           String[] @default([]) // 스타일 코드 (@snappick/shared STYLES)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  categories       Category[] @default([])
+  styles           Style[]    @default([])
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
 
   photographer        photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
   photoKeyword        photo_keywords[]
