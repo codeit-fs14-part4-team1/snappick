@@ -68,6 +68,7 @@ export default function Modal({
 }: ModalProps) {
   const id = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const pointerStartedOnBackdrop = useRef(false);
   const showCloseButton = variant !== 'confirm';
@@ -120,6 +121,24 @@ export default function Modal({
       }
     };
   }, [open]);
+
+  // 브라우저의 실제 스크롤바 너비만큼 확장해 콘텐츠 정렬을 유지합니다.
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!open || !scrollArea) return;
+
+    const updateScrollbarWidth = () => {
+      scrollArea.style.setProperty(
+        '--modal-scrollbar-width',
+        `${scrollArea.offsetWidth - scrollArea.clientWidth}px`,
+      );
+    };
+    const observer = new ResizeObserver(updateScrollbarWidth);
+    observer.observe(scrollArea);
+    updateScrollbarWidth();
+
+    return () => observer.disconnect();
+  }, [open, hasBody, footer]);
 
   return (
     //모달 접근성 이름
@@ -232,17 +251,21 @@ export default function Modal({
             titleElement
           )}
           {isCloseOutside && closeButton}
-          {hasBody && (
-            <div className={styles.body}>
-              {description && (
-                <p id={`${id}-description`} className={styles.description}>
-                  {description}
-                </p>
+          {(hasBody || footer) && (
+            <div ref={scrollAreaRef} className={styles.scrollArea}>
+              {hasBody && (
+                <div className={styles.body}>
+                  {description && (
+                    <p id={`${id}-description`} className={styles.description}>
+                      {description}
+                    </p>
+                  )}
+                  {children}
+                </div>
               )}
-              {children}
+              {footer && <footer className={styles.footer}>{footer}</footer>}
             </div>
           )}
-          {footer && <footer className={styles.footer}>{footer}</footer>}
         </div>
       )}
     </dialog>
