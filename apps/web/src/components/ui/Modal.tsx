@@ -125,9 +125,24 @@ export default function Modal({
         .join(' ')}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-description` : undefined}
-      // Tab키 포커스 내부 순환
+      // Escape 기본 닫기 방지 및 Tab키 포커스 내부 순환
       onKeyDown={(event) => {
-        if (event.key !== 'Tab' || event.defaultPrevented) return;
+        if (event.defaultPrevented) return;
+
+        // 자식 모달에서 전달된 키보드 이벤트는 처리하지 않습니다.
+        if (
+          event.target instanceof Element &&
+          event.target.closest('dialog') !== event.currentTarget
+        ) {
+          return;
+        }
+
+        if (event.key === 'Escape' && !closeOnEscape) {
+          event.preventDefault();
+          return;
+        }
+
+        if (event.key !== 'Tab') return;
 
         const elements = Array.from(
           event.currentTarget.querySelectorAll<HTMLElement>(
