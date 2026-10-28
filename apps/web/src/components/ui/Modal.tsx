@@ -252,7 +252,7 @@ export default function Modal({
           )}
           {isCloseOutside && closeButton}
           {(hasBody || footer) && (
-            <div ref={scrollAreaRef} className={styles.scrollArea}>
+            <div ref={scrollAreaRef} className={styles.scrollArea} tabIndex={0}>
               {hasBody && (
                 <div className={styles.body}>
                   {description && (
