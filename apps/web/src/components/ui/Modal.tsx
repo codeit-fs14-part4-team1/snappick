@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { Children, useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import styles from './Modal.module.css';
 
@@ -71,6 +71,9 @@ export default function Modal({
   const pointerStartedOnBackdrop = useRef(false);
   const showCloseButton = variant !== 'confirm';
   const isCloseOutside = showCloseButton && closeButtonPosition === 'outside';
+  const hasBody =
+    Boolean(description) ||
+    Children.toArray(children).some((child) => child !== '');
 
   const titleElement = (
     <h2
@@ -236,14 +239,16 @@ export default function Modal({
             titleElement
           )}
           {isCloseOutside && closeButton}
-          <div className={styles.body}>
-            {description && (
-              <p id={`${id}-description`} className={styles.description}>
-                {description}
-              </p>
-            )}
-            {children}
-          </div>
+          {hasBody && (
+            <div className={styles.body}>
+              {description && (
+                <p id={`${id}-description`} className={styles.description}>
+                  {description}
+                </p>
+              )}
+              {children}
+            </div>
+          )}
           {footer && <footer className={styles.footer}>{footer}</footer>}
         </div>
       )}
