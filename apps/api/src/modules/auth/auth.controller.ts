@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import {
   clearRefreshCookie,
   readRefreshCookie,
@@ -7,7 +7,7 @@ import {
 import { loginSchema, signupSchema } from './auth.schema.js';
 import { signup, login } from './auth.service.js';
 import { HttpError } from '../../utils/http-error.js';
-import { rotateRefreshToken } from './token.service.js';
+import { revokeSession, rotateRefreshToken } from './token.service.js';
 
 export async function signupHandler(req: Request, res: Response) {
   const input = signupSchema.parse(req.body);
@@ -44,4 +44,12 @@ export async function refreshHandler(req: Request, res: Response) {
       clearRefreshCookie(res);
     throw error;
   }
+}
+
+export async function logoutHandler(req: Request, res: Response) {
+  const rawToken = readRefreshCookie(req);
+  if (rawToken) await revokeSession(rawToken);
+
+  clearRefreshCookie(res);
+  res.status(204).end();
 }

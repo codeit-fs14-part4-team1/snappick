@@ -60,6 +60,14 @@ type RotateResult = {
   refreshToken: string | null;
 };
 
+export async function revokeSession(rawToken: string) {
+  const row = await prisma.auth_refresh_tokens.findUnique({
+    where: { token_hash: hashToken(rawToken) },
+    select: { family_id: true },
+  });
+  if (row) await revokeFamily(row.family_id);
+}
+
 export async function rotateRefreshToken(
   rawToken: string,
 ): Promise<RotateResult> {
@@ -139,19 +147,24 @@ async function handleRevoked(
     auth_account: { id: string; account_type: string };
   },
 ): Promise<RotateResult> {
-  // 회전으로 방금(유예 시간 안에) 교체된 토큰만 동시 요청으로 보고 access token만 새로 발급
-  // (replacedById가 없으면 로그아웃·재사용 감지 등으로 폐기된 것이라 유예 대상이 아님)
+  // 세션(family)에 아직 폐기되지 않은 토큰이 있을 때만 유예 적용
+  // (회전은 항상 살아 있는 최신 토큰을 남기고, 로그아웃·재사용 감지는 세션의 모든 토큰을 폐기함)
   if (
     revoked.replacedById !== null &&
     Date.now() - revoked.revokedAt.getTime() <= REUSE_GRACE_MS
   ) {
-    return {
-      accessToken: signAccessToken(
-        current.auth_account.id,
-        current.auth_account.account_type,
-      ),
-      refreshToken: null,
-    };
+    const alive = await prisma.auth_refresh_tokens.count({
+      where: { family_id: current.family_id, revoked_at: null },
+    });
+    if (alive > 0) {
+      return {
+        accessToken: signAccessToken(
+          current.auth_account.id,
+          current.auth_account.account_type,
+        ),
+        refreshToken: null,
+      };
+    }
   }
 
   // 오래전에 폐기된 토큰의 재사용: 탈취로 보고 같은 로그인 세션의 토큰을 모두 폐기
