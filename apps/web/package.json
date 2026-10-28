@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@snappick/shared": "workspace:*",
     "@tanstack/react-query": "^5.104.5",
     "next": "16.4.2",
     "react": "19.3.0",

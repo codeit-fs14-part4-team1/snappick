@@ -1,7 +1,7 @@
 /**
  * apps/api/prisma/schema.prisma의 enum 이름과 값을 그대로 사용
  * 스키마의 enum이 변경되면 이 파일도 함께 수정
- * 공통 화면 표시 문구는 enum-labels.ts에서 관리
+ * 공통 화면 표시 문구는 apps/web/src/constants/enum-labels.ts에서 관리
  */
 
 export const AccountType = {
@@ -84,3 +84,49 @@ export const PaymentStatus = {
   CANCELED: 'CANCELED',
 } as const;
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
+
+export const Category = {
+  WEDDING: 'WEDDING',
+  COUPLE: 'COUPLE',
+  FAMILY: 'FAMILY',
+  FRIENDS: 'FRIENDS',
+  GRADUATION: 'GRADUATION',
+  PROFILE: 'PROFILE',
+  EVENT: 'EVENT',
+  PET: 'PET',
+  ETC: 'ETC',
+} as const;
+export type Category = (typeof Category)[keyof typeof Category];
+
+export const Style = {
+  NATURAL: 'NATURAL',
+  BRIGHT: 'BRIGHT',
+  FILM: 'FILM',
+  VINTAGE: 'VINTAGE',
+  CINEMATIC: 'CINEMATIC',
+  MONOCHROME: 'MONOCHROME',
+  MINIMAL: 'MINIMAL',
+  DREAMY: 'DREAMY',
+} as const;
+export type Style = (typeof Style)[keyof typeof Style];
+
+export const Region = {
+  SEOUL: 'SEOUL',
+  DAEGU: 'DAEGU',
+  GWANGJU: 'GWANGJU',
+  ULSAN: 'ULSAN',
+  GYEONGGI: 'GYEONGGI',
+  CHUNGBUK: 'CHUNGBUK',
+  JEONBUK: 'JEONBUK',
+  GYEONGBUK: 'GYEONGBUK',
+  JEJU: 'JEJU',
+  BUSAN: 'BUSAN',
+  INCHEON: 'INCHEON',
+  DAEJEON: 'DAEJEON',
+  SEJONG: 'SEJONG',
+  GANGWON: 'GANGWON',
+  CHUNGNAM: 'CHUNGNAM',
+  JEONNAM: 'JEONNAM',
+  GYEONGNAM: 'GYEONGNAM',
+} as const;
+export type Region = (typeof Region)[keyof typeof Region];
