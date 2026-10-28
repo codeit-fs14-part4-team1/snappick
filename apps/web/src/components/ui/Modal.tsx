@@ -69,7 +69,8 @@ export default function Modal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const pointerStartedOnBackdrop = useRef(false);
-  const isCloseOutside = closeButtonPosition === 'outside';
+  const showCloseButton = variant !== 'confirm';
+  const isCloseOutside = showCloseButton && closeButtonPosition === 'outside';
 
   const titleElement = (
     <h2
@@ -84,7 +85,7 @@ export default function Modal({
     </h2>
   );
 
-  const closeButton = (
+  const closeButton = showCloseButton ? (
     <button
       type="button"
       className={[styles.closeButton, isCloseOutside && styles.outsideClose]
@@ -95,7 +96,7 @@ export default function Modal({
     >
       <span aria-hidden="true">×</span>
     </button>
-  );
+  ) : null;
 
   // 모달 열기 믿 닫기 시 포커스 관리 및 스크롤 잠금
   useEffect(() => {
@@ -226,7 +227,7 @@ export default function Modal({
             .filter(Boolean)
             .join(' ')}
         >
-          {showTitle || !isCloseOutside ? (
+          {showTitle || (showCloseButton && !isCloseOutside) ? (
             <header className={styles.header}>
               {titleElement}
               {!isCloseOutside && closeButton}
