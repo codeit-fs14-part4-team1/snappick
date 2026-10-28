@@ -3,10 +3,13 @@ import { env } from '../../config/env.js';
 
 export const REFRESH_COOKIE_NAME = 'refresh_token';
 
+const sameSite: CookieOptions['sameSite'] =
+  env.isProduction && process.env.COOKIE_SAMESITE === 'none' ? 'none' : 'lax';
+
 const baseOptions: CookieOptions = {
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: 'lax', //
+  sameSite,
   path: '/auth',
 };
 

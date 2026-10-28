@@ -38,7 +38,7 @@ export async function signup(input: SignupInput) {
     throw new HttpError(
       409,
       'ACCOUNT_ALREADY_EXISTS',
-      '이미 가입된 이메일입니다. 로그인하여 연동을 진행해주세요',
+      '이미 가입된 이메일입니다.',
     );
 
   // 해시는 느려서 트랜잭션 밖에서 먼저 계산 (트랜잭션을 오래 잡지 않기 위해)
