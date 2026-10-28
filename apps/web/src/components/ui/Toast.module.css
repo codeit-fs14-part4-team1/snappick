@@ -39,9 +39,10 @@
   overflow-wrap: anywhere;
 }
 
-/* 토스트 메시지를 화면 하단 중앙에 배치함 */
+/* 팝오버 기본 스타일을 초기화하고 토스트를 화면 하단 중앙에 배치함 */
 .viewport {
   position: fixed;
+  inset: auto;
   bottom: 24px;
   left: 50%;
   z-index: 1000;
@@ -51,7 +52,24 @@
   gap: 8px;
   width: max-content;
   max-width: calc(100vw - 32px);
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
   transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* 닫힌 팝오버가 일반 DOM 영역에 표시되지 않도록 숨김 */
+.viewport[popover]:not(:popover-open) {
+  display: none;
+}
+
+/* 토스트 팝오버의 배경이 화면을 가리거나 클릭을 막지 않도록 함 */
+.viewport::backdrop {
+  background: transparent;
   pointer-events: none;
 }
 
