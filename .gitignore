@@ -18,7 +18,7 @@ coverage/
 # Generated
 *.tsbuildinfo
 next-env.d.ts
-src/generated/prisma/
+**/src/generated/prisma/
 
 # Logs
 npm-debug.log*
