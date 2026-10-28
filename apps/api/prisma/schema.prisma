@@ -98,7 +98,8 @@ model photographers {
   profile_image_url String?
   nickname          String
   career            Int?
-  regions           String[]
+  regions           String[] @default([]) // 지역 코드 (@snappick/shared REGIONS)
+  categories        String[] @default([]) // 카테고리 코드 (@snappick/shared CATEGORIES)
   introduction      String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
@@ -204,22 +205,6 @@ model products {
 }
 
 // 용일님 파트
-// categories
-model categories {
-  id            String             @id @default(uuid(7)) @db.Uuid
-  name          String
-  created_at    DateTime           @default(now())
-  photoCategory photo_categories[]
-}
-
-// styles
-model styles {
-  id         String         @id @default(uuid(7)) @db.Uuid
-  name       String
-  created_at DateTime       @default(now())
-  photoStyle photo_styles[]
-}
-
 // photos
 model photos {
   id               String   @id @default(uuid(7)) @db.Uuid
@@ -228,12 +213,12 @@ model photos {
   storage_location String
   width            Int
   height           Int
+  categories       String[] @default([]) // 카테고리 코드 (@snappick/shared CATEGORIES)
+  styles           String[] @default([]) // 스타일 코드 (@snappick/shared STYLES)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
   photographer        photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
-  photoStyle          photo_styles[]
-  photoCategory       photo_categories[]
   photoKeyword        photo_keywords[]
   photoLike           photo_likes[]
   representativePhoto representative_photos[]
@@ -241,29 +226,7 @@ model photos {
   @@index([photographer_id])
 }
 
-// photo_styles & photo_categories & photo_keywords & photo_likes & photographer_saves
-model photo_styles {
-  photo_id String @db.Uuid
-  style_id String @db.Uuid
-
-  photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
-  style styles @relation(fields: [style_id], references: [id], onDelete: Cascade)
-
-  @@id([photo_id, style_id])
-  @@index([style_id])
-}
-
-model photo_categories {
-  photo_id    String @db.Uuid
-  category_id String @db.Uuid
-
-  photo    photos     @relation(fields: [photo_id], references: [id], onDelete: Cascade)
-  category categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
-
-  @@id([photo_id, category_id])
-  @@index([category_id])
-}
-
+// photo_keywords & photo_likes & photographer_saves
 model photo_keywords {
   id       String @id @default(uuid(7)) @db.Uuid
   photo_id String @db.Uuid
