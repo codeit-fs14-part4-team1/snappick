@@ -1,0 +1,46 @@
+/* 인증 방법 버튼을 세로로 배치함 */
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* 공통 Button의 lg 크기를 사용하고 문구 크기를 시안에 맞춤 */
+.buttons .methodButton {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 원본 PNG 크기와 관계없이 화면에서는 20px로 표시함 */
+.icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+/* 카카오 버튼 */
+.methodButton.kakao,
+.methodButton.kakao:disabled {
+  border-color: transparent;
+  background: #fee500;
+  color: #191919;
+}
+
+/* 네이버 버튼 */
+.methodButton.naver,
+.methodButton.naver:disabled {
+  border-color: transparent;
+  background: #03c75a;
+  color: #ffffff;
+}
+
+/* Google과 이메일 버튼 */
+.methodButton.google,
+.methodButton.google:disabled,
+.methodButton.email,
+.methodButton.email:disabled {
+  border-color: var(--color-border);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+}
