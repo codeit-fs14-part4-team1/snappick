@@ -1,0 +1,216 @@
+'use client';
+
+import { useId, useState } from 'react';
+import Button from '@/components/ui/Button';
+import styles from './SignupEmailForm.module.css';
+
+type AccountType = 'USER' | 'PHOTOGRAPHER';
+
+type SignupEmailFormProps = {
+  accountType: AccountType;
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// 이메일 입력 여부와 형식을 확인함
+function getEmailError(value: string): string {
+  const trimmedEmail = value.trim();
+
+  if (trimmedEmail === '') {
+    return '이메일을 입력해 주세요.';
+  }
+
+  if (!EMAIL_PATTERN.test(trimmedEmail)) {
+    return '올바른 이메일 형식이 아니에요.';
+  }
+
+  return '';
+}
+
+// 비밀번호 길이와 영문·숫자·특수문자 포함 여부를 확인함
+function getPasswordError(value: string): string {
+  if (value.length === 0) {
+    return '비밀번호를 입력해 주세요.';
+  }
+
+  const hasEnglish = /[A-Za-z]/.test(value);
+  const hasNumber = /[0-9]/.test(value);
+  const hasSpecialCharacter = /[^\p{L}\p{N}\s]/u.test(value);
+
+  if (
+    value.length < 8 ||
+    value.length > 16 ||
+    !hasEnglish ||
+    !hasNumber ||
+    !hasSpecialCharacter
+  ) {
+    return '비밀번호 입력 조건을 확인해 주세요.';
+  }
+
+  return '';
+}
+
+// 비밀번호 확인 입력값이 원래 비밀번호와 일치하는지 확인함
+function getPasswordConfirmError(
+  password: string,
+  passwordConfirm: string,
+): string {
+  if (passwordConfirm.length === 0) {
+    return '비밀번호를 다시 입력해 주세요.';
+  }
+
+  if (password !== passwordConfirm) {
+    return '비밀번호가 일치하지 않아요.';
+  }
+
+  return '';
+}
+
+export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
+  const emailId = useId();
+  const passwordId = useId();
+  const passwordConfirmId = useId();
+  const passwordHintId = useId();
+
+  const emailErrorId = `${emailId}-error`;
+  const passwordConfirmErrorId = `${passwordConfirmId}-error`;
+
+  // 각 입력창의 입력값을 관리함
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+
+  // 각 입력창을 한 번이라도 벗어났는지 관리함
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [passwordConfirmTouched, setPasswordConfirmTouched] = useState(false);
+
+  // 입력창을 벗어난 이후부터 오류 메시지를 표시함
+  const emailError = emailTouched ? getEmailError(email) : '';
+
+  const passwordError = passwordTouched ? getPasswordError(password) : '';
+
+  // 비밀번호가 모든 입력 조건을 만족하는지 확인함
+  const isPasswordValid = getPasswordError(password) === '';
+
+  const passwordConfirmError = passwordConfirmTouched
+    ? getPasswordConfirmError(password, passwordConfirm)
+    : '';
+
+  return (
+    <section className={styles.container} aria-label="이메일 회원가입">
+      <form
+        className={styles.form}
+        method="post"
+        noValidate
+        onSubmit={(event) => event.preventDefault()}
+      >
+        {/* 선택한 회원 유형을 회원가입 요청에 사용할 수 있도록 보관함 */}
+        <input type="hidden" name="account_type" value={accountType} />
+
+        {/* 이메일 입력 */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={emailId}>
+            이메일
+          </label>
+
+          <input
+            className={styles.input}
+            id={emailId}
+            name="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.currentTarget.value)}
+            onBlur={() => setEmailTouched(true)}
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="이메일을 입력해 주세요"
+            aria-invalid={Boolean(emailError)}
+            aria-describedby={emailError ? emailErrorId : undefined}
+            required
+          />
+
+          {emailError && (
+            <p className={styles.errorMessage} id={emailErrorId} role="alert">
+              {emailError}
+            </p>
+          )}
+        </div>
+
+        {/* 비밀번호 입력 */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={passwordId}>
+            비밀번호
+          </label>
+
+          <input
+            className={styles.input}
+            id={passwordId}
+            name="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+            onBlur={() => setPasswordTouched(true)}
+            autoComplete="new-password"
+            placeholder="비밀번호를 입력해 주세요"
+            aria-invalid={Boolean(passwordError)}
+            aria-describedby={isPasswordValid ? undefined : passwordHintId}
+            required
+          />
+
+          {/* 비밀번호 조건을 만족하기 전까지만 안내 문구를 표시함 */}
+          {!isPasswordValid && (
+            <p
+              className={
+                passwordError ? styles.errorMessage : styles.helperText
+              }
+              id={passwordHintId}
+            >
+              8자 이상, 영문·숫자·특수문자를 포함해 주세요.
+            </p>
+          )}
+        </div>
+
+        {/* 비밀번호 확인 입력 */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={passwordConfirmId}>
+            비밀번호 확인
+          </label>
+
+          <input
+            className={styles.input}
+            id={passwordConfirmId}
+            name="passwordConfirm"
+            type="password"
+            value={passwordConfirm}
+            onChange={(event) => setPasswordConfirm(event.currentTarget.value)}
+            onBlur={() => setPasswordConfirmTouched(true)}
+            autoComplete="new-password"
+            placeholder="비밀번호를 다시 입력해 주세요"
+            aria-invalid={Boolean(passwordConfirmError)}
+            aria-describedby={
+              passwordConfirmError ? passwordConfirmErrorId : undefined
+            }
+            required
+          />
+
+          {passwordConfirmError && (
+            <p
+              className={styles.errorMessage}
+              id={passwordConfirmErrorId}
+              role="alert"
+            >
+              {passwordConfirmError}
+            </p>
+          )}
+        </div>
+
+        {/* TODO: 회원가입 API 연결 후 버튼 활성화 및 제출 기능 구현 */}
+        <Button type="submit" variant="primary" size="lg" fullWidth disabled>
+          가입하기
+        </Button>
+      </form>
+    </section>
+  );
+}
