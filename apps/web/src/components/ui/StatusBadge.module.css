@@ -1,0 +1,50 @@
+/* 모든 상태 배지에 적용할 공통 스타일 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* 예약 확정 상태 */
+.confirmed {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* 촬영 완료 상태 */
+.shootCompleted {
+  background: #dce6a6;
+  color: var(--color-accent-strong);
+}
+
+/* 결과물 전달 상태 */
+.delivered {
+  background: #657700;
+  color: var(--color-bg-base);
+}
+
+/* 구매 확정 상태 */
+.purchaseConfirmed {
+  background: var(--color-accent-strong);
+  color: var(--color-bg-base);
+}
+
+/* 예약 취소 상태 */
+.canceled {
+  background: #efefef;
+  color: #8a8a8a;
+}
+
+/* 취소 요청 중 상태 */
+.cancelRequested {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
