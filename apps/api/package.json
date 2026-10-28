@@ -9,11 +9,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "db:seed": "prisma db seed"
   },
   "keywords": [],
   "author": "",
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "@snappick/shared": "workspace:*",
     "cors": "^2.8.6",
