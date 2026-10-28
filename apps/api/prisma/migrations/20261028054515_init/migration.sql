@@ -11,6 +11,15 @@ CREATE TYPE "ReservationStatus" AS ENUM ('CONFIRMED', 'SHOOT_COMPLETED', 'DELIVE
 CREATE TYPE "CancelStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
 
 -- CreateEnum
+CREATE TYPE "Category" AS ENUM ('WEDDING', 'COUPLE', 'FAMILY', 'FRIENDS', 'GRADUATION', 'PROFILE', 'EVENT', 'PET', 'ETC');
+
+-- CreateEnum
+CREATE TYPE "Style" AS ENUM ('NATURAL', 'BRIGHT', 'FILM', 'VINTAGE', 'CINEMATIC', 'MONOCHROME', 'MINIMAL', 'DREAMY');
+
+-- CreateEnum
+CREATE TYPE "Region" AS ENUM ('SEOUL', 'DAEGU', 'GWANGJU', 'ULSAN', 'GYEONGGI', 'CHUNGBUK', 'JEONBUK', 'GYEONGBUK', 'JEJU', 'BUSAN', 'INCHEON', 'DAEJEON', 'SEJONG', 'GANGWON', 'CHUNGNAM', 'JEONNAM', 'GYEONGNAM');
+
+-- CreateEnum
 CREATE TYPE "NotiType" AS ENUM ('NEW_MESSAGE', 'NEW_INQUIRY', 'NEW_QUOTE', 'RESERVATION_CONFIRMED', 'SHOOT_REMINDER', 'DELIVERY_COMPLETED', 'NEW_REVIEW', 'CANCEL_REQUESTED', 'CANCEL_REJECTED', 'RESERVATION_CANCELED');
 
 -- CreateEnum
@@ -83,8 +92,8 @@ CREATE TABLE "photographers" (
     "profile_image_url" TEXT,
     "nickname" TEXT NOT NULL,
     "career" INTEGER,
-    "regions" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "categories" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "regions" "Region"[] DEFAULT ARRAY[]::"Region"[],
+    "categories" "Category"[] DEFAULT ARRAY[]::"Category"[],
     "introduction" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -160,8 +169,8 @@ CREATE TABLE "photos" (
     "storage_location" TEXT NOT NULL,
     "width" INTEGER NOT NULL,
     "height" INTEGER NOT NULL,
-    "categories" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "styles" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "categories" "Category"[] DEFAULT ARRAY[]::"Category"[],
+    "styles" "Style"[] DEFAULT ARRAY[]::"Style"[],
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
