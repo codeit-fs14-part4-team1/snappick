@@ -209,7 +209,7 @@
     {
       "id": "00000000-0000-4000-8000-b00200000101",
       "auth_account_id": "00000000-0000-4000-8000-b00100000101",
-      "profile_image_url": null,
+      "profile_image_url": "/mock/photos/WED-1-1.webp",
       "nickname": "온결스냅",
       "career": 6,
       "regions": ["SEOUL", "JEJU", "GANGWON"],
@@ -221,7 +221,7 @@
     {
       "id": "00000000-0000-4000-8000-b00200000201",
       "auth_account_id": "00000000-0000-4000-8000-b00100000201",
-      "profile_image_url": null,
+      "profile_image_url": "/mock/photos/CPL-1-1.webp",
       "nickname": "하루필름",
       "career": 4,
       "regions": ["SEOUL", "GYEONGGI"],
@@ -233,7 +233,7 @@
     {
       "id": "00000000-0000-4000-8000-b00200000301",
       "auth_account_id": "00000000-0000-4000-8000-b00100000301",
-      "profile_image_url": null,
+      "profile_image_url": "/mock/photos/FAM-1-1.webp",
       "nickname": "여름날스튜디오",
       "career": 8,
       "regions": ["GYEONGGI", "JEJU"],
@@ -245,7 +245,7 @@
     {
       "id": "00000000-0000-4000-8000-b00200000401",
       "auth_account_id": "00000000-0000-4000-8000-b00100000401",
-      "profile_image_url": null,
+      "profile_image_url": "/mock/photos/PET-1-1.webp",
       "nickname": "멍냥스냅",
       "career": 3,
       "regions": ["SEOUL", "GYEONGGI", "GANGWON"],
