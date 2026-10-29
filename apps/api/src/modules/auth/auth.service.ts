@@ -45,31 +45,6 @@ export async function signup(input: SignupInput) {
   // 해시는 느려서 트랜잭션 밖에서 먼저 계산 (트랜잭션을 오래 잡지 않기 위해)
   const passwordHash = await argon2.hash(input.password);
 
-  // 계정/provider/프로필/토큰을 모두 한 트랜잭션으로 묶음
-  /*
-  return prisma.$transaction(async (tx) => {
-    const account = await tx.auth_accounts.create({
-      data: {
-        account_type: input.account_type,
-        auth_provider: {
-          create: {
-            provider: 'BASIC',
-            provider_email: email,
-            password_hash: passwordHash,
-          },
-        },
-        ...(input.account_type === 'USER'
-          ? { user: { create: { nickname: input.nickname } } }
-          : { photographer: { create: { nickname: input.nickname } } }),
-      },
-      select: { id: true, account_type: true },
-    });
-
-    // 새 로그인 세션(family)의 시작: refresh token 행 저장 + 토큰 2개 발급
-    return issueTokens(tx, account);
-  });
-  */
-
   try {
     return await prisma.$transaction(async (tx) => {
       const account = await tx.auth_accounts.create({
