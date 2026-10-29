@@ -1,8 +1,12 @@
 /// <reference types="node" />
+import { fileURLToPath } from 'node:url';
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
 import { getDatabaseUrl } from './src/config/database-url.ts';
 
+const certificatePath = fileURLToPath(
+  new URL('./certs/ap-southeast-2-bundle.pem', import.meta.url),
+);
 //DB환경변수가 없으면 datasource생략
 const hasDatabaseEnv = Boolean(process.env.DATABASE_URL || process.env.DB_HOST);
 
@@ -12,10 +16,7 @@ const getDatasourceUrl = () => {
 
   if (!process.env.DATABASE_URL) {
     databaseUrl.searchParams.set('sslmode', 'require');
-    databaseUrl.searchParams.set(
-      'sslcert',
-      '../certs/ap-southeast-2-bundle.pem',
-    );
+    databaseUrl.searchParams.set('sslcert', certificatePath);
   }
   return databaseUrl.toString();
 };
