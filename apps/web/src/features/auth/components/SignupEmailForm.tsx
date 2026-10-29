@@ -1,7 +1,8 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
+import { apiFetch } from '@/lib/api';
 import styles from './SignupEmailForm.module.css';
 
 type AccountType = 'USER' | 'PHOTOGRAPHER';
@@ -11,6 +12,17 @@ type SignupEmailFormProps = {
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type SignupResponse = {
+  access_token: string;
+};
+
+// 회원가입 요청에 사용할 랜덤 닉네임을 생성함
+function generateRandomNickname(): string {
+  const randomId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+
+  return `스냅픽_${randomId}`;
+}
 
 // 이메일 입력 여부와 형식을 확인함
 function getEmailError(value: string): string {
@@ -80,22 +92,84 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
 
+  // 회원가입 요청 중 상태와 결과를 관리함
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signupStatus, setSignupStatus] = useState<
+    'idle' | 'success' | 'error' | 'duplicate'
+  >('idle');
+
   // 각 입력창을 한 번이라도 벗어났는지 관리함
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [passwordConfirmTouched, setPasswordConfirmTouched] = useState(false);
 
-  // 입력창을 벗어난 이후부터 오류 메시지를 표시함
-  const emailError = emailTouched ? getEmailError(email) : '';
+  // 이메일 형식 오류 또는 중복 이메일 오류를 표시함
+  const emailError =
+    signupStatus === 'duplicate'
+      ? '이미 가입된 이메일입니다.'
+      : emailTouched
+        ? getEmailError(email)
+        : '';
 
   const passwordError = passwordTouched ? getPasswordError(password) : '';
 
   // 비밀번호가 모든 입력 조건을 만족하는지 확인함
   const isPasswordValid = getPasswordError(password) === '';
 
+  // 모든 회원가입 입력값이 유효하면 가입하기 버튼을 활성화함
+  const isSignupFormValid =
+    getEmailError(email) === '' &&
+    isPasswordValid &&
+    getPasswordConfirmError(password, passwordConfirm) === '';
+
   const passwordConfirmError = passwordConfirmTouched
     ? getPasswordConfirmError(password, passwordConfirm)
     : '';
+
+  // 입력값 검증 후 랜덤 닉네임을 생성하여 회원가입 API를 호출함
+  async function handleSignupSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!isSignupFormValid || isSubmitting || signupStatus === 'success') {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSignupStatus('idle');
+
+    try {
+      const response = await apiFetch<SignupResponse>('/auth/signup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_type: accountType,
+          provider: 'BASIC',
+          provider_email: email.trim(),
+          password,
+          nickname: generateRandomNickname(),
+        }),
+      });
+
+      if (!response?.access_token) {
+        throw new Error('회원가입 응답에 Access Token이 없습니다.');
+      }
+
+      setSignupStatus('success');
+    } catch (error) {
+      // 이미 가입된 이메일인 경우 별도 오류 상태로 처리함
+      if (error instanceof Error && error.message === 'API 요청 실패: 409') {
+        setSignupStatus('duplicate');
+      } else {
+        console.error('회원가입 요청 실패:', error);
+        setSignupStatus('error');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <section className={styles.container} aria-label="이메일 회원가입">
@@ -103,7 +177,7 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         className={styles.form}
         method="post"
         noValidate
-        onSubmit={(event) => event.preventDefault()}
+        onSubmit={handleSignupSubmit}
       >
         {/* 선택한 회원 유형을 회원가입 요청에 사용할 수 있도록 보관함 */}
         <input type="hidden" name="account_type" value={accountType} />
@@ -120,7 +194,14 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
             name="email"
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.currentTarget.value)}
+            onChange={(event) => {
+              setEmail(event.currentTarget.value);
+
+              // 이메일을 변경하면 기존 중복 이메일 오류를 초기화함
+              if (signupStatus === 'duplicate') {
+                setSignupStatus('idle');
+              }
+            }}
             onBlur={() => setEmailTouched(true)}
             autoComplete="email"
             autoCapitalize="none"
@@ -206,10 +287,29 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
           )}
         </div>
 
-        {/* TODO: 회원가입 API 연결 후 버튼 활성화 및 제출 기능 구현 */}
-        <Button type="submit" variant="primary" size="lg" fullWidth disabled>
-          가입하기
+        {/* 모든 입력값이 유효하면 가입하기 버튼을 활성화함 */}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={
+            !isSignupFormValid || isSubmitting || signupStatus === 'success'
+          }
+        >
+          {isSubmitting ? '가입 중...' : '가입하기'}
         </Button>
+
+        {/* 기타 회원가입 오류를 표시함 */}
+        {signupStatus === 'error' && (
+          <p className={styles.errorMessage} role="alert">
+            회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
+
+        {signupStatus === 'success' && (
+          <p role="status">회원가입이 완료되었습니다.</p>
+        )}
       </form>
     </section>
   );
