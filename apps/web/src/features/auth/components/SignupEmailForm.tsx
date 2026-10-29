@@ -306,10 +306,6 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
             회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.
           </p>
         )}
-
-        {signupStatus === 'success' && (
-          <p role="status">회원가입이 완료되었습니다.</p>
-        )}
       </form>
     </section>
   );

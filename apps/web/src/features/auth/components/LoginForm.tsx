@@ -2,12 +2,17 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
+import { apiFetch } from '@/lib/api';
 import AuthMethodButtons from './AuthMethodButtons';
 import styles from './LoginForm.module.css';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type LoginResponse = {
+  access_token: string;
+};
 
 // 이메일의 입력 여부와 기본 형식을 확인함
 function getEmailError(value: string): string {
@@ -37,10 +42,62 @@ export default function LoginForm() {
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
+  // 로그인 요청 중 상태와 결과를 관리함
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginStatus, setLoginStatus] = useState<
+    'idle' | 'success' | 'invalid' | 'error'
+  >('idle');
+
   // 입력창에서 다른 곳으로 이동한 뒤부터 오류를 표시함
   const emailError = emailTouched ? getEmailError(email) : '';
   const passwordError =
     passwordTouched && password.length === 0 ? '비밀번호를 입력해 주세요.' : '';
+
+  // 이메일 형식이 올바르고 비밀번호가 입력되면 로그인 버튼을 활성화함
+  const isLoginFormValid = getEmailError(email) === '' && password.length > 0;
+
+  // 입력값 검증 후 로그인 API를 호출함
+  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!isLoginFormValid || isSubmitting || loginStatus === 'success') {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLoginStatus('idle');
+
+    try {
+      const response = await apiFetch<LoginResponse>('/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'BASIC',
+          provider_email: email.trim(),
+          password,
+        }),
+      });
+
+      if (!response?.access_token) {
+        throw new Error('로그인 응답에 Access Token이 없습니다.');
+      }
+
+      setLoginStatus('success');
+    } catch (error) {
+      // 이메일 또는 비밀번호가 일치하지 않으면 별도 오류로 처리함
+      if (error instanceof Error && error.message === 'API 요청 실패: 401') {
+        setLoginStatus('invalid');
+      } else {
+        console.error('로그인 요청 실패:', error);
+        setLoginStatus('error');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <section className={styles.container}>
@@ -65,7 +122,7 @@ export default function LoginForm() {
         aria-label="이메일 로그인"
         method="post"
         noValidate
-        onSubmit={(event) => event.preventDefault()}
+        onSubmit={handleLoginSubmit}
       >
         <div className={styles.field}>
           <label className={styles.label} htmlFor={emailId}>
@@ -78,7 +135,10 @@ export default function LoginForm() {
             name="email"
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.currentTarget.value)}
+            onChange={(event) => {
+              setEmail(event.currentTarget.value);
+              setLoginStatus('idle');
+            }}
             onBlur={() => setEmailTouched(true)}
             autoComplete="username"
             autoCapitalize="none"
@@ -107,7 +167,10 @@ export default function LoginForm() {
             name="password"
             type="password"
             value={password}
-            onChange={(event) => setPassword(event.currentTarget.value)}
+            onChange={(event) => {
+              setPassword(event.currentTarget.value);
+              setLoginStatus('idle');
+            }}
             onBlur={() => setPasswordTouched(true)}
             autoComplete="current-password"
             placeholder="비밀번호를 입력해 주세요"
@@ -123,10 +186,32 @@ export default function LoginForm() {
           )}
         </div>
 
-        {/* TODO: 로그인 제출 기능을 연결한 뒤 활성화 조건을 적용함 */}
-        <Button type="submit" variant="primary" size="lg" fullWidth disabled>
-          로그인
+        {/* 입력값이 유효하면 로그인 버튼을 활성화함 */}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={
+            !isLoginFormValid || isSubmitting || loginStatus === 'success'
+          }
+        >
+          {isSubmitting ? '로그인 중...' : '로그인'}
         </Button>
+
+        {/* 이메일 또는 비밀번호 불일치 오류를 표시함 */}
+        {loginStatus === 'invalid' && (
+          <p className={styles.errorMessage} role="alert">
+            이메일 또는 비밀번호가 올바르지 않습니다.
+          </p>
+        )}
+
+        {/* 기타 로그인 오류를 표시함 */}
+        {loginStatus === 'error' && (
+          <p className={styles.errorMessage} role="alert">
+            로그인에 실패했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
       </form>
       {/* 이메일 로그인과 소셜 로그인 사이를 구분함 */}
       <div className={styles.divider}>
