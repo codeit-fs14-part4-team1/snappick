@@ -1,3 +1,4 @@
+import type { AccountType } from '@snappick/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from '../utils/http-error.js';
 import { type AccessTokenPayload, verifyAccessToken } from '../utils/tokens.js';
@@ -18,6 +19,37 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   }
 
   next();
+}
+
+// 비회원도 쓰는 API용: 토큰이 없으면 그대로 통과, 있으면 authenticate와 같은 규칙으로 검증
+// 만료·위조 토큰은 401 (FE가 /auth/refresh 후 다시 요청)
+export function optionalAuthenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (req.headers.authorization === undefined) {
+    next();
+    return;
+  }
+  authenticate(req, res, next);
+}
+
+// authenticate 다음에 붙여 계정 종류를 제한한다
+// 예: router.put('/:id/like', authenticate, requireAccountType('USER'), handler)
+export function requireAccountType(accountType: AccountType) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (getAuth(req).accountType !== accountType) {
+      throw new HttpError(
+        403,
+        'ACCOUNT_TYPE_NOT_ALLOWED',
+        accountType === 'USER'
+          ? '일반 사용자만 사용할 수 있어요.'
+          : '작가 계정만 사용할 수 있어요.',
+      );
+    }
+    next();
+  };
 }
 
 export function getAuth(req: Request): AccessTokenPayload {
