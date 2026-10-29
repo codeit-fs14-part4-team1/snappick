@@ -93,6 +93,11 @@ resource "aws_elastic_beanstalk_environment" "api" {
     value     = aws_db_instance.postgres.master_user_secret[0].secret_arn
   }
 
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environmentsecrets"
+    name      = "JWT_ACCESS_SECRET"
+    value     = data.aws_secretsmanager_secret.jwt_access.arn
+  }
 
   setting {
     namespace = "aws:elasticbeanstalk:command"
@@ -100,7 +105,7 @@ resource "aws_elastic_beanstalk_environment" "api" {
     value     = "1200"
   }
 
-    setting {
+  setting {
     namespace = "aws:elasticbeanstalk:cloudwatch:logs"
     name      = "StreamLogs"
     value     = "true"
@@ -117,11 +122,14 @@ resource "aws_elastic_beanstalk_environment" "api" {
     name      = "DeleteOnTerminate"
     value     = "true"
   }
+
 }
-
-
 
 output "api_environment_cname" {
   description = "Elastic Beanstalk API environment hostname"
   value       = aws_elastic_beanstalk_environment.api.cname
+}
+
+data "aws_secretsmanager_secret" "jwt_access" {
+  name = "snappick/staging/jwt-access-secret"
 }
