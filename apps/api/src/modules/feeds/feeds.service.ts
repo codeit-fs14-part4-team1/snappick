@@ -3,7 +3,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { Category, Region, Style } from '../../generated/prisma/enums.js';
 import { prisma } from '../../lib/prisma.js';
 import { toImageUrl } from '../../utils/asset-url.js';
-import { decodeCursor, encodeCursor } from '../../utils/cursor.js';
+import { nextCursor, readOffset } from '../../utils/cursor.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { PhotosQuery } from './feeds.schema.js';
 import {
@@ -36,21 +36,6 @@ async function likedPhotoIds(
   });
   return new Set(likes.map(({ photo_id }) => photo_id));
 }
-
-// 커서는 몇 번째부터인지(o)와, 같은 목록인지 확인할 조건(k)을 담는다
-function readOffset(cursor: string | undefined, key: string): number {
-  if (!cursor) {
-    return 0;
-  }
-  const { o, k } = decodeCursor(cursor);
-  if (typeof o !== 'number' || !Number.isInteger(o) || o < 0 || k !== key) {
-    throw new HttpError(400, 'INVALID_CURSOR', '목록을 다시 불러와 주세요.');
-  }
-  return o;
-}
-
-const nextCursor = (offset: number, key: string): string =>
-  encodeCursor({ o: offset, k: key });
 
 // ---------------------------------------------------------------------------
 // GET /photos/{photoId}

@@ -72,3 +72,27 @@ Authorization: Bearer {{token}}
 ### 잘못된 토큰: 401 UNAUTHORIZED
 GET {{host}}/photos
 Authorization: Bearer invalid-token
+
+### 좋아요 (일반 사용자 토큰)
+PUT {{host}}/photos/{{photoId}}/like
+Authorization: Bearer {{token}}
+
+### 좋아요 해제
+DELETE {{host}}/photos/{{photoId}}/like
+Authorization: Bearer {{token}}
+
+### 작가 저장 (일반 사용자 토큰)
+PUT {{host}}/photographers/{{photographerId}}/save
+Authorization: Bearer {{token}}
+
+### 작가 저장 해제
+DELETE {{host}}/photographers/{{photographerId}}/save
+Authorization: Bearer {{token}}
+
+### MY 픽: 좋아요한 사진 (일반 사용자 토큰)
+GET {{host}}/me/liked-photos?limit=20
+Authorization: Bearer {{token}}
+
+### MY 픽: 저장한 작가 (일반 사용자 토큰)
+GET {{host}}/me/saved-photographers?limit=20
+Authorization: Bearer {{token}}

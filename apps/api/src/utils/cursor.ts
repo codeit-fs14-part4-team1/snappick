@@ -20,3 +20,21 @@ export function decodeCursor(cursor: string): Record<string, unknown> {
   }
   throw new HttpError(400, 'INVALID_CURSOR', '목록을 다시 불러와 주세요.');
 }
+
+/**
+ * 몇 번째부터인지(o)와 같은 목록인지 확인할 값(k)을 담는 커서
+ * 정렬·필터가 다른 목록의 커서를 보내면 INVALID_CURSOR
+ */
+export function readOffset(cursor: string | undefined, key: string): number {
+  if (!cursor) {
+    return 0;
+  }
+  const { o, k } = decodeCursor(cursor);
+  if (typeof o !== 'number' || !Number.isInteger(o) || o < 0 || k !== key) {
+    throw new HttpError(400, 'INVALID_CURSOR', '목록을 다시 불러와 주세요.');
+  }
+  return o;
+}
+
+export const nextCursor = (offset: number, key: string): string =>
+  encodeCursor({ o: offset, k: key });
