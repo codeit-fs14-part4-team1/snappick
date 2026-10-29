@@ -14,11 +14,12 @@ coverage/
 .env
 .env*
 !.env.example
+package-lock.json
 
 # Generated
 *.tsbuildinfo
 next-env.d.ts
-src/generated/prisma/
+**/src/generated/prisma/
 
 # Logs
 npm-debug.log*

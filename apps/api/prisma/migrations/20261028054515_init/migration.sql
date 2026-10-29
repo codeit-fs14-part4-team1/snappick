@@ -11,6 +11,15 @@ CREATE TYPE "ReservationStatus" AS ENUM ('CONFIRMED', 'SHOOT_COMPLETED', 'DELIVE
 CREATE TYPE "CancelStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
 
 -- CreateEnum
+CREATE TYPE "Category" AS ENUM ('WEDDING', 'COUPLE', 'FAMILY', 'FRIENDS', 'GRADUATION', 'PROFILE', 'EVENT', 'PET', 'ETC');
+
+-- CreateEnum
+CREATE TYPE "Style" AS ENUM ('NATURAL', 'BRIGHT', 'FILM', 'VINTAGE', 'CINEMATIC', 'MONOCHROME', 'MINIMAL', 'DREAMY');
+
+-- CreateEnum
+CREATE TYPE "Region" AS ENUM ('SEOUL', 'DAEGU', 'GWANGJU', 'ULSAN', 'GYEONGGI', 'CHUNGBUK', 'JEONBUK', 'GYEONGBUK', 'JEJU', 'BUSAN', 'INCHEON', 'DAEJEON', 'SEJONG', 'GANGWON', 'CHUNGNAM', 'JEONNAM', 'GYEONGNAM');
+
+-- CreateEnum
 CREATE TYPE "NotiType" AS ENUM ('NEW_MESSAGE', 'NEW_INQUIRY', 'NEW_QUOTE', 'RESERVATION_CONFIRMED', 'SHOOT_REMINDER', 'DELIVERY_COMPLETED', 'NEW_REVIEW', 'CANCEL_REQUESTED', 'CANCEL_REJECTED', 'RESERVATION_CANCELED');
 
 -- CreateEnum
@@ -83,7 +92,8 @@ CREATE TABLE "photographers" (
     "profile_image_url" TEXT,
     "nickname" TEXT NOT NULL,
     "career" INTEGER,
-    "regions" TEXT[],
+    "regions" "Region"[] DEFAULT ARRAY[]::"Region"[],
+    "categories" "Category"[] DEFAULT ARRAY[]::"Category"[],
     "introduction" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -152,24 +162,6 @@ CREATE TABLE "products" (
 );
 
 -- CreateTable
-CREATE TABLE "categories" (
-    "id" UUID NOT NULL,
-    "name" TEXT NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "categories_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "styles" (
-    "id" UUID NOT NULL,
-    "name" TEXT NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "styles_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "photos" (
     "id" UUID NOT NULL,
     "photographer_id" UUID NOT NULL,
@@ -177,26 +169,12 @@ CREATE TABLE "photos" (
     "storage_location" TEXT NOT NULL,
     "width" INTEGER NOT NULL,
     "height" INTEGER NOT NULL,
+    "categories" "Category"[] DEFAULT ARRAY[]::"Category"[],
+    "styles" "Style"[] DEFAULT ARRAY[]::"Style"[],
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "photos_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "photo_styles" (
-    "photo_id" UUID NOT NULL,
-    "style_id" UUID NOT NULL,
-
-    CONSTRAINT "photo_styles_pkey" PRIMARY KEY ("photo_id","style_id")
-);
-
--- CreateTable
-CREATE TABLE "photo_categories" (
-    "photo_id" UUID NOT NULL,
-    "category_id" UUID NOT NULL,
-
-    CONSTRAINT "photo_categories_pkey" PRIMARY KEY ("photo_id","category_id")
 );
 
 -- CreateTable
@@ -387,12 +365,6 @@ CREATE INDEX "products_photographer_id_idx" ON "products"("photographer_id");
 CREATE INDEX "photos_photographer_id_idx" ON "photos"("photographer_id");
 
 -- CreateIndex
-CREATE INDEX "photo_styles_style_id_idx" ON "photo_styles"("style_id");
-
--- CreateIndex
-CREATE INDEX "photo_categories_category_id_idx" ON "photo_categories"("category_id");
-
--- CreateIndex
 CREATE INDEX "photo_keywords_photo_id_idx" ON "photo_keywords"("photo_id");
 
 -- CreateIndex
@@ -487,18 +459,6 @@ ALTER TABLE "products" ADD CONSTRAINT "products_photographer_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "photos" ADD CONSTRAINT "photos_photographer_id_fkey" FOREIGN KEY ("photographer_id") REFERENCES "photographers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "photo_styles" ADD CONSTRAINT "photo_styles_photo_id_fkey" FOREIGN KEY ("photo_id") REFERENCES "photos"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "photo_styles" ADD CONSTRAINT "photo_styles_style_id_fkey" FOREIGN KEY ("style_id") REFERENCES "styles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "photo_categories" ADD CONSTRAINT "photo_categories_photo_id_fkey" FOREIGN KEY ("photo_id") REFERENCES "photos"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "photo_categories" ADD CONSTRAINT "photo_categories_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "photo_keywords" ADD CONSTRAINT "photo_keywords_photo_id_fkey" FOREIGN KEY ("photo_id") REFERENCES "photos"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,8 +1,9 @@
+// src/lib/prisma.ts
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { readFileSync } from 'node:fs';
 import type { PoolConfig } from 'pg';
-import { getDatabaseUrl } from './database-url.js';
+import { getDatabaseUrl } from '../config/database-url.js';
 
 //TLS
 const usesRds = !process.env.DATABASE_URL;
@@ -17,10 +18,8 @@ if (usesRds) {
     import.meta.url,
   );
 
-  const certificate = readFileSync(certificatePath, 'utf8');
-
   connectionConfig.ssl = {
-    ca: certificate,
+    ca: readFileSync(certificatePath, 'utf8'),
     rejectUnauthorized: true,
   };
 }

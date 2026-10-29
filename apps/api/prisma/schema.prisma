@@ -93,15 +93,16 @@ model users {
 
 // photographers
 model photographers {
-  id                String   @id @default(uuid(7)) @db.Uuid
-  auth_account_id   String   @unique @db.Uuid
+  id                String     @id @default(uuid(7)) @db.Uuid
+  auth_account_id   String     @unique @db.Uuid
   profile_image_url String?
   nickname          String
   career            Int?
-  regions           String[]
+  regions           Region[]   @default([])
+  categories        Category[] @default([])
   introduction      String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
 
   auth_account        auth_accounts          @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
   product             products[]
@@ -204,36 +205,64 @@ model products {
 }
 
 // 용일님 파트
-// categories
-model categories {
-  id            String             @id @default(uuid(7)) @db.Uuid
-  name          String
-  created_at    DateTime           @default(now())
-  photoCategory photo_categories[]
+// categories, styles, regions (화면 표시 순서대로 선언)
+enum Category {
+  WEDDING
+  COUPLE
+  FAMILY
+  FRIENDS
+  GRADUATION
+  PROFILE
+  EVENT
+  PET
+  ETC
 }
 
-// styles
-model styles {
-  id         String         @id @default(uuid(7)) @db.Uuid
-  name       String
-  created_at DateTime       @default(now())
-  photoStyle photo_styles[]
+enum Style {
+  NATURAL
+  BRIGHT
+  FILM
+  VINTAGE
+  CINEMATIC
+  MONOCHROME
+  MINIMAL
+  DREAMY
+}
+
+enum Region {
+  SEOUL
+  DAEGU
+  GWANGJU
+  ULSAN
+  GYEONGGI
+  CHUNGBUK
+  JEONBUK
+  GYEONGBUK
+  JEJU
+  BUSAN
+  INCHEON
+  DAEJEON
+  SEJONG
+  GANGWON
+  CHUNGNAM
+  JEONNAM
+  GYEONGNAM
 }
 
 // photos
 model photos {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  photographer_id  String   @db.Uuid
+  id               String     @id @default(uuid(7)) @db.Uuid
+  photographer_id  String     @db.Uuid
   description      String?
   storage_location String
   width            Int
   height           Int
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  categories       Category[] @default([])
+  styles           Style[]    @default([])
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
 
   photographer        photographers           @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
-  photoStyle          photo_styles[]
-  photoCategory       photo_categories[]
   photoKeyword        photo_keywords[]
   photoLike           photo_likes[]
   representativePhoto representative_photos[]
@@ -241,29 +270,7 @@ model photos {
   @@index([photographer_id])
 }
 
-// photo_styles & photo_categories & photo_keywords & photo_likes & photographer_saves
-model photo_styles {
-  photo_id String @db.Uuid
-  style_id String @db.Uuid
-
-  photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
-  style styles @relation(fields: [style_id], references: [id], onDelete: Cascade)
-
-  @@id([photo_id, style_id])
-  @@index([style_id])
-}
-
-model photo_categories {
-  photo_id    String @db.Uuid
-  category_id String @db.Uuid
-
-  photo    photos     @relation(fields: [photo_id], references: [id], onDelete: Cascade)
-  category categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
-
-  @@id([photo_id, category_id])
-  @@index([category_id])
-}
-
+// photo_keywords & photo_likes & photographer_saves
 model photo_keywords {
   id       String @id @default(uuid(7)) @db.Uuid
   photo_id String @db.Uuid
