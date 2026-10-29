@@ -43,3 +43,12 @@ Content-Type: application/json
   "provider_token": "",
   "nickname": "tester"
 }
+
+
+### 신규 채팅방 201 또는 기존 채팅방 200
+POST http://localhost:4000/chats
+Content-Type: application/json
+
+{
+  "photographerId": "00000000-0000-4000-8000-b00200000101"
+}

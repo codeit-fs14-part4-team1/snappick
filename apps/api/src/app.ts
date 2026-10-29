@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { chatsRouter } from './modules/chats/chats.routes.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { HttpError } from './utils/http-error.js';
 
@@ -20,6 +21,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/chats', chatsRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {
