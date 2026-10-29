@@ -6,7 +6,16 @@ import { useState } from 'react';
 import { ToastProvider } from '../components/ui/ToastProvider';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000, //1분
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -1,6 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
+import { AccountType } from '@snappick/shared';
+
+export type AccessTokenPayload = {
+  accountId: string;
+  accountType: AccountType;
+};
 
 export function signAccessToken(
   accountId: string,
@@ -13,6 +19,25 @@ export function signAccessToken(
       expiresIn: env.accessTokenTtl, // 만료 시간
     } as jwt.SignOptions,
   );
+}
+
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  const payload = jwt.verify(token, env.jwtAccessSecret, {
+    algorithms: ['HS256'],
+  });
+
+  if (
+    typeof payload === 'string' ||
+    typeof payload.sub !== 'string' ||
+    !Object.values(AccountType).includes(payload.account_type)
+  ) {
+    throw new Error('Invalid access token payload');
+  }
+
+  return {
+    accountId: payload.sub,
+    accountType: payload.account_type as AccountType,
+  };
 }
 
 export function generateRefreshToken(): string {
