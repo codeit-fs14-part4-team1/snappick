@@ -1,7 +1,36 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
 
-export async function createChat(userId: string, photographerId: string) {
+//사용자 조회
+export async function createChat(accountId: string, photographerId: string) {
+  const account = await prisma.auth_accounts.findUnique({
+    where: {
+      id: accountId,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!account) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+
+  if (account.account_type !== 'USER') {
+    throw new HttpError(
+      403,
+      'ACCOUNT_TYPE_NOT_ALLOWED',
+      '일반 사용자만 문의를 시작할 수 있습니다.',
+    );
+  }
+
+  if (!account.user) {
+    throw new HttpError(404, 'PROFILE_NOT_FOUND', '프로필을 찾을 수 없습니다.');
+  }
+
+  const userId = account.user.id;
+
+  //작가조회
   const photographer = await prisma.photographers.findUnique({
     where: {
       id: photographerId,

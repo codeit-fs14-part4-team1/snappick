@@ -1,13 +1,14 @@
 import type { Request, Response } from 'express';
 import { createChat } from './chats.service.js';
+import { getAuth } from '../../middlewares/authenticate.js';
 
 export async function createChatHandler(req: Request, res: Response) {
-  // 로컬 테스트용
-  const userId = '00000000-0000-4000-8000-b00300000901';
+  const auth = getAuth(req);
+  const accountId = auth.accountId;
 
   const photographerId = req.body.photographerId;
   const { chatRoom, photographer, isNew } = await createChat(
-    userId,
+    accountId,
     photographerId,
   );
 
