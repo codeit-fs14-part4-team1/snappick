@@ -20,6 +20,20 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
+// 비회원도 쓰는 API용: 토큰이 없으면 그대로 통과, 있으면 authenticate와 같은 규칙으로 검증
+// 만료·위조 토큰은 401 (FE가 /auth/refresh 후 다시 요청)
+export function optionalAuthenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (req.headers.authorization === undefined) {
+    next();
+    return;
+  }
+  authenticate(req, res, next);
+}
+
 export function getAuth(req: Request): AccessTokenPayload {
   if (!req.auth) throw unauthorized();
   return req.auth;
