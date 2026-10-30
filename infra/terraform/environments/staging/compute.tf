@@ -88,9 +88,15 @@ resource "aws_elastic_beanstalk_environment" "api" {
   }
 
   setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "DB_ADMIN_SECRET_ARN"
+    value     = aws_db_instance.postgres.master_user_secret[0].secret_arn
+  }
+
+  setting {
     namespace = "aws:elasticbeanstalk:application:environmentsecrets"
     name      = "DB_CREDENTIALS"
-    value     = aws_db_instance.postgres.master_user_secret[0].secret_arn
+    value     = data.aws_secretsmanager_secret.db_app.arn
   }
 
   setting {
@@ -132,4 +138,8 @@ output "api_environment_cname" {
 
 data "aws_secretsmanager_secret" "jwt_access" {
   name = "snappick/staging/jwt-access-secret"
+}
+
+data "aws_secretsmanager_secret" "db_app" {
+  name = "snappick/staging/db-app"
 }

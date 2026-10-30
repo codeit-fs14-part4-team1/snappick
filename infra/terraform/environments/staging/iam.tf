@@ -53,6 +53,7 @@ data "aws_iam_policy_document" "api_db_secret" {
     resources = [
       aws_db_instance.postgres.master_user_secret[0].secret_arn,
       data.aws_secretsmanager_secret.jwt_access.arn,
+      data.aws_secretsmanager_secret.db_app.arn,
     ]
   }
 }
@@ -75,6 +76,11 @@ resource "aws_iam_instance_profile" "api" {
 resource "aws_iam_role_policy_attachment" "api_beanstalk_web" {
   role       = aws_iam_role.api.name
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
+}
+
+resource "aws_iam_role_policy_attachment" "api_ssm" {
+  role       = aws_iam_role.api.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 data "aws_iam_policy_document" "beanstalk_assume_role" {

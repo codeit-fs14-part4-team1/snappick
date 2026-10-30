@@ -8,4 +8,6 @@ eval "$(/opt/elasticbeanstalk/bin/get-config environment \
   | jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"')"
 
 echo "[predeploy] Apply database migrations"
-pnpm --filter api exec prisma migrate deploy
+DB_CREDENTIALS="$(aws secretsmanager get-secret-value --region ap-southeast-2 \
+  --secret-id "$DB_ADMIN_SECRET_ARN" --query SecretString --output text)" \
+  pnpm --filter api exec prisma migrate deploy
