@@ -9,6 +9,7 @@ import { HttpError } from './utils/http-error.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { usersRouter } from './modules/users/users.routes.js';
+import { photographersRouter } from './modules/photographers/photographers.routes.js';
 
 export const app: Express = express();
 
@@ -29,6 +30,7 @@ app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/photos', photosRouter);
 app.use('/photographers', photographerPhotosRouter);
+app.use('/photographers', photographersRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {
