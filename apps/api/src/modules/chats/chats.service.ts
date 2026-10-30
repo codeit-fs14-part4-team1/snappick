@@ -77,3 +77,19 @@ export async function createChat(accountId: string, photographerId: string) {
     isNew: true,
   };
 }
+
+export async function getChats(accountId: string) {
+  const account = await prisma.auth_accounts.findUnique({
+    where: {
+      id: accountId,
+    },
+    include: {
+      user: true,
+      photographer: true,
+    },
+  });
+
+  if (!account) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+}
