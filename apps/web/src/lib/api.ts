@@ -10,6 +10,7 @@ export async function apiFetch<T>(
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
   });
 
   if (!response.ok) {

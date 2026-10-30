@@ -94,6 +94,24 @@ resource "aws_elastic_beanstalk_environment" "api" {
   }
 
   setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ORIGIN"
+    value     = "https://snappick-alpha.vercel.app"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "NODE_ENV"
+    value     = "production"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "COOKIE_SAMESITE"
+    value     = "none"
+  }
+
+  setting {
     namespace = "aws:elasticbeanstalk:application:environmentsecrets"
     name      = "DB_CREDENTIALS"
     value     = data.aws_secretsmanager_secret.db_app.arn
