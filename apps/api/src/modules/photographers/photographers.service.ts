@@ -25,12 +25,55 @@ type ProfileRow = Prisma.photographersGetPayload<{
   select: typeof PROFILE_SELECT;
 }>;
 
-const isProfileReady = (photographer: ProfileRow): boolean =>
-  photographer.profile_image_url !== null &&
-  photographer.introduction !== null &&
-  photographer.introduction.trim() !== '' &&
-  photographer.regions.length > 0 &&
-  photographer.categories.length > 0;
+// 명세의 checks에 categories를 더한 것
+const READINESS_KEYS = [
+  'profileImage',
+  'career',
+  'regions',
+  'categories',
+  'introduction',
+  'representativePhoto',
+  'product',
+] as const;
+
+type ReadinessKey = (typeof READINESS_KEYS)[number];
+
+export type Readiness = {
+  isReady: boolean;
+  checks: Record<ReadinessKey, boolean>;
+  missing: ReadinessKey[];
+};
+
+const hasText = (value: string | null): boolean =>
+  value !== null && value.trim() !== '';
+
+// 프로필 완료 여부: 공개 프로필의 isReady와 /me/readiness가 같은 판정을 쓴다
+async function getReadiness(photographer: ProfileRow): Promise<Readiness> {
+  const [representative, product] = await Promise.all([
+    prisma.representative_photos.findUnique({
+      where: { photographer_id: photographer.id },
+      select: { photo_id: true },
+    }),
+    prisma.products.findFirst({
+      where: { photographer_id: photographer.id },
+      select: { id: true },
+    }),
+  ]);
+
+  const checks: Record<ReadinessKey, boolean> = {
+    profileImage: hasText(photographer.profile_image_url),
+    career: photographer.career !== null,
+    regions: photographer.regions.length > 0,
+    categories: photographer.categories.length > 0,
+    introduction: hasText(photographer.introduction),
+    representativePhoto: representative !== null,
+    product: product !== null,
+  };
+  // false인 항목만 모은다
+  const missing = READINESS_KEYS.filter((key) => !checks[key]);
+
+  return { isReady: missing.length === 0, checks, missing };
+}
 
 async function findViewerUserId(
   auth: AccessTokenPayload | undefined,
@@ -49,7 +92,7 @@ async function buildProfile(
   photographer: ProfileRow,
   viewer: { isSelf: boolean; userId: string | null },
 ) {
-  const [reviews, save] = await Promise.all([
+  const [reviews, save, readiness] = await Promise.all([
     prisma.reviews.aggregate({
       where: { photographer_id: photographer.id, deleted_at: null },
       _avg: { rating: true },
@@ -66,6 +109,7 @@ async function buildProfile(
           select: { user_id: true },
         })
       : null,
+    getReadiness(photographer),
   ]);
 
   return {
@@ -80,7 +124,7 @@ async function buildProfile(
     reviewCount: reviews._count._all,
     saved: save !== null,
     isSelf: viewer.isSelf,
-    isReady: isProfileReady(photographer),
+    isReady: readiness.isReady,
   };
 }
 
@@ -125,6 +169,11 @@ async function findMine(auth: AccessTokenPayload): Promise<ProfileRow> {
 export async function getMyProfile(auth: AccessTokenPayload) {
   const photographer = await findMine(auth);
   return buildProfile(photographer, { isSelf: true, userId: null });
+}
+
+export async function getMyReadiness(auth: AccessTokenPayload) {
+  const photographer = await findMine(auth);
+  return getReadiness(photographer);
 }
 
 export async function updateMyProfile(

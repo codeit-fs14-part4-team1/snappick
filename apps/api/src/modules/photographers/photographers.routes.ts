@@ -5,6 +5,7 @@ import {
 } from '../../middlewares/authenticate.js';
 import {
   getMyProfileHandler,
+  getMyReadinessHandler,
   getPhotographerProfileHandler,
   updateMyProfileHandler,
 } from './photographers.controller.js';
@@ -12,6 +13,7 @@ import {
 export const photographersRouter: Router = Router();
 
 photographersRouter.get('/me', authenticate, getMyProfileHandler);
+photographersRouter.get('/me/readiness', authenticate, getMyReadinessHandler);
 photographersRouter.patch('/me', authenticate, updateMyProfileHandler);
 
 photographersRouter.get(
