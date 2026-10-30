@@ -37,8 +37,8 @@ export function getDatabaseUrl(): string {
   const credentials = parseDatabaseCredentials(secret);
 
   const url = new URL('postgresql://localhost');
-  url.username = credentials.username;
-  url.password = credentials.password;
+  url.username = encodeURIComponent(credentials.username);
+  url.password = encodeURIComponent(credentials.password);
   url.hostname = host;
   url.port = port;
   url.pathname = database;
