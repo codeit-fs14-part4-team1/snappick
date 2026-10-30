@@ -1,4 +1,5 @@
 import express, { type Express } from 'express';
+import { prisma } from './lib/prisma.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import {
   photographerPhotosRouter,
@@ -25,6 +26,24 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'SnapPick API' });
 });
 
+//db 헬스체크
+app.get('/health/db', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    res.json({
+      status: 'ok',
+      database: 'connected',
+    });
+  } catch (error) {
+    console.error('Database health check failed:', error);
+
+    res.status(503).json({
+      status: 'error',
+      database: 'unavailable',
+    });
+  }
+});
 app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/photos', photosRouter);

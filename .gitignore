@@ -31,3 +31,36 @@ yarn-error.log*
 .DS_Store
 *.pem
 .vercel/
+
+# Terraform local data and downloaded providers
+**/.terraform/
+
+# Terraform state: may contain resource details and sensitive values
+**/*.tfstate
+**/*.tfstate.*
+
+# Environment-specific input values
+**/*.tfvars
+**/*.tfvars.json
+!**/*.tfvars.example
+
+# Saved execution plans
+**/*.tfplan
+
+# Crash and override files
+**/crash.log
+**/crash.*.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+
+# Terraform CLI configuration may contain credentials
+.terraformrc
+terraform.rc
+
+#Prisma generated client
+/apps/api/src/generated/prisma
+
+# AWS public RDS CA certificate
+!/apps/api/certs/ap-southeast-2-bundle.pem
