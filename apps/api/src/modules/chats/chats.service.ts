@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 
 //사용자 조회
@@ -45,6 +46,21 @@ export async function createChat(accountId: string, photographerId: string) {
     );
   }
 
+  //작가 프로필 완료 여부 조회
+  if (
+    !photographer.profile_image_url?.trim() ||
+    !photographer.nickname.trim() ||
+    !photographer.introduction?.trim() ||
+    photographer.regions.length === 0 ||
+    photographer.categories.length === 0
+  ) {
+    throw new HttpError(
+      400,
+      'PHOTOGRAPHER_NOT_READY',
+      '아직 문의를 받을 수 없는 작가입니다.',
+    );
+  }
+
   //기존 채팅방
   const existingChat = await prisma.chat_rooms.findUnique({
     where: {
@@ -64,16 +80,42 @@ export async function createChat(accountId: string, photographerId: string) {
   }
 
   //새로운 채팅방
-  const newChat = await prisma.chat_rooms.create({
-    data: {
-      user_id: userId,
-      photographer_id: photographerId,
-    },
-  });
+  try {
+    const newChat = await prisma.chat_rooms.create({
+      data: {
+        user_id: userId,
+        photographer_id: photographerId,
+      },
+    });
 
-  return {
-    chatRoom: newChat,
-    photographer,
-    isNew: true,
-  };
+    return {
+      chatRoom: newChat,
+      photographer,
+      isNew: true,
+    };
+  } catch (error) {
+    // 다른 요청이 먼저 같은 채팅방을 생성했는지 확인
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const existingChat = await prisma.chat_rooms.findUnique({
+        where: {
+          user_id_photographer_id: {
+            user_id: userId,
+            photographer_id: photographerId,
+          },
+        },
+      });
+
+      if (existingChat) {
+        return {
+          chatRoom: existingChat,
+          photographer,
+          isNew: false,
+        };
+      }
+    }
+    throw error;
+  }
 }
