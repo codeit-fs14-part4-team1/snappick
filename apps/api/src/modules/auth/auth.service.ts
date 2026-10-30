@@ -4,6 +4,7 @@ import { HttpError } from '../../utils/http-error.js';
 import type { SignupInput, LoginInput } from './auth.schema.js';
 import { issueTokens } from './token.service.js';
 import { Provider } from '../../generated/prisma/enums.js';
+import { Prisma } from '../../generated/prisma/client.js';
 
 const DUMMY_HASH = await argon2.hash('timing-dummy-password');
 
@@ -44,28 +45,40 @@ export async function signup(input: SignupInput) {
   // 해시는 느려서 트랜잭션 밖에서 먼저 계산 (트랜잭션을 오래 잡지 않기 위해)
   const passwordHash = await argon2.hash(input.password);
 
-  // 계정/provider/프로필/토큰을 모두 한 트랜잭션으로 묶음
-  return prisma.$transaction(async (tx) => {
-    const account = await tx.auth_accounts.create({
-      data: {
-        account_type: input.account_type,
-        auth_provider: {
-          create: {
-            provider: 'BASIC',
-            provider_email: email,
-            password_hash: passwordHash,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const account = await tx.auth_accounts.create({
+        data: {
+          account_type: input.account_type,
+          auth_provider: {
+            create: {
+              provider: 'BASIC',
+              provider_email: email,
+              password_hash: passwordHash,
+            },
           },
+          ...(input.account_type === 'USER'
+            ? { user: { create: { nickname: input.nickname } } }
+            : { photographer: { create: { nickname: input.nickname } } }),
         },
-        ...(input.account_type === 'USER'
-          ? { user: { create: { nickname: input.nickname } } }
-          : { photographer: { create: { nickname: input.nickname } } }),
-      },
-      select: { id: true, account_type: true },
+        select: { id: true, account_type: true },
+      });
+      return issueTokens(tx, account);
     });
-
-    // 새 로그인 세션(family)의 시작: refresh token 행 저장 + 토큰 2개 발급
-    return issueTokens(tx, account);
-  });
+  } catch (e) {
+    // 동시 요청으로 사전 검사(findFirst)를 둘 다 통과한 경우, DB 유니크가 막아줌
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
+      throw new HttpError(
+        409,
+        'ACCOUNT_ALREADY_EXISTS',
+        '이미 가입된 이메일입니다.',
+      );
+    }
+    throw e;
+  }
 }
 
 export async function login(input: LoginInput) {

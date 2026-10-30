@@ -53,6 +53,7 @@ model auth_providers {
   auth_account     auth_accounts @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
 
   @@unique([auth_account_id, provider])
+  @@unique([provider, provider_email])
   @@unique([provider, provider_user_id])
 }
 
