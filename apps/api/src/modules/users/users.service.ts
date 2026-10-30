@@ -26,20 +26,24 @@ export async function getMe(accountId: string) {
   }
 
   if (account.account_type === 'PHOTOGRAPHER' && account.photographer) {
+    const { profile_image_url, ...profile } = account.photographer;
     return {
       id: account.id,
-      account_type: account.account_type,
-      ...account.photographer,
-      created_at: account.created_at,
+      accountType: account.account_type,
+      ...profile,
+      profileImageUrl: profile_image_url,
+      createdAt: account.created_at,
     };
   }
 
   if (account.account_type === 'USER' && account.user) {
+    const { profile_image_url, ...profile } = account.user;
     return {
       id: account.id,
-      account_type: account.account_type,
-      ...account.user,
-      created_at: account.created_at,
+      accountType: account.account_type,
+      ...profile,
+      profileImageUrl: profile_image_url,
+      createdAt: account.created_at,
     };
   }
 

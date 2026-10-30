@@ -49,7 +49,7 @@ function prettyJson(value: unknown): string {
   return JSON.stringify(
     value,
     (key, val) =>
-      key === 'access_token' && typeof val === 'string' ? short(val, 36) : val,
+      key === 'accessToken' && typeof val === 'string' ? short(val, 36) : val,
     2,
   );
 }
@@ -238,8 +238,8 @@ function remember(result: Result): void {
   if (!result) return;
   const notes: string[] = [];
 
-  const token = (result.json as { access_token?: unknown } | undefined)
-    ?.access_token;
+  const token = (result.json as { accessToken?: unknown } | undefined)
+    ?.accessToken;
   if (typeof token === 'string') {
     session.accessToken = token;
     notes.push('access token 저장');
@@ -291,9 +291,9 @@ async function signup() {
     '회원가입',
     'POST /auth/signup',
     [
-      'account_type    USER | PHOTOGRAPHER',
+      'accountType    USER | PHOTOGRAPHER',
       'provider        BASIC (이메일·비밀번호) | GOOGLE | KAKAO | NAVER (소셜은 아직 501)',
-      'provider_email  가입할 이메일 (BASIC)',
+      'providerEmail  가입할 이메일 (BASIC)',
       'password        8~16자 (BASIC)',
       'nickname        2~20자',
     ],
@@ -306,8 +306,8 @@ async function signup() {
   const body: Record<string, unknown> = {};
   put(
     body,
-    'account_type',
-    await promptField('account_type', 'USER', 'USER | PHOTOGRAPHER'),
+    'accountType',
+    await promptField('accountType', 'USER', 'USER | PHOTOGRAPHER'),
   );
   const provider = await promptField(
     'provider',
@@ -320,17 +320,17 @@ async function signup() {
   let password: string | undefined;
   if (provider === undefined || provider === 'BASIC') {
     email = await promptField(
-      'provider_email',
+      'providerEmail',
       `${EMAIL_PREFIX}${RUN_ID}@example.com`,
     );
     password = await promptField('password', 'Password123', '8~16자');
-    put(body, 'provider_email', email);
+    put(body, 'providerEmail', email);
     put(body, 'password', password);
   } else {
     put(
       body,
-      'provider_token',
-      await promptField('provider_token', 'social-token'),
+      'providerToken',
+      await promptField('providerToken', 'social-token'),
     );
   }
   put(body, 'nickname', await promptField('nickname', 'tester', '2~20자'));
@@ -351,7 +351,7 @@ async function login() {
     'POST /auth/login',
     [
       'provider        BASIC | GOOGLE | KAKAO | NAVER (소셜은 아직 501)',
-      'provider_email 가입한 이메일 / password 가입한 비밀번호',
+      'providerEmail 가입한 이메일 / password 가입한 비밀번호',
     ],
     [
       '비밀번호를 틀리게 입력해 보세요 → 401',
@@ -369,8 +369,8 @@ async function login() {
   if (provider === undefined || provider === 'BASIC') {
     put(
       body,
-      'provider_email',
-      await promptField('provider_email', session.email ?? ''),
+      'providerEmail',
+      await promptField('providerEmail', session.email ?? ''),
     );
     put(
       body,
@@ -380,15 +380,15 @@ async function login() {
   } else {
     put(
       body,
-      'provider_token',
-      await promptField('provider_token', 'social-token'),
+      'providerToken',
+      await promptField('providerToken', 'social-token'),
     );
   }
 
   const result = await send('POST', '/auth/login', { body });
   remember(result);
-  if (result?.status === 200 && typeof body.provider_email === 'string') {
-    session.email = body.provider_email;
+  if (result?.status === 200 && typeof body.providerEmail === 'string') {
+    session.email = body.providerEmail;
     if (typeof body.password === 'string') session.password = body.password;
   }
 }
