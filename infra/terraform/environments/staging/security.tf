@@ -18,6 +18,16 @@ resource "aws_vpc_security_group_ingress_rule" "api_http" {
   ip_protocol = "tcp"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "api_https" {
+  security_group_id = aws_security_group.api.id
+
+  description = "Public HTTPS access"
+  cidr_ipv4   = "0.0.0.0/0"
+  from_port   = 443
+  to_port     = 443
+  ip_protocol = "tcp"
+}
+
 resource "aws_vpc_security_group_egress_rule" "api_outbound" {
   security_group_id = aws_security_group.api.id
 
