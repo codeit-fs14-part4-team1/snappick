@@ -9,15 +9,7 @@ export async function getMe(accountId: string) {
       account_type: true,
       created_at: true,
       user: { select: { nickname: true, profile_image_url: true } },
-      photographer: {
-        select: {
-          nickname: true,
-          profile_image_url: true,
-          career: true,
-          regions: true,
-          introduction: true,
-        },
-      },
+      photographer: { select: { nickname: true, profile_image_url: true } },
     },
   });
 
@@ -25,23 +17,18 @@ export async function getMe(accountId: string) {
     throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
   }
 
-  if (account.account_type === 'PHOTOGRAPHER' && account.photographer) {
-    return {
-      id: account.id,
-      account_type: account.account_type,
-      ...account.photographer,
-      created_at: account.created_at,
-    };
+  const profile =
+    account.account_type === 'PHOTOGRAPHER'
+      ? account.photographer
+      : account.user;
+
+  if (!profile) {
+    throw new HttpError(404, 'PROFILE_NOT_FOUND', '프로필을 찾을 수 없습니다.');
   }
 
-  if (account.account_type === 'USER' && account.user) {
-    return {
-      id: account.id,
-      account_type: account.account_type,
-      ...account.user,
-      created_at: account.created_at,
-    };
-  }
-
-  throw new HttpError(404, 'PROFILE_NOT_FOUND', '프로필을 찾을 수 없습니다.');
+  return {
+    account_type: account.account_type,
+    nickname: profile.nickname,
+    profile_image_url: profile.profile_image_url,
+  };
 }
