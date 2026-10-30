@@ -1,8 +1,18 @@
 import { Router } from 'express';
-import { optionalAuthenticate } from '../../middlewares/authenticate.js';
-import { getPhotographerProfileHandler } from './photographers.controller.js';
+import {
+  authenticate,
+  optionalAuthenticate,
+} from '../../middlewares/authenticate.js';
+import {
+  getMyProfileHandler,
+  getPhotographerProfileHandler,
+  updateMyProfileHandler,
+} from './photographers.controller.js';
 
 export const photographersRouter: Router = Router();
+
+photographersRouter.get('/me', authenticate, getMyProfileHandler);
+photographersRouter.patch('/me', authenticate, updateMyProfileHandler);
 
 photographersRouter.get(
   '/:photographerId',
