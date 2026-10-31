@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import { prisma } from './lib/prisma.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { chatsRouter } from './modules/chats/chats.routes.js';
 import {
   photographerPhotosRouter,
   photosRouter,
@@ -45,6 +46,7 @@ app.get('/health/db', async (_req, res) => {
   }
 });
 app.use('/auth', authRouter);
+app.use('/chats', chatsRouter);
 app.use('/users', usersRouter);
 app.use('/photos', photosRouter);
 app.use('/photographers', photographerPhotosRouter);
