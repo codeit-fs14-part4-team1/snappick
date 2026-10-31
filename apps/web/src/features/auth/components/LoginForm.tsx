@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { apiFetch } from '@/lib/api';
 import AuthMethodButtons from './AuthMethodButtons';
 import styles from './LoginForm.module.css';
@@ -30,6 +31,7 @@ function getEmailError(value: string): string {
 }
 
 export default function LoginForm() {
+  const { setAccessToken, fetchUser } = useAuth();
   const emailId = useId();
   const passwordId = useId();
 
@@ -85,7 +87,16 @@ export default function LoginForm() {
         throw new Error('로그인 응답에 Access Token이 없습니다.');
       }
 
+      // 로그인 성공 시 Access Token을 메모리에 저장함
+      setAccessToken(response.access_token);
       setLoginStatus('success');
+
+      // 로그인한 사용자 정보를 조회함
+      try {
+        await fetchUser(response.access_token);
+      } catch (error) {
+        console.error('로그인 후 사용자 정보 조회 실패:', error);
+      }
     } catch (error) {
       // 이메일 또는 비밀번호가 일치하지 않으면 별도 오류로 처리함
       if (error instanceof Error && error.message === 'API 요청 실패: 401') {

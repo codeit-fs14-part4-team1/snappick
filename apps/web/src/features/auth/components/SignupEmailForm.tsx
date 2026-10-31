@@ -3,6 +3,7 @@
 import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import styles from './SignupEmailForm.module.css';
 
 type AccountType = 'USER' | 'PHOTOGRAPHER';
@@ -79,6 +80,7 @@ function getPasswordConfirmError(
 }
 
 export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
+  const { setAccessToken, fetchUser } = useAuth();
   const emailId = useId();
   const passwordId = useId();
   const passwordConfirmId = useId();
@@ -157,7 +159,16 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         throw new Error('회원가입 응답에 Access Token이 없습니다.');
       }
 
+      // 회원가입 성공 시 Access Token을 메모리에 저장함
+      setAccessToken(response.access_token);
       setSignupStatus('success');
+
+      // 회원가입한 사용자 정보를 조회함
+      try {
+        await fetchUser(response.access_token);
+      } catch (error) {
+        console.error('회원가입 후 사용자 정보 조회 실패:', error);
+      }
     } catch (error) {
       // 이미 가입된 이메일인 경우 별도 오류 상태로 처리함
       if (error instanceof Error && error.message === 'API 요청 실패: 409') {
