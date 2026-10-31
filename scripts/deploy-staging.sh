@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # staging API 수동 배포
-# 사용법: ./scripts/deploy-staging.sh <버전 번호>   (예: ./scripts/deploy-staging.sh 3 → api-v3-YYYYMMDDHHMMSS)
+# 사용법: ./scripts/deploy-staging.sh <버전 번호> [--bundle-only | <zip 경로>]
+#   <버전 번호>만: 빌드부터 배포까지 (예: 3 → api-v3-YYYYMMDDHHMMSS)
+#   --bundle-only: out/에 zip만 생성 (AWS 호출 없음)
+#   <zip 경로>: 빌드 없이 해당 zip으로 배포
 set -euo pipefail
 
 REGION="ap-southeast-2"
@@ -9,14 +12,36 @@ ENV_NAME="snappick-staging-api-env"
 BUCKET="elasticbeanstalk-ap-southeast-2-982515248685"
 HEALTH_URL="https://snappick-api.duckdns.org/health/db"
 
-if [[ $# -ne 1 || ! "$1" =~ ^[0-9]+$ ]]; then
-  echo "사용법: $0 <버전 번호>" >&2
-  exit 1
+# 인자가 1~2개가 아니거나, 숫자로 구성되지 않았으면 버전번호를 안내해라(에러로)
+if [[ $# -lt 1 || $# -gt 2 || ! "$1" =~ ^[0-9]+$ ]]; then
+  echo "사용법: $0 <버전 번호> [--bundle-only | <zip 경로>]" >&2
+  exit 1 #종료
 fi
 
 cd "$(dirname "$0")/.."
 
-VERSION="api-v$1-$(date +%Y%m%d%H%M%S)"
+# 배포
+MODE="deploy"
+ZIP=""
+ARG2="${2:-}"
+
+# 번들 조건
+if [[ "$ARG2" == "--bundle-only" ]];then
+  MODE="bundle"
+elif [[ -n "$ARG2" ]]; then # 비어있지 않음
+  if [[ ! -f "$ARG2" ]]; then # 파일이 없음
+    echo "zip 파일이 없습니다: $ARG2" >&2
+    exit 1
+  fi
+  ZIP="$ARG2"
+fi
+
+# 파일네이밍
+if [[ -n "$ZIP" ]]; then
+  VERSION="$(basename "$ZIP" .zip)"
+else
+  VERSION="api-v$1-$(date -u +%Y%m%d%H%M%S)"
+fi
 KEY="snappick-api/$VERSION.zip"
 COMMIT="$(git rev-parse --short HEAD)"
 
@@ -24,24 +49,34 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "[warn] 커밋하지 않은 변경이 있습니다. 배포 내용과 커밋 $COMMIT 이 다를 수 있습니다."
 fi
 
-echo "[1/5] AWS 로그인 확인"
-aws sts get-caller-identity --query Account --output text >/dev/null
+if [[ "$MODE" != "bundle" ]]; then
+  echo "AWS 로그인 확인"
+  aws sts get-caller-identity --query Account --output text >/dev/null
+fi
 
-echo "[2/5] 빌드"
-pnpm --filter @snappick/shared build
-pnpm --filter api build
+if [[ -z "$ZIP" ]];then
+  echo "빌드"
+  pnpm --filter @snappick/shared build
+  pnpm --filter api build
 
-echo "[3/5] 배포 번들 생성: out/$VERSION.zip"
-mkdir -p out
-zip -rq "out/$VERSION.zip" \
-  package.json pnpm-workspace.yaml pnpm-lock.yaml Procfile .platform \
-  packages/shared/package.json packages/shared/dist \
-  apps/api/package.json apps/api/dist apps/api/prisma apps/api/prisma.config.ts \
-  apps/api/src/config/database-url.ts apps/api/certs \
-  -x '*.DS_Store'
+  ZIP="out/$VERSION.zip"
+  echo "배포 번들 생성: $ZIP"
+  mkdir -p out
+  zip -rq "$ZIP" \
+    package.json pnpm-workspace.yaml pnpm-lock.yaml Procfile .platform \
+    packages/shared/package.json packages/shared/dist \
+    apps/api/package.json apps/api/dist apps/api/prisma apps/api/prisma.config.ts \
+    apps/api/src/config/database-url.ts apps/api/certs \
+    -x '*.DS_Store'
+fi
 
-echo "[4/5] 업로드 및 버전 등록"
-aws s3 cp "out/$VERSION.zip" "s3://$BUCKET/$KEY" --region "$REGION"
+if [[ "$MODE" == "bundle" ]]; then
+  echo "번들 생성 완료: $ZIP"
+  exit 0 #성공
+fi
+
+echo "업로드 및 버전 등록"
+aws s3 cp "$ZIP" "s3://$BUCKET/$KEY" --region "$REGION"
 aws elasticbeanstalk create-application-version --region "$REGION" \
   --application-name "$APP_NAME" \
   --version-label "$VERSION" \
@@ -61,7 +96,7 @@ while true; do
   sleep 3
 done
 
-echo "[5/5] 환경 업데이트: $VERSION"
+echo "환경 업데이트: $VERSION"
 aws elasticbeanstalk update-environment --region "$REGION" \
   --environment-name "$ENV_NAME" \
   --version-label "$VERSION" >/dev/null
