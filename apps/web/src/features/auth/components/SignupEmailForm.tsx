@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import styles from './SignupEmailForm.module.css';
 
 type AccountType = 'USER' | 'PHOTOGRAPHER';
@@ -15,7 +16,7 @@ type SignupEmailFormProps = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type SignupResponse = {
-  access_token: string;
+  accessToken: string;
 };
 
 // 회원가입 요청에 사용할 랜덤 닉네임을 생성함
@@ -80,9 +81,12 @@ function getPasswordConfirmError(
 }
 
 export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
+  const queryClient = useQueryClient();
   const { setAccessToken, fetchUser } = useAuth();
+
   const emailId = useId();
   const passwordId = useId();
+
   const passwordConfirmId = useId();
   const passwordHintId = useId();
 
@@ -147,25 +151,28 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          account_type: accountType,
+          accountType: accountType,
           provider: 'BASIC',
-          provider_email: email.trim(),
+          providerEmail: email.trim(),
           password,
           nickname: generateRandomNickname(),
         }),
       });
 
-      if (!response?.access_token) {
+      if (!response?.accessToken) {
         throw new Error('회원가입 응답에 Access Token이 없습니다.');
       }
 
+      // 회원가입 성공 시 이전 사용자 캐시를 초기화함
+      queryClient.clear();
+
       // 회원가입 성공 시 Access Token을 메모리에 저장함
-      setAccessToken(response.access_token);
+      setAccessToken(response.accessToken);
       setSignupStatus('success');
 
       // 회원가입한 사용자 정보를 조회함
       try {
-        await fetchUser(response.access_token);
+        await fetchUser(response.accessToken);
       } catch (error) {
         console.error('회원가입 후 사용자 정보 조회 실패:', error);
       }

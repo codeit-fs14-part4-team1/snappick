@@ -6,13 +6,14 @@ import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { apiFetch } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 import AuthMethodButtons from './AuthMethodButtons';
 import styles from './LoginForm.module.css';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type LoginResponse = {
-  access_token: string;
+  accessToken: string;
 };
 
 // 이메일의 입력 여부와 기본 형식을 확인함
@@ -31,7 +32,9 @@ function getEmailError(value: string): string {
 }
 
 export default function LoginForm() {
+  const queryClient = useQueryClient();
   const { setAccessToken, fetchUser } = useAuth();
+
   const emailId = useId();
   const passwordId = useId();
 
@@ -78,28 +81,35 @@ export default function LoginForm() {
         },
         body: JSON.stringify({
           provider: 'BASIC',
-          provider_email: email.trim(),
+          providerEmail: email.trim(),
           password,
         }),
       });
 
-      if (!response?.access_token) {
+      if (!response?.accessToken) {
         throw new Error('로그인 응답에 Access Token이 없습니다.');
       }
 
+      // 로그인 성공 시 이전 사용자 캐시를 초기화함
+      queryClient.clear();
+
       // 로그인 성공 시 Access Token을 메모리에 저장함
-      setAccessToken(response.access_token);
+      setAccessToken(response.accessToken);
       setLoginStatus('success');
 
       // 로그인한 사용자 정보를 조회함
       try {
-        await fetchUser(response.access_token);
+        await fetchUser(response.accessToken);
       } catch (error) {
         console.error('로그인 후 사용자 정보 조회 실패:', error);
       }
     } catch (error) {
-      // 이메일 또는 비밀번호가 일치하지 않으면 별도 오류로 처리함
-      if (error instanceof Error && error.message === 'API 요청 실패: 401') {
+      // 로그인 정보 오류 또는 입력값 검증 실패를 동일하게 처리함
+      if (
+        error instanceof Error &&
+        (error.message === 'API 요청 실패: 400' ||
+          error.message === 'API 요청 실패: 401')
+      ) {
         setLoginStatus('invalid');
       } else {
         console.error('로그인 요청 실패:', error);

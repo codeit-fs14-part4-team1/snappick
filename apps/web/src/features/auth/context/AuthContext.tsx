@@ -11,10 +11,11 @@ import {
   type ReactNode,
 } from 'react';
 
-import { getMe } from '@/features/auth/api';
+import { getMe, logoutSession } from '@/features/auth/api';
 import { refreshSession } from '@/features/auth/refresh';
 import type { AuthUser } from '@/features/auth/types';
 import { authFetch } from '@/features/auth/authFetch';
+import { useQueryClient } from '@tanstack/react-query';
 
 // 인증 상태를 구분하는 타입을 정의함
 type AuthStatus =
@@ -33,6 +34,7 @@ type AuthContextValue = {
 
   fetchUser: (token: string) => Promise<void>;
   clearAuth: () => void;
+  logout: () => Promise<void>;
 };
 
 // 인증 정보를 공유할 Context를 생성함
@@ -40,6 +42,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // 하위 컴포넌트에서 사용할 인증 상태를 관리함
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('initializing');
@@ -95,20 +99,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAccessToken(null);
           setUser(null);
           setAuthStatus('unauthenticated');
+
+          // 이전 사용자 캐시를 삭제함
+          queryClient.clear();
         }
 
         throw error;
       }
     },
-    [setAccessToken],
+    [setAccessToken, queryClient],
   );
 
-  // 메모리에 저장된 인증 정보를 초기화함
+  // 인증 정보와 React Query 캐시를 초기화
   const clearAuth = useCallback(() => {
     setAccessToken(null);
     setUser(null);
     setAuthStatus('unauthenticated');
-  }, [setAccessToken]);
+    queryClient.clear();
+  }, [setAccessToken, queryClient]);
+
+  // 서버 로그아웃 성공 후 인증 정보를 초기화함
+  const logout = useCallback(async () => {
+    await logoutSession();
+    clearAuth();
+  }, [clearAuth]);
 
   // 앱 실행 시 Refresh Token으로 로그인 상태를 복구함
   useEffect(() => {
@@ -118,9 +132,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function restoreSession() {
       try {
         const token = await refreshSession();
+
+        // 이전 세션 복구가 취소되었다면 사용자 정보 조회를 중단함
+        if (cancelled || authVersionRef.current !== restoreVersion) return;
+
         const userData = await getMe(token);
 
-        // 최신 인증 정보가 변경되었다면 이전 복구 결과를 무시함
+        // 사용자 정보 조회 중 인증 상태가 변경되었다면 결과를 무시함
         if (cancelled || authVersionRef.current !== restoreVersion) return;
 
         setAccessTokenState(token);
@@ -163,8 +181,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthStatus,
       fetchUser,
       clearAuth,
+      logout,
     }),
-    [accessToken, user, authStatus, setAccessToken, fetchUser, clearAuth],
+    [
+      accessToken,
+      user,
+      authStatus,
+      setAccessToken,
+      fetchUser,
+      clearAuth,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,18 +4,18 @@ import type { Region } from '@snappick/shared';
 type AuthUserBase = {
   id: string;
   nickname: string;
-  profile_image_url: string | null;
-  created_at: string;
+  profileImageUrl: string | null;
+  createdAt: string;
 };
 
 // 일반 사용자 정보를 정의함
 export type AuthUser = AuthUserBase &
   (
     | {
-        account_type: 'USER';
+        accountType: 'USER';
       }
     | {
-        account_type: 'PHOTOGRAPHER';
+        accountType: 'PHOTOGRAPHER';
         career: number | null;
         regions: Region[];
         introduction: string | null;
