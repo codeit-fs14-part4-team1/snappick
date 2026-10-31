@@ -14,7 +14,7 @@ export async function signupHandler(req: Request, res: Response) {
   const { accessToken, refreshToken } = await signup(input);
 
   setRefreshCookie(res, refreshToken);
-  res.status(201).json({ access_token: accessToken });
+  res.status(201).json({ accessToken });
 }
 
 export async function loginHandler(req: Request, res: Response) {
@@ -22,7 +22,7 @@ export async function loginHandler(req: Request, res: Response) {
   const { accessToken, refreshToken } = await login(input);
 
   setRefreshCookie(res, refreshToken);
-  res.status(200).json({ access_token: accessToken });
+  res.status(200).json({ accessToken });
 }
 
 export async function refreshHandler(req: Request, res: Response) {
@@ -38,7 +38,7 @@ export async function refreshHandler(req: Request, res: Response) {
   try {
     const { accessToken, refreshToken } = await rotateRefreshToken(rawToken);
     if (refreshToken) setRefreshCookie(res, refreshToken);
-    res.status(200).json({ access_token: accessToken });
+    res.status(200).json({ accessToken });
   } catch (error) {
     if (error instanceof HttpError && error.status === 401)
       clearRefreshCookie(res);
