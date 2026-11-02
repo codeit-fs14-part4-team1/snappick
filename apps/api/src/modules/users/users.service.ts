@@ -7,7 +7,6 @@ export async function getMe(accountId: string) {
     select: {
       id: true,
       account_type: true,
-      created_at: true,
       user: { select: { nickname: true, profile_image_url: true } },
       photographer: { select: { nickname: true, profile_image_url: true } },
     },
@@ -27,8 +26,9 @@ export async function getMe(accountId: string) {
   }
 
   return {
-    account_type: account.account_type,
+    id: account.id,
+    accountType: account.account_type,
     nickname: profile.nickname,
-    profile_image_url: profile.profile_image_url,
+    profileImageUrl: profile.profile_image_url,
   };
 }
