@@ -129,7 +129,9 @@ data "aws_iam_policy_document" "github_deploy" {
     sid       = "UploadBundle"
     effect    = "Allow"
     actions   = ["s3:PutObject"]
-    resources = ["arn:aws:s3:::${local.eb_bucket}/snappick-api/*"]
+    resources = 
+    ["arn:aws:s3:::${local.eb_bucket}/snappick-api/*",
+     "arn:aws:s3:::${local.eb_bucket}/resources/_runtime/_embedded_extensions/${aws_elastic_beanstalk_application.api.name}/*",]
   }
 
   statement {
