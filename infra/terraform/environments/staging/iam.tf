@@ -115,3 +115,62 @@ resource "aws_iam_role_policy_attachment" "beanstalk_managed_updates" {
   role       = aws_iam_role.beanstalk_service.name
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 }
+
+locals {
+  eb_bucket = "elasticbeanstalk-ap-southeast-2-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_iam_user" "github_deploy" {
+  name = "snappick-staging-github-deploy"
+}
+
+data "aws_iam_policy_document" "github_deploy" {
+  statement {
+    sid       = "UploadBundle"
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::${local.eb_bucket}/snappick-api/*"]
+  }
+
+  statement {
+    sid       = "ReadBeanstalkBucket"
+    effect    = "Allow"
+    actions   = ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"]
+    resources = ["arn:aws:s3:::${local.eb_bucket}", "arn:aws:s3:::${local.eb_bucket}/*"]
+  }
+
+  statement {
+    sid    = "DeployToBeanstalk"
+    effect = "Allow"
+    actions = [
+      "elasticbeanstalk:CreateApplicationVersion",
+      "elasticbeanstalk:UpdateEnvironment",
+    ]
+    resources = [
+      aws_elastic_beanstalk_application.api.arn,
+      "arn:aws:elasticbeanstalk:ap-southeast-2:${data.aws_caller_identity.current.account_id}:applicationversion/${aws_elastic_beanstalk_application.api.name}/*",
+      aws_elastic_beanstalk_environment.api.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ReadOnlyForDeploy"
+    effect = "Allow"
+    actions = [
+      "elasticbeanstalk:Describe*",
+      "cloudformation:Describe*",
+      "cloudformation:GetTemplate",
+      "autoscaling:Describe*",
+      "ec2:Describe*",
+      "elasticloadbalancing:Describe*",
+      "sts:GetCallerIdentity",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_user_policy" "github_deploy" {
+  name   = "eb-deploy"
+  user   = aws_iam_user.github_deploy.name
+  policy = data.aws_iam_policy_document.github_deploy.json
+}
