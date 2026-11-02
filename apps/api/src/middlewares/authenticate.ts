@@ -1,3 +1,4 @@
+import type { AccountType } from '@snappick/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from '../utils/http-error.js';
 import { type AccessTokenPayload, verifyAccessToken } from '../utils/tokens.js';
@@ -32,6 +33,23 @@ export function optionalAuthenticate(
     return;
   }
   authenticate(req, res, next);
+}
+
+// authenticate 다음에 붙여 계정 종류를 제한한다
+// 예: router.put('/:id/like', authenticate, requireAccountType('USER'), handler)
+export function requireAccountType(accountType: AccountType) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (getAuth(req).accountType !== accountType) {
+      throw new HttpError(
+        403,
+        'ACCOUNT_TYPE_NOT_ALLOWED',
+        accountType === 'USER'
+          ? '일반 사용자만 사용할 수 있어요.'
+          : '작가 계정만 사용할 수 있어요.',
+      );
+    }
+    next();
+  };
 }
 
 export function getAuth(req: Request): AccessTokenPayload {
