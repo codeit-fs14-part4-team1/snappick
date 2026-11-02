@@ -103,9 +103,15 @@ aws elasticbeanstalk update-environment --region "$REGION" \
 aws elasticbeanstalk wait environment-updated --region "$REGION" \
   --environment-names "$ENV_NAME"
 
-aws elasticbeanstalk describe-environments --region "$REGION" \
+# wait는 배포가 실패해서 이전 버전으로 돌아가도 Ready면 통과하므로 실제 버전을 비교
+DEPLOYED="$(aws elasticbeanstalk describe-environments --region "$REGION" \
   --environment-names "$ENV_NAME" \
-  --query 'Environments[0].[VersionLabel,Status,Health]' --output text
+  --query 'Environments[0].VersionLabel' --output text)"
+if [[ "$DEPLOYED" != "$VERSION" ]]; then
+  echo "배포 실패: 실행 중인 버전이 $DEPLOYED 입니다 (기대: $VERSION). EB 이벤트를 확인하세요." >&2
+  exit 1
+fi
+echo "배포 완료: $DEPLOYED"
 
 echo "헬스체크: $HEALTH_URL"
 curl -fsS "$HEALTH_URL"
