@@ -122,6 +122,7 @@ export async function createChat(accountId: string, photographerId: string) {
   }
 }
 
+//채팅방 목록 조회
 export async function getChats(accountId: string) {
   const account = await prisma.auth_accounts.findUnique({
     where: {
@@ -196,6 +197,16 @@ export async function getChats(accountId: string) {
           created_at: true,
         },
       },
+      _count: {
+        select: {
+          chatMessage: {
+            where: {
+              recipient_account_id: accountId,
+              read_at: null,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -221,6 +232,7 @@ export async function getChats(accountId: string) {
             createdAt: lastMessage.created_at,
           }
         : null,
+      unreadCount: chat._count.chatMessage,
       lastMessageAt: chat.last_message_at,
     };
   });
