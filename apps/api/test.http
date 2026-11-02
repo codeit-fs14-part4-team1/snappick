@@ -3,9 +3,9 @@ POST http://localhost:4000/auth/signup
 Content-Type: application/json
 
 {
-  "account_type": "USER",
+  "accountType": "USER",
   "provider": "BASIC",
-  "provider_email": "test3@example.com",
+  "providerEmail": "test3@example.com",
   "nickname": "tester"
 }
 
@@ -14,9 +14,9 @@ POST http://localhost:4000/auth/signup
 Content-Type: application/json
 
 {
-  "account_type": "USER",
+  "accountType": "USER",
   "provider": "BASIC",
-  "provider_email": "test3@example.com",
+  "providerEmail": "test3@example.com",
   "password": "Password123",
   "nickname": "tester"
 }
@@ -26,9 +26,9 @@ POST http://localhost:4000/auth/signup
 Content-Type: application/json
 
 {
-  "account_type": "USER",
+  "accountType": "USER",
   "provider": "BASIC",
-  "provider_email": "test3@example.com",
+  "providerEmail": "test3@example.com",
   "password": "Password123",
   "nickname": "tester"
 }
@@ -38,8 +38,8 @@ POST http://localhost:4000/auth/signup
 Content-Type: application/json
 
 {
-  "account_type": "PHOTOGRAPHER",
+  "accountType": "PHOTOGRAPHER",
   "provider": "KAKAO",
-  "provider_token": "",
+  "providerToken": "",
   "nickname": "tester"
 }
