@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { HeaderUser } from './Header';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { useToast } from '@/components/ui/ToastProvider';
 import styles from './ProfileMenu.module.css';
 import Link from 'next/link';
 
@@ -26,11 +28,34 @@ const photographerMenuItems = [
 ];
 
 export default function ProfileMenu({ user }: ProfileMenuProps) {
+  const { logout } = useAuth();
+  const { showToast } = useToast();
+
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuItems =
     user.accountType === 'PHOTOGRAPHER' ? photographerMenuItems : userMenuItems;
+
+  // 로그아웃 요청 중 중복 실행을 방지함
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+
+      // 로그아웃 실패 시 사용자에게 안내함
+      showToast('로그아웃하지 못했어요. 다시 시도해 주세요.', 'error');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -111,9 +136,13 @@ export default function ProfileMenu({ user }: ProfileMenuProps) {
               </li>
             ))}
           </ul>
-          {/* // TODO: 인증 API 연결 후 로그아웃 처리 */}
-          <button type="button" className={styles.logoutButton}>
-            로그아웃
+          <button
+            type="button"
+            className={styles.logoutButton}
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? '로그아웃 중...' : '로그아웃'}
           </button>
         </div>
       )}
