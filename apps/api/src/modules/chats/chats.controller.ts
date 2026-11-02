@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { createChat } from './chats.service.js';
+import { createChat, getChats } from './chats.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { createChatSchema } from './chats.schema.js';
 
@@ -24,4 +24,11 @@ export async function createChatHandler(req: Request, res: Response) {
     },
     createdAt: chatRoom.created_at,
   });
+}
+
+export async function getChatsHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const result = await getChats(auth.accountId);
+
+  res.status(200).json(result);
 }

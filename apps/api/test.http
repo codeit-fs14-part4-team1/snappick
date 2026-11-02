@@ -50,15 +50,19 @@ Content-Type: application/json
 
 {
   "provider": "BASIC",
-  "provider_email": "test3@example.com",
+  "providerEmail": "test3@example.com",
   "password": "Password123"
 }
 
 ### 201 로그인한 사용자로 채팅방 생성 / 재시도 시 200
 POST http://localhost:4000/chats
 Content-Type: application/json
-Authorization: Bearer 여기에 액세스토큰
+Authorization: Bearer 액세스토큰
 
 {
   "photographerId": "00000000-0000-4000-8000-b00200000101"
 }
+
+### 내 채팅방 목록 조회
+GET http://localhost:4000/chats
+Authorization: Bearer 액세스토큰
