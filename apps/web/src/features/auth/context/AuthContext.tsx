@@ -24,16 +24,10 @@ type AuthStatus =
 // 인증 Context에서 공유할 값의 타입을 정의함
 type AuthContextValue = {
   accessToken: string | null;
-  setAccessToken: (token: string | null) => void;
-
   user: AuthUser | null;
-  setUser: (user: AuthUser | null) => void;
-
   authStatus: AuthStatus;
-  setAuthStatus: (status: AuthStatus) => void;
-
-  fetchUser: (token: string) => Promise<void>;
   clearAuth: () => void;
+  login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -118,6 +112,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [setAccessToken, queryClient]);
 
+  // 토큰 저장과 사용자 정보 조회를 공통으로 처리함
+  const login = useCallback(
+    async (token: string) => {
+      queryClient.clear();
+      setAccessToken(token);
+      setUser(null);
+      setAuthStatus('initializing');
+
+      try {
+        await fetchUser(token);
+      } catch (error) {
+        clearAuth();
+        throw error;
+      }
+    },
+    [queryClient, setAccessToken, fetchUser, clearAuth],
+  );
+
   // 서버 로그아웃 성공 후 인증 정보를 초기화함
   const logout = useCallback(async () => {
     await logoutSession();
@@ -174,24 +186,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       accessToken,
-      setAccessToken,
       user,
-      setUser,
       authStatus,
-      setAuthStatus,
-      fetchUser,
       clearAuth,
+      login,
       logout,
     }),
-    [
-      accessToken,
-      user,
-      authStatus,
-      setAccessToken,
-      fetchUser,
-      clearAuth,
-      logout,
-    ],
+    [accessToken, user, authStatus, clearAuth, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

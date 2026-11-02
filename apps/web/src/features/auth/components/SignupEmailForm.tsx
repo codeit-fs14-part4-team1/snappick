@@ -4,10 +4,8 @@ import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import type { AccountType } from '@snappick/shared';
 import styles from './SignupEmailForm.module.css';
-
-type AccountType = 'USER' | 'PHOTOGRAPHER';
 
 type SignupEmailFormProps = {
   accountType: AccountType;
@@ -81,8 +79,7 @@ function getPasswordConfirmError(
 }
 
 export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
-  const queryClient = useQueryClient();
-  const { setAccessToken, fetchUser } = useAuth();
+  const { login } = useAuth();
 
   const emailId = useId();
   const passwordId = useId();
@@ -101,7 +98,7 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   // 회원가입 요청 중 상태와 결과를 관리함
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupStatus, setSignupStatus] = useState<
-    'idle' | 'success' | 'error' | 'duplicate'
+    'idle' | 'success' | 'error' | 'duplicate' | 'sessionError'
   >('idle');
 
   // 각 입력창을 한 번이라도 벗어났는지 관리함
@@ -136,12 +133,20 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   async function handleSignupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isSignupFormValid || isSubmitting || signupStatus === 'success') {
+    if (
+      !isSignupFormValid ||
+      isSubmitting ||
+      signupStatus === 'success' ||
+      signupStatus === 'sessionError'
+    ) {
       return;
     }
 
     setIsSubmitting(true);
     setSignupStatus('idle');
+
+    // 회원가입 API 성공 여부와 이후 인증 오류를 구분함
+    let signupApiSucceeded = false;
 
     try {
       const response = await apiFetch<SignupResponse>('/auth/signup', {
@@ -159,26 +164,27 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         }),
       });
 
+      signupApiSucceeded = true;
+
       if (!response?.accessToken) {
         throw new Error('회원가입 응답에 Access Token이 없습니다.');
       }
 
-      // 회원가입 성공 시 이전 사용자 캐시를 초기화함
-      queryClient.clear();
+      // 토큰 저장과 사용자 정보 조회를 공통으로 처리함
+      await login(response.accessToken);
 
-      // 회원가입 성공 시 Access Token을 메모리에 저장함
-      setAccessToken(response.accessToken);
+      // 사용자 정보 조회까지 성공하면 회원가입 완료로 처리함
       setSignupStatus('success');
-
-      // 회원가입한 사용자 정보를 조회함
-      try {
-        await fetchUser(response.accessToken);
-      } catch (error) {
-        console.error('회원가입 후 사용자 정보 조회 실패:', error);
-      }
     } catch (error) {
-      // 이미 가입된 이메일인 경우 별도 오류 상태로 처리함
-      if (error instanceof Error && error.message === 'API 요청 실패: 409') {
+      if (signupApiSucceeded) {
+        // 가입 후 인증 상태 확인에 실패한 경우
+        console.error('회원가입 후 인증 상태 확인 실패:', error);
+        setSignupStatus('sessionError');
+      } else if (
+        error instanceof Error &&
+        error.message === 'API 요청 실패: 409'
+      ) {
+        // 이미 가입된 이메일인 경우
         setSignupStatus('duplicate');
       } else {
         console.error('회원가입 요청 실패:', error);
@@ -312,7 +318,10 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
           size="lg"
           fullWidth
           disabled={
-            !isSignupFormValid || isSubmitting || signupStatus === 'success'
+            !isSignupFormValid ||
+            isSubmitting ||
+            signupStatus === 'success' ||
+            signupStatus === 'sessionError'
           }
         >
           {isSubmitting ? '가입 중...' : '가입하기'}
@@ -322,6 +331,13 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         {signupStatus === 'error' && (
           <p className={styles.errorMessage} role="alert">
             회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
+
+        {/* 회원가입 후 인증 상태 확인 실패를 안내함 */}
+        {signupStatus === 'sessionError' && (
+          <p className={styles.errorMessage} role="alert">
+            회원가입이 완료되었으나 로그인 후 이용이 가능합니다.
           </p>
         )}
       </form>

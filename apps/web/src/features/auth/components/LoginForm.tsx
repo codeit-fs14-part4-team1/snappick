@@ -6,7 +6,6 @@ import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { apiFetch } from '@/lib/api';
-import { useQueryClient } from '@tanstack/react-query';
 import AuthMethodButtons from './AuthMethodButtons';
 import styles from './LoginForm.module.css';
 
@@ -32,8 +31,7 @@ function getEmailError(value: string): string {
 }
 
 export default function LoginForm() {
-  const queryClient = useQueryClient();
-  const { setAccessToken, fetchUser } = useAuth();
+  const { login } = useAuth();
 
   const emailId = useId();
   const passwordId = useId();
@@ -72,6 +70,9 @@ export default function LoginForm() {
     setIsSubmitting(true);
     setLoginStatus('idle');
 
+    // 로그인 API 성공 여부와 사용자 정보 조회 실패를 구분함
+    let loginApiSucceeded = false;
+
     try {
       const response = await apiFetch<LoginResponse>('/auth/login', {
         method: 'POST',
@@ -90,22 +91,17 @@ export default function LoginForm() {
         throw new Error('로그인 응답에 Access Token이 없습니다.');
       }
 
-      // 로그인 성공 시 이전 사용자 캐시를 초기화함
-      queryClient.clear();
+      loginApiSucceeded = true;
 
-      // 로그인 성공 시 Access Token을 메모리에 저장함
-      setAccessToken(response.accessToken);
+      // 토큰 저장과 사용자 정보 조회를 공통으로 처리함
+      await login(response.accessToken);
+
+      // 사용자 정보 조회까지 성공하면 로그인 완료로 처리함
       setLoginStatus('success');
-
-      // 로그인한 사용자 정보를 조회함
-      try {
-        await fetchUser(response.accessToken);
-      } catch (error) {
-        console.error('로그인 후 사용자 정보 조회 실패:', error);
-      }
     } catch (error) {
-      // 로그인 정보 오류 또는 입력값 검증 실패를 동일하게 처리함
+      // 로그인 API의 인증 정보 오류만 invalid로 처리함
       if (
+        !loginApiSucceeded &&
         error instanceof Error &&
         (error.message === 'API 요청 실패: 400' ||
           error.message === 'API 요청 실패: 401')

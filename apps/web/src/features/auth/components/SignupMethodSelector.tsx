@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthMethodButtons from './AuthMethodButtons';
+import type { AccountType } from '@snappick/shared';
 import styles from './SignupMethodSelector.module.css';
-
-type AccountType = 'USER' | 'PHOTOGRAPHER';
 
 type SignupMethodSelectorProps = {
   accountType: AccountType;

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { HeaderUser } from './Header';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useToast } from '@/components/ui/ToastProvider';
 import styles from './ProfileMenu.module.css';
 import Link from 'next/link';
 
@@ -28,6 +29,7 @@ const photographerMenuItems = [
 
 export default function ProfileMenu({ user }: ProfileMenuProps) {
   const { logout } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -47,6 +49,9 @@ export default function ProfileMenu({ user }: ProfileMenuProps) {
       await logout();
     } catch (error) {
       console.error('로그아웃 실패:', error);
+
+      // 로그아웃 실패 시 사용자에게 안내함
+      showToast('로그아웃하지 못했어요. 다시 시도해 주세요.', 'error');
     } finally {
       setIsLoggingOut(false);
     }

@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { AccountType } from '@snappick/shared';
 import Button from '@/components/ui/Button';
 import styles from './SignupTypeSelector.module.css';
-
-type AccountType = 'USER' | 'PHOTOGRAPHER';
 
 const ACCOUNT_TYPES: {
   value: AccountType;

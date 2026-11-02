@@ -1,3 +1,6 @@
+'use client';
+
+import { useToast } from '@/components/ui/ToastProvider';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
 import styles from './AuthMethodButtons.module.css';
@@ -43,6 +46,8 @@ export default function AuthMethodButtons({
   disabled = false,
   handlers = {},
 }: AuthMethodButtonsProps) {
+  const { showToast } = useToast();
+
   // showEmail이 true이면 이메일 버튼까지 함께 표시함
   const visibleMethods = AUTH_METHODS.filter(
     (method) => showEmail || method.id !== 'email',
@@ -71,8 +76,10 @@ export default function AuthMethodButtons({
                 className={styles.icon}
               />
             }
-            onClick={handleClick}
-            disabled={disabled || !handleClick}
+            onClick={
+              handleClick ?? (() => showToast('현재 준비 중인 기능이에요.'))
+            }
+            disabled={disabled}
           >
             {method.label}
           </Button>
