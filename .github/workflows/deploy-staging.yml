@@ -1,0 +1,80 @@
+name: Deploy API (staging)
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - apps/api/**
+      - packages/shared/**
+      - .platform/**
+      - Procfile
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/deploy-staging.sh
+      - .github/workflows/deploy-staging.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build bundle
+        run: ./scripts/deploy-staging.sh "${{ github.run_number }}" --bundle-only
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-bundle
+          path: out/*.zip
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Elastic Beanstalk
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: api-bundle
+          path: out
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - name: Deploy
+        run: ./scripts/deploy-staging.sh "${{ github.run_number }}" out/*.zip

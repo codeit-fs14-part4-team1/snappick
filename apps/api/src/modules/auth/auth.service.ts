@@ -28,7 +28,7 @@ export async function signup(input: SignupInput) {
     );
   }
 
-  const email = input.provider_email.trim().toLowerCase();
+  const email = input.providerEmail.trim().toLowerCase();
 
   // 이메일이 auth_provider 테이블에 존재할 시 연동으로 유도
   const existing = await prisma.auth_providers.findFirst({
@@ -46,10 +46,11 @@ export async function signup(input: SignupInput) {
   const passwordHash = await argon2.hash(input.password);
 
   try {
+    // 계정/provider/프로필/토큰을 모두 한 트랜잭션으로 묶음
     return await prisma.$transaction(async (tx) => {
       const account = await tx.auth_accounts.create({
         data: {
-          account_type: input.account_type,
+          account_type: input.accountType,
           auth_provider: {
             create: {
               provider: 'BASIC',
@@ -57,12 +58,14 @@ export async function signup(input: SignupInput) {
               password_hash: passwordHash,
             },
           },
-          ...(input.account_type === 'USER'
+          ...(input.accountType === 'USER'
             ? { user: { create: { nickname: input.nickname } } }
             : { photographer: { create: { nickname: input.nickname } } }),
         },
         select: { id: true, account_type: true },
       });
+
+      // 새 로그인 세션(family)의 시작: refresh token 행 저장 + 토큰 2개 발급
       return issueTokens(tx, account);
     });
   } catch (e) {
@@ -90,7 +93,7 @@ export async function login(input: LoginInput) {
     );
   }
 
-  const email = input.provider_email.trim().toLowerCase();
+  const email = input.providerEmail.trim().toLowerCase();
 
   const found = await prisma.auth_providers.findFirst({
     where: { provider: Provider.BASIC, provider_email: email },

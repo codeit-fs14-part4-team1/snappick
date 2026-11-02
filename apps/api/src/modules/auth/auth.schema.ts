@@ -6,11 +6,11 @@ const isMissing = (value: unknown) => value === undefined || value === null;
 
 // 가입에서만 받는 필드
 const common = {
-  account_type: z.enum(AccountType, {
+  accountType: z.enum(AccountType, {
     error: (issue) =>
       isMissing(issue.input)
-        ? 'account_type은 필수 요소입니다.'
-        : '지원하지 않는 account_type입니다.',
+        ? 'accountType은 필수 요소입니다.'
+        : '지원하지 않는 accountType입니다.',
   }),
   nickname: z
     .string({
@@ -50,13 +50,13 @@ const providerTokenSchema = z
 // provider별 입력 필드 (가입은 여기에 common을 더해서 사용)
 const basicFields = {
   provider: z.literal('BASIC'),
-  provider_email: emailSchema,
+  providerEmail: emailSchema,
   password: passwordSchema,
 };
 
 const socialFields = {
   provider: z.enum(['GOOGLE', 'KAKAO', 'NAVER']),
-  provider_token: providerTokenSchema,
+  providerToken: providerTokenSchema,
 };
 
 // 어느 분기도 고를 수 없을 때(provider 누락/오류, body 이상)의 문구

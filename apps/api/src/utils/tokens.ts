@@ -13,7 +13,7 @@ export function signAccessToken(
   accountType: string,
 ): string {
   return jwt.sign(
-    { sub: accountId, account_type: accountType }, // 토큰 안에 담을 내용
+    { sub: accountId, accountType }, // 토큰 안에 담을 내용
     env.jwtAccessSecret, // 서명에 쓰는 비밀 키
     {
       expiresIn: env.accessTokenTtl, // 만료 시간
@@ -29,14 +29,14 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   if (
     typeof payload === 'string' ||
     typeof payload.sub !== 'string' ||
-    !Object.values(AccountType).includes(payload.account_type)
+    !Object.values(AccountType).includes(payload.accountType)
   ) {
     throw new Error('Invalid access token payload');
   }
 
   return {
     accountId: payload.sub,
-    accountType: payload.account_type as AccountType,
+    accountType: payload.accountType as AccountType,
   };
 }
 
