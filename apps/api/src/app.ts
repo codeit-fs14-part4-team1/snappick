@@ -17,6 +17,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { usersRouter } from './modules/users/users.routes.js';
 import { photographersRouter } from './modules/photographers/photographers.routes.js';
+import { photographerProductsRouter } from './modules/products/products.routes.js';
 
 export const app: Express = express();
 
@@ -59,6 +60,7 @@ app.use('/photographers', photographerPhotosRouter);
 app.use('/photographers', photographersRouter);
 app.use('/photos', photoLikesRouter);
 app.use('/photographers', photographerSavesRouter);
+app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
