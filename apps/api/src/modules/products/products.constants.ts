@@ -1,0 +1,1 @@
+export const MAX_PRODUCTS_PER_PHOTOGRAPHER = 3;
