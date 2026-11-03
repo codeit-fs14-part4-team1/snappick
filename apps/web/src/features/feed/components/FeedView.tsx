@@ -1,9 +1,12 @@
 'use client';
 
+import { useExploreParams } from '../hooks/useExploreParams';
 import { useExploreFeed } from '../hooks/useExploreFeed';
+
 import FeedList from './FeedList';
 
 export default function FeedView() {
+  const { filters } = useExploreParams();
   const {
     data,
     status,
@@ -12,9 +15,8 @@ export default function FeedView() {
     isFetchingNextPage,
     isFetchNextPageError,
     fetchNextPage,
-  } = useExploreFeed({});
+  } = useExploreFeed(filters);
 
-  //사진 items 평탄화해서 배열로 정의 + 페이지 사이 중복 가능성 제거(offset 커서 방어)
   const seen = new Set<string>();
   const photos = (data?.pages.flatMap((page) => page.items) ?? []).filter(
     (photo) => {
