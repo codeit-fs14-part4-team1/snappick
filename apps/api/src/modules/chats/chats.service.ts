@@ -121,3 +121,120 @@ export async function createChat(accountId: string, photographerId: string) {
     throw error;
   }
 }
+
+//채팅방 목록 조회
+export async function getChats(accountId: string) {
+  const account = await prisma.auth_accounts.findUnique({
+    where: {
+      id: accountId,
+    },
+    include: {
+      user: true,
+      photographer: true,
+    },
+  });
+
+  if (!account) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+
+  let where: Prisma.chat_roomsWhereInput;
+
+  if (account.account_type === 'USER') {
+    if (!account.user) {
+      throw new HttpError(
+        404,
+        'PROFILE_NOT_FOUND',
+        '사용자 정보를 찾을 수 없습니다.',
+      );
+    }
+
+    where = {
+      user_id: account.user.id,
+    };
+  } else {
+    if (!account.photographer) {
+      throw new HttpError(
+        404,
+        'PROFILE_NOT_FOUND',
+        '작가 정보를 찾을 수 없습니다.',
+      );
+    }
+
+    where = {
+      photographer_id: account.photographer.id,
+      chatMessage: {
+        some: {},
+      },
+    };
+  }
+
+  const chats = await prisma.chat_rooms.findMany({
+    where,
+    orderBy: [{ last_message_at: 'desc' }, { id: 'desc' }],
+    include: {
+      user: {
+        select: {
+          id: true,
+          nickname: true,
+          profile_image_url: true,
+        },
+      },
+      photographer: {
+        select: {
+          id: true,
+          nickname: true,
+          profile_image_url: true,
+        },
+      },
+      chatMessage: {
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        take: 1,
+        select: {
+          id: true,
+          message_type: true,
+          content: true,
+          created_at: true,
+        },
+      },
+      _count: {
+        select: {
+          chatMessage: {
+            where: {
+              recipient_account_id: accountId,
+              read_at: null,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const items = chats.map((chat) => {
+    const partner =
+      account.account_type === 'USER' ? chat.photographer : chat.user;
+
+    const lastMessage = chat.chatMessage[0];
+
+    return {
+      id: chat.id,
+      partner: {
+        id: partner?.id ?? null,
+        nickname: partner?.nickname ?? null,
+        profileImageUrl: partner?.profile_image_url ?? null,
+        isWithdrawn: partner === null,
+      },
+      lastMessage: lastMessage
+        ? {
+            id: lastMessage.id,
+            messageType: lastMessage.message_type,
+            content: lastMessage.content,
+            createdAt: lastMessage.created_at,
+          }
+        : null,
+      unreadCount: chat._count.chatMessage,
+      lastMessageAt: chat.last_message_at,
+    };
+  });
+  return { items };
+}
