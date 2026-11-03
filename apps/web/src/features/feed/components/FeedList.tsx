@@ -4,16 +4,25 @@ import Button from '@/components/ui/Button';
 import type { FeedPhoto } from '../types';
 import FeedCard from './FeedCard';
 import styles from './FeedList.module.css';
+import InfiniteScrollTrigger, {
+  type InfiniteScrollTriggerProps,
+} from './InfiniteScrollTrigger';
 
 //FeedList가 받는 Props
 type FeedListProps = {
   photos: FeedPhoto[];
   status: 'pending' | 'error' | 'success';
   onRetry: () => void;
+  pagination: InfiniteScrollTriggerProps;
 };
 
 //상태별 분기
-export default function FeedList({ photos, status, onRetry }: FeedListProps) {
+export default function FeedList({
+  photos,
+  status,
+  onRetry,
+  pagination,
+}: FeedListProps) {
   //첫 페이지
   if (status === 'pending') {
     return (
@@ -41,12 +50,15 @@ export default function FeedList({ photos, status, onRetry }: FeedListProps) {
   }
 
   return (
-    <ul className={styles.list}>
-      {photos.map((photo) => (
-        <li key={photo.photoId}>
-          <FeedCard photo={photo} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className={styles.list}>
+        {photos.map((photo) => (
+          <li key={photo.photoId}>
+            <FeedCard photo={photo} />
+          </li>
+        ))}
+      </ul>
+      <InfiniteScrollTrigger {...pagination} />
+    </>
   );
 }
