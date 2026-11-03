@@ -1,0 +1,12 @@
+/* FeedCard.module.css */
+.card {
+  margin: 0;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto; /* 원본 비율 유지 */
+  border-radius: 8px;
+  background: var(--color-bg-subtle); /* 로딩 전 자리 표시 */
+}

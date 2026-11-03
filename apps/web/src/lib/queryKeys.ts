@@ -1,4 +1,5 @@
 import type { Category, Style, Region } from '@snappick/shared';
+import type { FeedSort } from '@/features/feed/types';
 
 //도메인을 리터럴 유니온 타입으로 관리
 export const QUERY_DOMAINS = [
@@ -52,13 +53,12 @@ const DEFAULT_PAGE_SIZE = 10;
 //공개 응답이 조회자의 좋아요·저장 상태에 따라 달라질 때만 부여 (null: 비로그인)
 type ViewerId = string | null;
 
-type PhotoSort = 'latest' | 'random' | 'favorite';
 type PhotoExploreFilters = {
   viewerId: ViewerId;
   category?: Category;
   styles?: Style[];
   regions?: Region[];
-  sort?: PhotoSort;
+  sort?: FeedSort;
   limit?: number;
   keyword?: string;
 };
