@@ -1,0 +1,55 @@
+/* 칩 목록 (넘치면 가로 스크롤) */
+.chips {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  flex-shrink: 0;
+}
+
+.chip {
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--color-text-primary);
+}
+
+/* 선택된 칩: 검은 배경 + 흰 글자 */
+.chip[aria-pressed='true'] {
+  background: var(--color-text-primary);
+  color: var(--color-bg-base);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .chip {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}

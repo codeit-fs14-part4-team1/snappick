@@ -1,0 +1,139 @@
+/* 팝오버 위치 기준 */
+.filter {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* "서울 외 1 ▾" 버튼 */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-base);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 지역이 하나라도 적용됨: 초록 테두리 */
+.trigger[data-active='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.chevron {
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.trigger[aria-expanded='true'] .chevron {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+/* 펼친 패널 (버튼 왼쪽 끝에 맞춤) */
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  width: 290px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.title {
+  margin-bottom: 12px;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 2열, 세로로 채움 → shared 선언 순서가 시안 배치와 일치 */
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(9, auto);
+  grid-auto-flow: column;
+  gap: 2px 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-bg-subtle);
+}
+
+.option:has(.checkbox:checked) {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.reset {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.trigger:focus-visible,
+.reset:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .trigger {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}

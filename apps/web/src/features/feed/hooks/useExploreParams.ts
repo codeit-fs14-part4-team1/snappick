@@ -2,11 +2,11 @@ import { Category, Style, Region } from '@snappick/shared';
 import { FEED_SORTS } from '../types';
 import type { FeedFilters } from './useExploreFeed';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { KEYWORD_MAX_LENGTH } from '../types';
 
 const CATEGORIES = Object.values(Category);
 const STYLES = Object.values(Style);
 const REGIONS = Object.values(Region);
-const KEYWORD_MAX_LENGTH = 50;
 
 function pickOne<T extends string>(
   value: string | null,
@@ -78,6 +78,8 @@ export function useExploreParams() {
     pushFilters({ ...filters, regions: [] });
   }
   function resetAll() {
+    //빈쿼리로검증
+    if (searchParams.toString() === '') return;
     pushFilters({});
   }
   return { filters, setFilters, resetRegions, resetAll };

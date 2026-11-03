@@ -4,9 +4,10 @@ import { useExploreParams } from '../hooks/useExploreParams';
 import { useExploreFeed } from '../hooks/useExploreFeed';
 
 import FeedList from './FeedList';
+import FilterBar from './FilterBar';
 
 export default function FeedView() {
-  const { filters } = useExploreParams();
+  const { filters, setFilters, resetAll } = useExploreParams();
   const {
     data,
     status,
@@ -25,18 +26,27 @@ export default function FeedView() {
       return true;
     },
   );
+  const totalCount = data?.pages[0]?.totalCount.toLocaleString('ko-KR');
 
   return (
-    <FeedList
-      photos={photos}
-      status={status}
-      onRetry={() => refetch()}
-      pagination={{
-        hasNextPage,
-        isFetchingNextPage,
-        isError: isFetchNextPageError,
-        onLoadMore: fetchNextPage,
-      }}
-    />
+    <>
+      <FilterBar
+        filters={filters}
+        setFilters={setFilters}
+        totalCount={totalCount}
+        onReset={resetAll}
+      />
+      <FeedList
+        photos={photos}
+        status={status}
+        onRetry={() => refetch()}
+        pagination={{
+          hasNextPage,
+          isFetchingNextPage,
+          isError: isFetchNextPageError,
+          onLoadMore: fetchNextPage,
+        }}
+      />
+    </>
   );
 }

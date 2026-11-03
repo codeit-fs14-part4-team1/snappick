@@ -1,0 +1,156 @@
+//filterBar : filters/setFilters를 받아서 각 필터 컨트롤의 value/onChange로 나눠준다
+
+import { Category, Region, Style } from '@snappick/shared';
+import {
+  CategoryLabel,
+  RegionLabel,
+  StyleLabel,
+} from '@/constants/enum-labels';
+import Tabs, { TabItem } from '@/components/ui/Tabs';
+import type { FeedFilters } from '../hooks/useExploreFeed';
+import { KEYWORD_MAX_LENGTH } from '../types';
+import styles from './FilterBar.module.css';
+import SortSelect from './SortSelect';
+import { FEED_SORTS, FeedSort } from '../types';
+import StyleChips from './StyleChips';
+import SearchBar from './SearchBar';
+import RegionFilter from './RegionFilter';
+
+type FilterBarProps = {
+  filters: FeedFilters;
+  setFilters: (changes: FeedFilters) => void;
+  totalCount: string | undefined;
+  onReset: () => void;
+};
+
+//카테고리
+const CATEGORIES = Object.values(Category);
+const ALL_CATEGORY = 'ALL';
+const CATEGORY_TABS: TabItem[] = [
+  { value: ALL_CATEGORY, label: '전체' },
+  ...CATEGORIES.map((category) => ({
+    value: category,
+    label: CategoryLabel[category],
+  })),
+];
+//정렬
+const SORT_LABEL = {
+  random: '기본순',
+  latest: '최신순',
+  popular: '인기순',
+} satisfies Record<FeedSort, string>;
+const SORT_ITEMS = FEED_SORTS.map((sort) => ({
+  value: sort,
+  label: SORT_LABEL[sort],
+}));
+//스타일
+const STYLES = Object.values(Style);
+const STYLE_CHIPS: TabItem[] = STYLES.map((chip) => ({
+  value: chip,
+  label: StyleLabel[chip],
+}));
+//지역필터
+const REGIONS = Object.values(Region);
+const REGION_ITEMS: TabItem[] = REGIONS.map((region) => ({
+  value: region,
+  label: RegionLabel[region],
+}));
+
+export default function FilterBar({
+  filters,
+  setFilters,
+  totalCount,
+  onReset,
+}: FilterBarProps) {
+  //카테고리 변경
+  function changeCategory(value: string) {
+    //누른값을 영어로 가져올거니께 거기서 같은 value를 찾아서 넣기
+    const category = CATEGORIES.find((item) => item === value);
+    setFilters({ category });
+  }
+  //정렬은 나머지는 클릭에 따라서 변경
+  function changeSort(value: string) {
+    const sort = FEED_SORTS.find((item) => item === value);
+    setFilters({ sort });
+  }
+  //기존 filters
+  //스타일칩은 객체로 들어온 값에 대해서 이미 있으면 제거, 없으면 추가하여 다시 setFilters
+  function toggleStyle(value: string) {
+    const style = STYLES.find((item) => item === value);
+    if (!style) return;
+
+    const current = filters.styles ?? [];
+    const next = current.includes(style)
+      ? current.filter((item) => item !== style)
+      : [...current, style];
+    setFilters({ styles: next });
+    //최종선택된값의배열
+  }
+  //검색 온 키워드를 50자로 자르는거는 이미 3번이나 해줌.
+  //확정키워드시 url도 맞춰서 변경
+  function submitKeyword(value: string) {
+    setFilters({ keyword: value });
+  }
+  function applyRegions(values: string[]) {
+    //이미 최종 값이 왔으므로, 일치하는 지 확인을 하되 들어온값(values)의 기준X, 허용값(REGIONS)기준
+    const regions = REGIONS.filter((region) => values.includes(region));
+    setFilters({ regions });
+  }
+  return (
+    <section className={styles.bar} aria-label="사진 탐색 조건">
+      {/* 검색 */}
+      <SearchBar
+        key={filters.keyword ?? ''}
+        initialKeyword={filters.keyword ?? ''}
+        maxLength={KEYWORD_MAX_LENGTH}
+        onSubmit={submitKeyword}
+      />
+      {/* 카테고리 */}
+      <Tabs
+        className={styles.categories}
+        items={CATEGORY_TABS}
+        value={filters.category ?? ALL_CATEGORY}
+        onValueChange={changeCategory}
+        aria-label="카테고리"
+      />
+
+      <div className={styles.row}>
+        {/* 지역 */}
+        <RegionFilter
+          items={REGION_ITEMS}
+          values={filters.regions ?? []}
+          onApply={applyRegions}
+        />
+        <span className={styles.divider} aria-hidden="true" />
+        <StyleChips
+          items={STYLE_CHIPS}
+          selectedValues={filters.styles ?? []}
+          onToggle={toggleStyle}
+        />
+      </div>
+
+      <div className={styles.summaryRow}>
+        <div className={styles.summary}>
+          {totalCount !== undefined && (
+            <p className={styles.count}>
+              사진 <strong>{totalCount}</strong>장
+            </p>
+          )}
+          <button type="button" className={styles.reset} onClick={onReset}>
+            필터 초기화
+          </button>
+        </div>
+        <SortSelect
+          items={SORT_ITEMS}
+          value={filters.sort ?? 'random'}
+          onValueChange={changeSort}
+        />
+        {/*  우선 SortSelect컴포넌트는 단일값만 받으니까 
+        value로 sort최종값을 내려주면됨. onValueChange도 changeSort 를 내려줄것.
+        isOpen은 컴포넌트 안에서 관리. changeSort와 함께 isOpen false처리.
+        클릭되어 있는 값은 다시 눌러도 호출하지 않음.  내부에는 드롭다운 메뉴라벨. 
+        메뉴라벨은 여기서 items로 내려준다. 닫는다는 일단 이거해놓고하기.*/}
+      </div>
+    </section>
+  );
+}

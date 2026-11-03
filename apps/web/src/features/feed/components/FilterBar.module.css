@@ -1,0 +1,90 @@
+/* 검색 → 카테고리 → 지역·스타일 → 요약·정렬 (세로 배치) */
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 40px;
+  margin-bottom: 16px;
+}
+
+/* 탭 아래 전체 폭 구분선 */
+.categories {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 지역 버튼 + 스타일 칩 (스크롤은 칩 목록에만: 여기서 걸면 지역 팝오버가 잘림) */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row:empty {
+  display: none;
+}
+
+/* 지역 버튼과 스타일 칩 사이 세로선 */
+.divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+}
+
+/* 사진 수 · 필터 초기화 (왼쪽) + 정렬 (오른쪽) */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.count {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.count strong {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.reset {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.reset:hover {
+  color: var(--color-text-secondary);
+}
+
+.reset:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .bar {
+    gap: 16px;
+    padding-top: 24px;
+  }
+
+  .count {
+    font-size: 14px;
+  }
+
+  .reset {
+    font-size: 13px;
+  }
+}
