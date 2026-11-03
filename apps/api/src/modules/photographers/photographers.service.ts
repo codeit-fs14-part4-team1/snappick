@@ -25,16 +25,16 @@ type ProfileRow = Prisma.photographersGetPayload<{
   select: typeof PROFILE_SELECT;
 }>;
 
-// 명세의 checks에 categories를 더한 것
 const READINESS_KEYS = [
   'profileImage',
-  'career',
   'regions',
   'categories',
   'introduction',
-  'representativePhoto',
+  'photos',
   'product',
 ] as const;
+
+const MIN_PHOTOS_FOR_READY = 3;
 
 type ReadinessKey = (typeof READINESS_KEYS)[number];
 
@@ -47,12 +47,12 @@ export type Readiness = {
 const hasText = (value: string | null): boolean =>
   value !== null && value.trim() !== '';
 
-// 프로필 완료 여부: 공개 프로필의 isReady와 /me/readiness가 같은 판정을 쓴다
 async function getReadiness(photographer: ProfileRow): Promise<Readiness> {
-  const [representative, product] = await Promise.all([
-    prisma.representative_photos.findUnique({
+  const [photos, product] = await Promise.all([
+    prisma.photos.findMany({
       where: { photographer_id: photographer.id },
-      select: { photo_id: true },
+      select: { id: true },
+      take: MIN_PHOTOS_FOR_READY,
     }),
     prisma.products.findFirst({
       where: { photographer_id: photographer.id },
@@ -62,11 +62,10 @@ async function getReadiness(photographer: ProfileRow): Promise<Readiness> {
 
   const checks: Record<ReadinessKey, boolean> = {
     profileImage: hasText(photographer.profile_image_url),
-    career: photographer.career !== null,
     regions: photographer.regions.length > 0,
     categories: photographer.categories.length > 0,
     introduction: hasText(photographer.introduction),
-    representativePhoto: representative !== null,
+    photos: photos.length >= MIN_PHOTOS_FOR_READY,
     product: product !== null,
   };
   // false인 항목만 모은다
