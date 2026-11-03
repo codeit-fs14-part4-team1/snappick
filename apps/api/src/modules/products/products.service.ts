@@ -1,7 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
-import type { CreateProductInput } from './products.schema.js';
+import type {
+  CreateProductInput,
+  UpdateProductInput,
+} from './products.schema.js';
 import { MAX_PRODUCTS_PER_PHOTOGRAPHER } from './products.constants.js';
 
 type ProductRow = {
@@ -98,4 +101,52 @@ export async function createPhotographerProducts(
   });
 
   return toProductResponse(created);
+}
+
+const PRODUCT_NOT_FOUND = () =>
+  new HttpError(404, 'PRODUCT_NOT_FOUND', '상품을 찾을 수 없어요.');
+
+export async function updateMyProduct(
+  auth: AccessTokenPayload,
+  productId: string,
+  input: UpdateProductInput,
+) {
+  const mine = await prisma.products.findFirst({
+    where: { id: productId, photographer: { auth_account_id: auth.accountId } },
+    select: { id: true },
+  });
+  if (!mine) {
+    throw PRODUCT_NOT_FOUND();
+  }
+
+  const updated = await prisma.products.update({
+    where: { id: productId },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.price !== undefined && { price: input.price }),
+      ...(input.durationMinutes !== undefined && {
+        duration_minutes: input.durationMinutes,
+      }),
+      ...(input.photoCount !== undefined && { photo_count: input.photoCount }),
+      ...(input.includesOriginal !== undefined && {
+        includes_original: input.includesOriginal,
+      }),
+      ...(input.commonNotice !== undefined && {
+        common_notice: input.commonNotice,
+      }),
+    },
+  });
+  return toProductResponse(updated);
+}
+
+export async function deleteMyProduct(
+  auth: AccessTokenPayload,
+  productId: string,
+) {
+  const { count } = await prisma.products.deleteMany({
+    where: { id: productId, photographer: { auth_account_id: auth.accountId } },
+  });
+  if (count === 0) {
+    throw PRODUCT_NOT_FOUND();
+  }
 }

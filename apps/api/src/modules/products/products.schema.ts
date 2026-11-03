@@ -4,6 +4,10 @@ export const productParamsSchema = z.object({
   photographerId: z.uuid(),
 });
 
+export const productIdParamsSchema = z.object({
+  productId: z.uuid(),
+});
+
 const isMissing = (value: unknown) => value === undefined || value === null;
 
 const fieldError = (missing: string, invalid: string) => ({
@@ -70,3 +74,11 @@ export const createProductSchema = z
   .strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const updateProductSchema = createProductSchema
+  .partial()
+  .refine((body) => Object.keys(body).length > 0, {
+    message: '수정할 항목을 하나 이상 보내 주세요.',
+  });
+
+export type UpdateProductInput = z.infer<typeof updateProductSchema>;
