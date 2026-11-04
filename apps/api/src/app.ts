@@ -11,6 +11,7 @@ import {
   photoLikesRouter,
   photographerSavesRouter,
 } from './modules/likes/likes.routes.js';
+import { myPhotosRouter } from './modules/my-photos/my-photos.routes.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { HttpError } from './utils/http-error.js';
 import cookieParser from 'cookie-parser';
@@ -62,6 +63,7 @@ app.use('/photos', photoLikesRouter);
 app.use('/photographers', photographerSavesRouter);
 app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
+app.use('/me/photos', myPhotosRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {
