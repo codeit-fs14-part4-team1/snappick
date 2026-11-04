@@ -297,9 +297,10 @@ export async function sendMessage(
         content,
       },
     });
-    await tx.chat_rooms.update({
+    await tx.chat_rooms.updateMany({
       where: {
         id: chatRoomId,
+        last_message_at: { lt: savedMessage.created_at },
       },
       data: {
         last_message_at: savedMessage.created_at,
