@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   getPhotographerProductsHandler,
   createProductHandler,
+  updateProductHandler,
+  deleteProductHandler,
 } from './products.controller.js';
 import {
   authenticate,
@@ -20,4 +22,18 @@ photographerProductsRouter.post(
   authenticate,
   requireAccountType('PHOTOGRAPHER'),
   createProductHandler,
+);
+
+photographerProductsRouter.patch(
+  '/me/products/:productId',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  updateProductHandler,
+);
+
+photographerProductsRouter.delete(
+  '/me/products/:productId',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  deleteProductHandler,
 );
