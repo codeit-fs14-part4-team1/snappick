@@ -1,0 +1,82 @@
+/* 회원가입 방법 선택 화면을 중앙에 배치함 */
+.container {
+  width: min(400px, calc(100vw - 40px));
+  max-width: 100%;
+  min-height: calc(100dvh - 80px);
+  margin-inline: auto;
+  padding-block: 40px;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* 회원가입 안내 제목을 가운데 정렬함 */
+.intro {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+/* 기존 회원을 위한 로그인 안내를 가운데 정렬함 */
+.loginPrompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  margin: 16px 0 0;
+
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 로그인 링크 색상은 팀 디자인 확인 전까지 기존 기준을 유지함 */
+.loginLink {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.loginLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.loginLink:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 3px;
+}
+
+/* 태블릿과 모바일의 세로 배치를 조정함 */
+@media (max-width: 1199px) {
+  .container {
+    min-height: calc(100dvh - 64px);
+  }
+}
+
+/* 모바일에서는 제목 크기와 여백을 조정함 */
+@media (max-width: 767px) {
+  .container {
+    padding-block: 32px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .loginPrompt {
+    font-size: 12px;
+  }
+}
