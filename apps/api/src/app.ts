@@ -11,6 +11,12 @@ import {
   photoLikesRouter,
   photographerSavesRouter,
 } from './modules/likes/likes.routes.js';
+import {
+  localUploadRouter,
+  myPhotoUploadsRouter,
+} from './modules/uploads/uploads.routes.js';
+import { storageDriver } from './lib/storage/index.js';
+import { LOCAL_UPLOAD_PATH } from './lib/storage/local-storage.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { HttpError } from './utils/http-error.js';
 import cookieParser from 'cookie-parser';
@@ -62,6 +68,10 @@ app.use('/photos', photoLikesRouter);
 app.use('/photographers', photographerSavesRouter);
 app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
+app.use('/me/photos', myPhotoUploadsRouter);
+if (storageDriver === 'local') {
+  app.use(LOCAL_UPLOAD_PATH, localUploadRouter);
+}
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {
