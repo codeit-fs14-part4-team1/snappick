@@ -96,3 +96,24 @@ Authorization: Bearer {{token}}
 ### MY 픽: 저장한 작가 (일반 사용자 토큰)
 GET {{host}}/me/saved-photographers?limit=20
 Authorization: Bearer {{token}}
+
+### 사진 수정용 정보 (작가 토큰)
+GET {{host}}/me/photos/{{photoId}}
+Authorization: Bearer {{token}}
+
+### 사진 일괄 수정: 수정, 삭제, 대표 지정을 한 번에 (작가 토큰)
+PATCH {{host}}/me/photos/batch
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "updates": [
+    {
+      "photoId": "{{photoId}}",
+      "keywords": ["서촌", "한옥"],
+      "description": "한옥 돌담길을 걷는 웨딩 스냅"
+    }
+  ],
+  "deletePhotoIds": [],
+  "representativePhotoId": "{{photoId}}"
+}
