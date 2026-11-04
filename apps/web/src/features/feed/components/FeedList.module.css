@@ -1,26 +1,3 @@
-/* 메이슨리 미지원 브라우저: 일반 grid (행마다 높이가 맞춰져 아래쪽에 빈 공간이 생김) */
-.list {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (max-width: 1199px) {
-  .list {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 767px) {
-  .list {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-}
-
 /* 로딩·오류·빈 결과 안내 */
 .message {
   display: flex;

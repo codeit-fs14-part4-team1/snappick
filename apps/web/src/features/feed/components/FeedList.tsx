@@ -2,11 +2,11 @@
 
 import Button from '@/components/ui/Button';
 import type { FeedPhoto } from '../types';
-import FeedCard from './FeedCard';
 import styles from './FeedList.module.css';
 import InfiniteScrollTrigger, {
   type InfiniteScrollTriggerProps,
 } from './InfiniteScrollTrigger';
+import FeedMasonry from './FeedMasonry';
 
 //FeedList가 받는 Props
 type FeedListProps = {
@@ -51,13 +51,7 @@ export default function FeedList({
 
   return (
     <>
-      <ul className={styles.list}>
-        {photos.map((photo) => (
-          <li key={photo.photoId}>
-            <FeedCard photo={photo} />
-          </li>
-        ))}
-      </ul>
+      <FeedMasonry photos={photos} />
       <InfiniteScrollTrigger {...pagination} />
     </>
   );
