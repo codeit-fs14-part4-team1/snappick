@@ -3,6 +3,7 @@ import { FEED_SORTS } from '../types';
 import type { FeedFilters } from './useExploreFeed';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { KEYWORD_MAX_LENGTH } from '../types';
+import { useEffect, useRef } from 'react';
 
 const CATEGORIES = Object.values(Category);
 const STYLES = Object.values(Style);
@@ -60,27 +61,36 @@ function toQueryString(filters: FeedFilters): string {
   return params.toString();
 }
 
+export type FiltersUpdate = FeedFilters | ((prev: FeedFilters) => FeedFilters);
+
 export function useExploreParams() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
+  const pendingRef = useRef<FeedFilters | null>(null);
   const filters = parseFilters(searchParams);
 
+  useEffect(() => {
+    pendingRef.current = null;
+  }, [searchParams]);
+
   function pushFilters(next: FeedFilters) {
+    pendingRef.current = next;
     const query = toQueryString(next);
     router.push(query ? `${pathname}?${query}` : pathname);
   }
-  function setFilters(changes: FeedFilters) {
-    pushFilters({ ...filters, ...changes });
-  }
-  function resetRegions() {
-    pushFilters({ ...filters, regions: [] });
+  //함수로 받으면 아직 URL에 반영 안 된 최신값(base)을 기준으로 계산
+  function setFilters(update: FiltersUpdate) {
+    const base = pendingRef.current ?? filters;
+    const changes = typeof update === 'function' ? update(base) : update;
+    pushFilters({ ...base, ...changes });
   }
   function resetAll() {
-    //빈쿼리로검증
-    if (searchParams.toString() === '') return;
+    //최신값(URL 반영 전 포함)도 비어 있으면 중복 push 생략
+    const base = pendingRef.current ?? filters;
+    if (toQueryString(base) === '') return;
     pushFilters({});
   }
-  return { filters, setFilters, resetRegions, resetAll };
+  return { filters, setFilters, resetAll };
 }

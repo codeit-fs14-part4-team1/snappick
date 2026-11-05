@@ -8,6 +8,7 @@ import {
 } from '@/constants/enum-labels';
 import Tabs, { TabItem } from '@/components/ui/Tabs';
 import type { FeedFilters } from '../hooks/useExploreFeed';
+import type { FiltersUpdate } from '../hooks/useExploreParams';
 import { KEYWORD_MAX_LENGTH } from '../types';
 import styles from './FilterBar.module.css';
 import SortSelect from './SortSelect';
@@ -18,7 +19,7 @@ import RegionFilter from './RegionFilter';
 
 type FilterBarProps = {
   filters: FeedFilters;
-  setFilters: (changes: FeedFilters) => void;
+  setFilters: (update: FiltersUpdate) => void;
   totalCount: string | undefined;
   onReset: () => void;
   resetCount: number;
@@ -79,11 +80,14 @@ export default function FilterBar({
     const style = STYLES.find((item) => item === value);
     if (!style) return;
 
-    const current = filters.styles ?? [];
-    const next = current.includes(style)
-      ? current.filter((item) => item !== style)
-      : [...current, style];
-    setFilters({ styles: next });
+    //연속 클릭 시 URL 반영 전이라 filters가 낡음 → prev(최신값) 기준으로 계산
+    setFilters((prev) => {
+      const current = prev.styles ?? [];
+      const next = current.includes(style)
+        ? current.filter((item) => item !== style)
+        : [...current, style];
+      return { styles: next };
+    });
   }
   function submitKeyword(value: string) {
     setFilters({ keyword: value });
