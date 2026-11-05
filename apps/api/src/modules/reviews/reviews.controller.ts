@@ -5,12 +5,15 @@ import { resolveViewer } from '../feeds/viewer.js';
 import {
   createReviewSchema,
   photographerReviewsParamsSchema,
+  reviewParamsSchema,
   reviewsQuerySchema,
+  updateReviewSchema,
 } from './reviews.schema.js';
 import {
   getMyReviews,
   getPhotographerReviews,
   createReview,
+  updateMyReview,
 } from './reviews.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -38,4 +41,10 @@ export async function getMyReviewsHandler(req: Request, res: Response) {
 export async function createReviewHandler(req: Request, res: Response) {
   const input = createReviewSchema.parse(req.body);
   res.status(201).json(await createReview(await requireUserId(req), input));
+}
+
+export async function updateReviewHandler(req: Request, res: Response) {
+  const { reviewId } = reviewParamsSchema.parse(req.params);
+  const input = updateReviewSchema.parse(req.body);
+  res.json(await updateMyReview(await requireUserId(req), reviewId, input));
 }

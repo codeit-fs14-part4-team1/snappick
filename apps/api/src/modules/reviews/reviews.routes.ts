@@ -7,6 +7,7 @@ import {
   getMyReviewsHandler,
   getPhotographerReviewsHandler,
   createReviewHandler,
+  updateReviewHandler,
 } from './reviews.controller.js';
 
 export const photographerReviewsRouter: Router = Router();
@@ -30,4 +31,11 @@ myReviewsRouter.post(
   authenticate,
   requireAccountType('USER'),
   createReviewHandler,
+);
+
+myReviewsRouter.patch(
+  '/reviews/:reviewId',
+  authenticate,
+  requireAccountType('USER'),
+  updateReviewHandler,
 );

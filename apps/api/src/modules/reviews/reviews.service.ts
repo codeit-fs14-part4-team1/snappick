@@ -2,7 +2,11 @@ import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
-import type { ReviewsQuery, CreateReviewInput } from './reviews.schema.js';
+import type {
+  ReviewsQuery,
+  CreateReviewInput,
+  UpdateReviewInput,
+} from './reviews.schema.js';
 
 const replySelect = {
   id: true,
@@ -207,4 +211,46 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     }
     throw error;
   }
+}
+
+// PATCH /me/reviews/{reviewId}
+export async function updateMyReview(
+  userId: string,
+  reviewId: string,
+  input: UpdateReviewInput,
+) {
+  const mine = await prisma.reviews.findFirst({
+    where: { id: reviewId, user_id: userId, deleted_at: null },
+    select: { id: true },
+  });
+  if (!mine) {
+    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
+  }
+
+  const review = await prisma.reviews.update({
+    where: { id: reviewId },
+    data: {
+      ...(input.rating !== undefined && { rating: input.rating }),
+      ...(input.comment !== undefined && { comment: input.comment }),
+    },
+    select: {
+      id: true,
+      reservation_id: true,
+      photographer_id: true,
+      rating: true,
+      comment: true,
+      created_at: true,
+      updated_at: true,
+    },
+  });
+
+  return {
+    reviewId: review.id,
+    reservationId: review.reservation_id,
+    photographerId: review.photographer_id,
+    rating: review.rating,
+    comment: review.comment,
+    createdAt: review.created_at,
+    updatedAt: review.updated_at,
+  };
 }

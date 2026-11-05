@@ -18,3 +18,19 @@ export const createReviewSchema = z.object({
 });
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+
+export const reviewParamsSchema = z.object({
+  reviewId: z.uuid(),
+});
+
+export const updateReviewSchema = createReviewSchema
+  .pick({
+    rating: true,
+    comment: true,
+  })
+  .partial()
+  .refine((body) => Object.keys(body).length > 0, {
+    message: '수정할 항목을 하나 이상 보내주세요.',
+  });
+
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;
