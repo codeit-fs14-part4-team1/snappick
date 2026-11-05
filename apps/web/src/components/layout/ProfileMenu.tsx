@@ -14,7 +14,7 @@ type ProfileMenuProps = {
 
 const userMenuItems = [
   { label: 'MY 픽', href: '/my/mypicks' },
-  { label: '문의 내역', href: '/my/inquiries' },
+  { label: '문의 내역', href: '/chats' },
   { label: '예약 내역', href: '/my/reservations' },
   { label: '리뷰 내역', href: '/my/reviews' },
   { label: '내 정보', href: '/my/profile' },
@@ -22,7 +22,7 @@ const userMenuItems = [
 
 const photographerMenuItems = [
   { label: '프로필 관리', href: '/photographer/profile' },
-  { label: '문의 내역', href: '/photographer/inquiries' },
+  { label: '문의 내역', href: '/chats' },
   { label: '예약 내역', href: '/photographer/reservations' },
   { label: '내 정보', href: '/photographer/my' },
 ];
