@@ -34,3 +34,9 @@ export const updateReviewSchema = createReviewSchema
   });
 
 export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;
+
+export const createReplySchema = z.object({
+  comment: z.string().trim().min(1).max(1000),
+});
+
+export type CreateReplyInput = z.infer<typeof createReplySchema>;

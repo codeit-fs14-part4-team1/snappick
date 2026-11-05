@@ -6,6 +6,7 @@ import type {
   ReviewsQuery,
   CreateReviewInput,
   UpdateReviewInput,
+  CreateReplyInput,
 } from './reviews.schema.js';
 
 const replySelect = {
@@ -256,7 +257,6 @@ export async function updateMyReview(
 }
 
 // DELETE /me/reviews/{reviewId}
-
 export async function deleteMyReview(userId: string, reviewId: string) {
   const { count } = await prisma.reviews.updateMany({
     where: { id: reviewId, user_id: userId, deleted_at: null },
@@ -265,4 +265,100 @@ export async function deleteMyReview(userId: string, reviewId: string) {
   if (count === 0) {
     throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
   }
+}
+
+// POST /photographers/me/reviews/{reviewId}/reply
+export async function createReply(
+  photographerId: string,
+  reviewId: string,
+  input: CreateReplyInput,
+) {
+  const review = await prisma.reviews.findFirst({
+    where: {
+      id: reviewId,
+      photographer_id: photographerId,
+      deleted_at: null,
+    },
+    select: {
+      id: true,
+    },
+  });
+  if (!review) {
+    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
+  }
+
+  try {
+    const reply = await prisma.review_replies.create({
+      data: {
+        review_id: reviewId,
+        comment: input.comment,
+      },
+      select: {
+        id: true,
+        review_id: true,
+        comment: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return {
+      replyId: reply.id,
+      reviewId: reply.review_id,
+      comment: reply.comment,
+      createdAt: reply.created_at,
+      updatedAt: reply.updated_at,
+    };
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new HttpError(
+        409,
+        'REPLY_ALREADY_EXISTS',
+        '이미 답글을 작성한 리뷰에요.',
+      );
+    }
+    throw error;
+  }
+}
+
+// PATCH /photographers/me/reviews/{reviewId}/reply
+export async function updateReply(
+  photographerId: string,
+  reviewId: string,
+  input: CreateReplyInput,
+) {
+  const mine = await prisma.review_replies.findFirst({
+    where: {
+      review_id: reviewId,
+      deleted_at: null,
+      review: { photographer_id: photographerId, deleted_at: null },
+    },
+    select: { id: true },
+  });
+  if (!mine) {
+    throw new HttpError(404, 'REPLY_NOT_FOUND', '답글을 찾을 수 없어요.');
+  }
+
+  const reply = await prisma.review_replies.update({
+    where: { id: mine.id },
+    data: { comment: input.comment },
+    select: {
+      id: true,
+      review_id: true,
+      comment: true,
+      created_at: true,
+      updated_at: true,
+    },
+  });
+
+  return {
+    replyId: reply.id,
+    reviewId: reply.review_id,
+    comment: reply.comment,
+    createdAt: reply.created_at,
+    updatedAt: reply.updated_at,
+  };
 }

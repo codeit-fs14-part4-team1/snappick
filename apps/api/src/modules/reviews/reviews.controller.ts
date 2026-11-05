@@ -3,6 +3,7 @@ import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
 import { resolveViewer } from '../feeds/viewer.js';
 import {
+  createReplySchema,
   createReviewSchema,
   photographerReviewsParamsSchema,
   reviewParamsSchema,
@@ -15,6 +16,8 @@ import {
   createReview,
   updateMyReview,
   deleteMyReview,
+  createReply,
+  updateReply,
 } from './reviews.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -54,4 +57,28 @@ export async function deleteReviewHandler(req: Request, res: Response) {
   const { reviewId } = reviewParamsSchema.parse(req.params);
   await deleteMyReview(await requireUserId(req), reviewId);
   res.status(204).end();
+}
+
+async function requirePhotographerId(req: Request): Promise<string> {
+  const { photographerId } = await resolveViewer(getAuth(req));
+  if (!photographerId) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+  return photographerId;
+}
+
+export async function createReplyHandler(req: Request, res: Response) {
+  const { reviewId } = reviewParamsSchema.parse(req.params);
+  const input = createReplySchema.parse(req.body);
+  res
+    .status(201)
+    .json(await createReply(await requirePhotographerId(req), reviewId, input));
+}
+
+export async function updateReplyHandler(req: Request, res: Response) {
+  const { reviewId } = reviewParamsSchema.parse(req.params);
+  const input = createReplySchema.parse(req.body);
+  res.json(
+    await updateReply(await requirePhotographerId(req), reviewId, input),
+  );
 }

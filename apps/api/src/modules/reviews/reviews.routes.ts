@@ -9,6 +9,8 @@ import {
   createReviewHandler,
   updateReviewHandler,
   deleteReviewHandler,
+  createReplyHandler,
+  updateReplyHandler,
 } from './reviews.controller.js';
 
 export const photographerReviewsRouter: Router = Router();
@@ -46,4 +48,18 @@ myReviewsRouter.delete(
   authenticate,
   requireAccountType('USER'),
   deleteReviewHandler,
+);
+
+photographerReviewsRouter.post(
+  '/me/reviews/:reviewId/reply',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  createReplyHandler,
+);
+
+photographerReviewsRouter.patch(
+  '/me/reviews/:reviewId/reply',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  updateReplyHandler,
 );
