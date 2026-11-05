@@ -65,12 +65,8 @@ Authorization: Bearer 액세스토큰
 
 ### 내 채팅방 목록 조회
 GET http://localhost:4000/chats
-<<<<<<< HEAD
 Authorization: Bearer 액세스토큰 
 
-=======
-Authorization: Bearer 액세스토큰
->>>>>>> 910b65f8ddd1f4dd37fc1908f097ad56111c57d0
 
 ### 텍스트 메시지 전송
 POST http://localhost:4000/chats/01a18aab-8cad-76fc-816f-2653e88c6235/messages
@@ -78,14 +74,13 @@ Content-Type: application/json
 Authorization: Bearer 액세스토큰
 
 {
-<<<<<<< HEAD
   "content": "세 번째 테스트 메시지입니다."
 }
 
 ### 메시지 내역 조회
 GET http://localhost:4000/chats/01a18aab-8cad-76fc-816f-2653e88c6235/messages
 Authorization: Bearer 액세스토큰 
-=======
-  "content": "첫 번째 테스트 메시지입니다."
-}
->>>>>>> 910b65f8ddd1f4dd37fc1908f097ad56111c57d0
+
+
+### API 서버 상태 확인
+GET http://localhost:4000/health
