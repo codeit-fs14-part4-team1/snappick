@@ -30,8 +30,29 @@ export async function getFeedPhotos(
   const query = searchParams.toString();
   const path = query ? `/photos?${query}` : '/photos';
 
-  const response = await apiFetch<FeedPhotosResponse>(path);
+  const response = accessToken
+    ? await authFetch<FeedPhotosResponse>(
+        path,
+        {},
+        { accessToken, onTokenRefresh: () => {} },
+      )
+    : await apiFetch<FeedPhotosResponse>(path);
 
   if (!response) throw new Error('사진 목록을 불러오지 못했습니다.');
+  return response;
+}
+
+export async function updatePhotoLike(
+  photoId: string,
+  liked: boolean,
+  accessToken: string,
+): Promise<PhotoLikeResponse> {
+  const method = liked ? 'PUT' : 'DELETE';
+  const response = await authFetch<PhotoLikeResponse>(
+    `/photos/${photoId}/like`,
+    { method },
+    { accessToken, onTokenRefresh: () => {} },
+  );
+  if (!response) throw new Error('좋아요 응답이 없습니다.');
   return response;
 }

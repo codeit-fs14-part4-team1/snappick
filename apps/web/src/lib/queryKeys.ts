@@ -107,7 +107,8 @@ type ReservationListFilters = PageFilters & {
 export const queryKeys = {
   photos: {
     all: createQueryRoot('photos'),
-
+    //피드 무효화, 일괄수정용
+    feedAll: () => createQueryKey('photos', 'infinite', 'feed'),
     //전체 사진 탐색화면 조회
     feed: (filters: PhotoExploreFilters) =>
       createQueryKey(
@@ -128,6 +129,8 @@ export const queryKeys = {
         limit,
       }),
 
+    //마이픽 사진 무효화
+    likedAll: () => createQueryKey('photos', 'infinite', 'liked'),
     //좋아요한 사진
     liked: (limit = DEFAULT_LIMIT) =>
       createQueryKey('photos', 'infinite', 'liked', { limit }),

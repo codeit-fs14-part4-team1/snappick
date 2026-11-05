@@ -35,3 +35,9 @@ export type FeedPhotosParams = {
   cursor?: string;
   limit?: number;
 };
+
+export type PhotoLikeResponse = {
+  photoId: string;
+  liked: boolean;
+  likeCount: number;
+};
