@@ -1,12 +1,137 @@
 /* FeedCard.module.css */
+/* 오버레이의 기준 위치, 모서리 밖으로 나가는 Dim을 잘라냄 */
 .card {
+  position: relative;
   margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .image {
   display: block;
   width: 100%;
   height: auto; /* 원본 비율 유지 */
-  border-radius: 8px;
   background: var(--color-bg-subtle); /* 로딩 전 자리 표시 */
+}
+
+/* 기본은 숨김 — 모바일·터치에서는 보이지도, Tab으로 닿지도 않음 */
+/* 위: 좋아요 / 아래: 작가 (DOM 순서 = 화면 순서) */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  background: linear-gradient(
+    to bottom,
+    transparent 40%,
+    color-mix(in srgb, var(--color-dim) 60%, transparent)
+  );
+  pointer-events: none; /* 빈 영역 클릭은 사진으로 통과 (상세 모달 연결 대비) */
+}
+
+/* 좋아요 버튼: 흰 알약 (하트 + 수) */
+.like {
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.heart {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: auto;
+  color: var(--color-text-tertiary);
+}
+
+.like[aria-pressed='true'] .heart {
+  color: var(--color-accent);
+}
+
+/* 인증 확인 중: 포커스는 가되 누를 수 없어 보이게 */
+.like[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* 작가: 반투명 배지 (하트 + 수), 버튼과 구분되게 */
+.likeText {
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-dim) 20%, transparent);
+  color: var(--color-bg-base);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 작가 하트는 흰색 */
+.likeText .heart {
+  color: var(--color-bg-base);
+}
+/* 키보드 포커스일 때만 보이는 outline */
+.like:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* 작가 정보 줄 (아바타 + 닉네임) */
+.author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 기본 아바타 placeholder, 흰 테두리로 사진과 분리 */
+.avatar {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-bg-base);
+  border-radius: 50%;
+  background: var(--color-bg-subtle);
+}
+
+/* 긴 닉네임은 말줄임 */
+.nickname {
+  overflow: hidden;
+  color: var(--color-bg-base);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 마우스 환경에서만 오버레이를 켜고, hover 또는 카드 안 포커스일 때 보임 */
+@media (hover: hover) and (pointer: fine) {
+  .overlay {
+    display: flex;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .card:hover .overlay,
+  .card:has(:focus-visible) .overlay {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    transition: none;
+  }
 }
