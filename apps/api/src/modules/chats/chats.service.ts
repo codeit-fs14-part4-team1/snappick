@@ -238,3 +238,75 @@ export async function getChats(accountId: string) {
   });
   return { items };
 }
+
+export async function sendMessage(
+  accountId: string,
+  chatRoomId: string,
+  content: string,
+) {
+  const chatRoom = await prisma.chat_rooms.findUnique({
+    where: {
+      id: chatRoomId,
+    },
+    include: {
+      user: {
+        select: { auth_account_id: true },
+      },
+      photographer: {
+        select: { auth_account_id: true },
+      },
+    },
+  });
+
+  if (!chatRoom) {
+    throw new HttpError(
+      404,
+      'CHAT_ROOM_NOT_FOUND',
+      '존재하지 않는 문의입니다.',
+    );
+  }
+
+  const userAccountId = chatRoom.user?.auth_account_id;
+  const photographerAccountId = chatRoom.photographer?.auth_account_id;
+
+  if (accountId !== userAccountId && accountId !== photographerAccountId) {
+    throw new HttpError(
+      403,
+      'CHAT_ROOM_ACCESS_DENIED',
+      '해당 문의에 접근할 권한이 없습니다.',
+    );
+  }
+
+  const recipientAccountId =
+    accountId === userAccountId ? photographerAccountId : userAccountId;
+
+  if (!recipientAccountId) {
+    throw new HttpError(
+      422,
+      'PARTNER_WITHDRAWN',
+      '상대방이 탈퇴하여 메시지를 보낼 수 없습니다.',
+    );
+  }
+
+  const message = await prisma.$transaction(async (tx) => {
+    const savedMessage = await tx.chat_messages.create({
+      data: {
+        chat_room_id: chatRoomId,
+        recipient_account_id: recipientAccountId,
+        message_type: 'TEXT',
+        content,
+      },
+    });
+    await tx.chat_rooms.updateMany({
+      where: {
+        id: chatRoomId,
+        last_message_at: { lt: savedMessage.created_at },
+      },
+      data: {
+        last_message_at: savedMessage.created_at,
+      },
+    });
+    return savedMessage;
+  });
+  return message;
+}
