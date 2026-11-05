@@ -3,10 +3,15 @@ import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
 import { resolveViewer } from '../feeds/viewer.js';
 import {
+  createReviewSchema,
   photographerReviewsParamsSchema,
   reviewsQuerySchema,
 } from './reviews.schema.js';
-import { getMyReviews, getPhotographerReviews } from './reviews.service.js';
+import {
+  getMyReviews,
+  getPhotographerReviews,
+  createReview,
+} from './reviews.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
   const { userId } = await resolveViewer(getAuth(req));
@@ -28,4 +33,9 @@ export async function getPhotographerReviewsHandler(
 export async function getMyReviewsHandler(req: Request, res: Response) {
   const query = reviewsQuerySchema.parse(req.query);
   res.json(await getMyReviews(await requireUserId(req), query));
+}
+
+export async function createReviewHandler(req: Request, res: Response) {
+  const input = createReviewSchema.parse(req.body);
+  res.status(201).json(await createReview(await requireUserId(req), input));
 }

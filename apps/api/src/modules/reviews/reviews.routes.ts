@@ -6,6 +6,7 @@ import {
 import {
   getMyReviewsHandler,
   getPhotographerReviewsHandler,
+  createReviewHandler,
 } from './reviews.controller.js';
 
 export const photographerReviewsRouter: Router = Router();
@@ -22,4 +23,11 @@ myReviewsRouter.get(
   authenticate,
   requireAccountType('USER'),
   getMyReviewsHandler,
+);
+
+myReviewsRouter.post(
+  '/reviews',
+  authenticate,
+  requireAccountType('USER'),
+  createReviewHandler,
 );
