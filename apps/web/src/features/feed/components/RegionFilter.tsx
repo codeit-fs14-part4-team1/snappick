@@ -1,7 +1,8 @@
 import Button from '@/components/ui/Button';
 import styles from './RegionFilter.module.css';
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { TabItem } from '@/components/ui/Tabs';
+import { usePopover } from '@/hooks/usePopover';
 
 type RegionFilterProps = {
   items: TabItem[];
@@ -16,6 +17,19 @@ export default function RegionFilter({
 }: RegionFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState(values);
+  const panelId = useId();
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const { closeAndRestoreFocus } = usePopover({
+    isOpen,
+    onClose: () => setIsOpen(false),
+    containerRef,
+    panelRef,
+    triggerRef,
+  });
 
   const firstLabel = items.find((item) => item.value === values[0])?.label;
   let buttonLabel = '전체 지역';
@@ -34,12 +48,13 @@ export default function RegionFilter({
   }
 
   return (
-    <div className={styles.filter}>
+    <div className={styles.filter} ref={containerRef}>
       <button
         type="button"
         className={styles.trigger}
-        aria-haspopup="true"
+        ref={triggerRef}
         aria-expanded={isOpen}
+        aria-controls={panelId}
         data-active={values.length > 0}
         onClick={() => {
           if (!isOpen) setDraft(values);
@@ -51,7 +66,7 @@ export default function RegionFilter({
       </button>
 
       {isOpen && (
-        <div className={styles.panel}>
+        <div id={panelId} className={styles.panel} ref={panelRef}>
           <fieldset className={styles.fieldset}>
             <legend className={styles.title}>작가 활동 지역</legend>
             <div className={styles.options}>
@@ -76,8 +91,14 @@ export default function RegionFilter({
             <Button
               size="sm"
               onClick={() => {
-                onApply(draft);
-                setIsOpen(false);
+                function isSameRegions(a: string[], b: string[]) {
+                  return (
+                    a.length === b.length &&
+                    a.every((value) => b.includes(value))
+                  );
+                }
+                if (!isSameRegions(draft, values)) onApply(draft);
+                closeAndRestoreFocus();
               }}
             >
               적용
