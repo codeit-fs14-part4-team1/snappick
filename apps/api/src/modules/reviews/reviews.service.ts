@@ -254,3 +254,15 @@ export async function updateMyReview(
     updatedAt: review.updated_at,
   };
 }
+
+// DELETE /me/reviews/{reviewId}
+
+export async function deleteMyReview(userId: string, reviewId: string) {
+  const { count } = await prisma.reviews.updateMany({
+    where: { id: reviewId, user_id: userId, deleted_at: null },
+    data: { deleted_at: new Date() },
+  });
+  if (count === 0) {
+    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
+  }
+}
