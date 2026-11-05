@@ -310,3 +310,103 @@ export async function sendMessage(
   });
   return message;
 }
+
+//채팅 목록
+export async function getMessages(
+  accountId: string,
+  chatRoomId: string,
+  limit: number,
+  cursor?: string,
+) {
+  const chatRoom = await prisma.chat_rooms.findUnique({
+    where: {
+      id: chatRoomId,
+    },
+    include: {
+      user: {
+        select: { auth_account_id: true },
+      },
+      photographer: {
+        select: { auth_account_id: true },
+      },
+    },
+  });
+
+  if (!chatRoom) {
+    throw new HttpError(
+      404,
+      'CHAT_ROOM_NOT_FOUND',
+      '존재하지 않는 문의입니다.',
+    );
+  }
+
+  const userAccountId = chatRoom.user?.auth_account_id;
+  const photographerAccountId = chatRoom.photographer?.auth_account_id;
+
+  if (accountId !== userAccountId && accountId !== photographerAccountId) {
+    throw new HttpError(
+      403,
+      'CHAT_ROOM_ACCESS_DENIED',
+      '해당 문의에 접근할 권한이 없습니다.',
+    );
+  }
+
+  const cursorMessage = cursor
+    ? await prisma.chat_messages.findUnique({
+        where: {
+          id: cursor,
+          chat_room_id: chatRoomId,
+        },
+      })
+    : null;
+
+  if (cursor && !cursorMessage) {
+    throw new HttpError(400, 'INVALID_CURSOR', '잘못된 선택자입니다.');
+  }
+
+  const where: Prisma.chat_messagesWhereInput = {
+    chat_room_id: chatRoomId,
+  };
+
+  if (cursorMessage) {
+    where.OR = [
+      {
+        created_at: { lt: cursorMessage.created_at },
+      },
+      {
+        created_at: cursorMessage.created_at,
+        id: { lt: cursorMessage.id },
+      },
+    ];
+  }
+
+  const messages = await prisma.chat_messages.findMany({
+    where,
+    orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+  });
+
+  const hasNext = messages.length > limit;
+  const pageMessages = messages.slice(0, limit);
+
+  const items = pageMessages.reverse().map((message) => ({
+    id: message.id,
+    chatRoomId: message.chat_room_id,
+    recipientAccountId: message.recipient_account_id,
+    messageType: message.message_type,
+    content: message.content,
+    payload: message.payload,
+    quote: null,
+    reservation: null,
+    readAt: message.read_at,
+    createdAt: message.created_at,
+  }));
+
+  const nextCursor = hasNext ? (items[0]?.id ?? null) : null;
+
+  return {
+    items,
+    nextCursor,
+    hasNext,
+  };
+}
