@@ -8,7 +8,7 @@ import { getFeedPhotos } from '../api';
 import { getFeedSeed } from '../seed';
 import type { FeedPhotosParams } from '../types';
 
-const FEED_LIMIT = 5;
+const FEED_LIMIT = 20;
 
 //훅이 받는 '탐색 조건' 타입
 export type FeedFilters = Omit<FeedPhotosParams, 'seed' | 'cursor' | 'limit'>;
