@@ -18,6 +18,7 @@ import {
   deleteMyReview,
   createReply,
   updateReply,
+  deleteReply,
 } from './reviews.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -81,4 +82,10 @@ export async function updateReplyHandler(req: Request, res: Response) {
   res.json(
     await updateReply(await requirePhotographerId(req), reviewId, input),
   );
+}
+
+export async function deleteReplyHandler(req: Request, res: Response) {
+  const { reviewId } = reviewParamsSchema.parse(req.params);
+  await deleteReply(await requirePhotographerId(req), reviewId);
+  res.status(204).end();
 }

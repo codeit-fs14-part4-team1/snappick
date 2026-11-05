@@ -288,19 +288,30 @@ export async function createReply(
   }
 
   try {
-    const reply = await prisma.review_replies.create({
+    const select = {
+      id: true,
+      review_id: true,
+      comment: true,
+      created_at: true,
+      updated_at: true,
+    };
+
+    const [restored] = await prisma.review_replies.updateManyAndReturn({
+      where: { review_id: reviewId, deleted_at: { not: null } },
       data: {
-        review_id: reviewId,
         comment: input.comment,
+        deleted_at: null,
+        created_at: new Date(),
       },
-      select: {
-        id: true,
-        review_id: true,
-        comment: true,
-        created_at: true,
-        updated_at: true,
-      },
+      select,
     });
+
+    const reply =
+      restored ??
+      (await prisma.review_replies.create({
+        data: { review_id: reviewId, comment: input.comment },
+        select,
+      }));
 
     return {
       replyId: reply.id,
@@ -317,7 +328,7 @@ export async function createReply(
       throw new HttpError(
         409,
         'REPLY_ALREADY_EXISTS',
-        '이미 답글을 작성한 리뷰에요.',
+        '이미 답글을 작성한 리뷰예요.',
       );
     }
     throw error;
@@ -361,4 +372,18 @@ export async function updateReply(
     createdAt: reply.created_at,
     updatedAt: reply.updated_at,
   };
+}
+
+export async function deleteReply(photographerId: string, reviewId: string) {
+  const { count } = await prisma.review_replies.updateMany({
+    where: {
+      review_id: reviewId,
+      deleted_at: null,
+      review: { photographer_id: photographerId, deleted_at: null },
+    },
+    data: { deleted_at: new Date() },
+  });
+  if (count === 0) {
+    throw new HttpError(404, 'REPLY_NOT_FOUND', '답글을 찾을 수 없어요.');
+  }
 }
