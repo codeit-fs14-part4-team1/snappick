@@ -12,7 +12,7 @@
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 240px;
   column-gap: 40px;
-  row-gap: 20px;
+  row-gap: 22px;
   align-items: start;
 }
 
@@ -51,13 +51,13 @@
   align-self: start;
 }
 
-/* 저장 및 공유 아이콘을 문의하기 버튼 아래 오른쪽에 배치 */
+/* 저장 및 공유 아이콘 버튼 배치 */
 .iconActions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 24px;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 /* 저장 및 공유 아이콘 버튼의 기본 스타일 */
@@ -85,8 +85,8 @@
 .categories {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 /* 촬영 분야 태그 디자인 */
@@ -110,7 +110,7 @@
 
 /* 경력 및 활동 지역 스타일 */
 .details {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: var(--color-text-secondary);
   font-size: 14px;
 }
@@ -147,8 +147,8 @@
 
 /* 작가 상세 소개 영역 */
 .introduction {
-  margin-top: 32px;
-  padding: 24px;
+  margin-top: 48px;
+  padding: 28px;
   border-radius: 12px;
   background: var(--color-bg-subtle);
 }

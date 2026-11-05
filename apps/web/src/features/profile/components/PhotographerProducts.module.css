@@ -1,0 +1,165 @@
+/* 촬영 상품 전체 영역 */
+.products {
+  width: 100%;
+  margin-top: 48px;
+}
+
+/* 촬영 상품 제목 */
+.title {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 데스크톱: 상품 카드를 3열로 배치 */
+.productList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 개별 촬영 상품 카드 */
+.productCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background-color: var(--color-bg-base);
+}
+
+/* 촬영 상품명 */
+.productName {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 상품 가격 및 하단 구분선 */
+.price {
+  margin: 0 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* 상품 상세 정보 목록 */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+/* 상세 정보 항목과 값을 양쪽에 배치 */
+.detail {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 상세 정보 항목명 */
+.detail dt {
+  color: var(--color-text-secondary, #777);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 상세 정보 값 */
+.detail dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: right;
+}
+
+/* 상품별 공통 안내사항 */
+.commonNotice {
+  margin: auto 0 0;
+  padding-top: 20px;
+  color: var(--color-text-secondary, #777);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 상품 목록 하단 가격 안내 문구 */
+.priceNotice {
+  margin: 20px 0 0;
+  color: var(--color-text-secondary, #777);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 등록된 상품이 없는 경우 안내 문구 표시 */
+.emptyState {
+  padding: 48px 0;
+  color: var(--color-text-secondary, #777);
+  text-align: center;
+}
+
+/* 태블릿: 상품 카드를 2열로 배치 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .productList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 모바일: 상품 카드를 가로 스크롤로 표시 */
+@media (max-width: 767px) {
+  .productList {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  /* 모바일 스크롤바 숨김 */
+  .productList::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 모바일 카드 너비 유지 */
+  .productCard {
+    flex: 0 0 280px;
+    max-width: calc(100vw - 64px);
+    padding: 16px;
+    scroll-snap-align: start;
+  }
+
+  /* 모바일 상품명 크기 조정 */
+  .productName {
+    font-size: 16px;
+  }
+
+  /* 모바일 가격 크기 조정 */
+  .price {
+    font-size: 20px;
+  }
+
+  /* 모바일 상세 정보 크기 조정 */
+  .detail dt,
+  .detail dd {
+    font-size: 12px;
+  }
+
+  /* 모바일 공통 안내사항 크기 조정 */
+  .commonNotice {
+    font-size: 12px;
+  }
+
+  /* 모바일 가격 안내 문구 크기 조정 */
+  .priceNotice {
+    font-size: 12px;
+  }
+}
