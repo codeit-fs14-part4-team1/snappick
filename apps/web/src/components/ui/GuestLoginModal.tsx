@@ -51,9 +51,9 @@ export default function GuestLoginModal({
         </Button>
 
         <p className={styles.signup}>
-          아직 회원이 아니신가요?
+          아직 회원이 아니신가요?{' '}
           <Link href="/signup" onClick={onClose} className={styles.signupLink}>
-            {''}회원가입
+            회원가입
           </Link>
         </p>
       </div>
