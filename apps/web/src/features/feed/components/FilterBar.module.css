@@ -2,13 +2,14 @@
 .bar {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   padding-top: 40px;
   margin-bottom: 16px;
 }
 
-/* 탭 아래 전체 폭 구분선 */
+/* 탭 아래 전체 폭 구분선, 검색창과 36px (gap 20 + 16) */
 .categories {
+  margin-top: 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -78,6 +79,10 @@
   .bar {
     gap: 16px;
     padding-top: 24px;
+  }
+
+  .categories {
+    margin-top: 0;
   }
 
   .count {

@@ -21,6 +21,7 @@ type FilterBarProps = {
   setFilters: (changes: FeedFilters) => void;
   totalCount: string | undefined;
   onReset: () => void;
+  resetCount: number;
 };
 
 //카테고리
@@ -61,14 +62,13 @@ export default function FilterBar({
   setFilters,
   totalCount,
   onReset,
+  resetCount,
 }: FilterBarProps) {
   //카테고리 변경
   function changeCategory(value: string) {
-    //누른값을 영어로 가져올거니께 거기서 같은 value를 찾아서 넣기
     const category = CATEGORIES.find((item) => item === value);
     setFilters({ category });
   }
-  //정렬은 나머지는 클릭에 따라서 변경
   function changeSort(value: string) {
     const sort = FEED_SORTS.find((item) => item === value);
     setFilters({ sort });
@@ -84,28 +84,22 @@ export default function FilterBar({
       ? current.filter((item) => item !== style)
       : [...current, style];
     setFilters({ styles: next });
-    //최종선택된값의배열
   }
-  //검색 온 키워드를 50자로 자르는거는 이미 3번이나 해줌.
-  //확정키워드시 url도 맞춰서 변경
   function submitKeyword(value: string) {
     setFilters({ keyword: value });
   }
   function applyRegions(values: string[]) {
-    //이미 최종 값이 왔으므로, 일치하는 지 확인을 하되 들어온값(values)의 기준X, 허용값(REGIONS)기준
     const regions = REGIONS.filter((region) => values.includes(region));
     setFilters({ regions });
   }
   return (
     <section className={styles.bar} aria-label="사진 탐색 조건">
-      {/* 검색 */}
       <SearchBar
-        key={filters.keyword ?? ''}
+        key={resetCount}
         initialKeyword={filters.keyword ?? ''}
         maxLength={KEYWORD_MAX_LENGTH}
         onSubmit={submitKeyword}
       />
-      {/* 카테고리 */}
       <Tabs
         className={styles.categories}
         items={CATEGORY_TABS}
@@ -115,7 +109,6 @@ export default function FilterBar({
       />
 
       <div className={styles.row}>
-        {/* 지역 */}
         <RegionFilter
           items={REGION_ITEMS}
           values={filters.regions ?? []}
@@ -145,11 +138,6 @@ export default function FilterBar({
           value={filters.sort ?? 'random'}
           onValueChange={changeSort}
         />
-        {/*  우선 SortSelect컴포넌트는 단일값만 받으니까 
-        value로 sort최종값을 내려주면됨. onValueChange도 changeSort 를 내려줄것.
-        isOpen은 컴포넌트 안에서 관리. changeSort와 함께 isOpen false처리.
-        클릭되어 있는 값은 다시 눌러도 호출하지 않음.  내부에는 드롭다운 메뉴라벨. 
-        메뉴라벨은 여기서 items로 내려준다. 닫는다는 일단 이거해놓고하기.*/}
       </div>
     </section>
   );

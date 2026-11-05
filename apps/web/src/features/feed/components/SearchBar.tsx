@@ -12,8 +12,13 @@ export default function SearchBar({
   maxLength,
   onSubmit,
 }: SearchBarProps) {
-  //입력 중인 값
   const [text, setText] = useState(initialKeyword);
+  const [prevKeyword, setPrevKeyword] = useState(initialKeyword);
+
+  if (initialKeyword !== prevKeyword) {
+    setPrevKeyword(initialKeyword);
+    setText(initialKeyword);
+  }
   //Enter(제출) 시 확정
   function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,6 +31,7 @@ export default function SearchBar({
       <span className={styles.icon} aria-hidden="true" />
       <input
         type="search"
+        name="keyword"
         className={styles.input}
         value={text}
         onChange={(event) => setText(event.target.value)}
