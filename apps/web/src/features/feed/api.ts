@@ -1,10 +1,17 @@
-//요청을 보내는 곳
+//'/photos'
+//'/photos/{photoId}/like'
 
 import { apiFetch } from '@/lib/api';
-import type { FeedPhotosParams, FeedPhotosResponse } from './types';
+import { authFetch } from '@/features/auth/authFetch';
+import type {
+  FeedPhotosParams,
+  FeedPhotosResponse,
+  PhotoLikeResponse,
+} from './types';
 
 export async function getFeedPhotos(
   params: FeedPhotosParams,
+  accessToken: string | null,
 ): Promise<FeedPhotosResponse> {
   const searchParams = new URLSearchParams();
 

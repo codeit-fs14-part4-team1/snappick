@@ -3,6 +3,7 @@
 //import 및 상수
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { getFeedPhotos } from '../api';
 import { getFeedSeed } from '../seed';
 import type { FeedPhotosParams } from '../types';
@@ -15,21 +16,27 @@ export type FeedFilters = Omit<FeedPhotosParams, 'seed' | 'cursor' | 'limit'>;
 //커서기반 탐색
 export function useExploreFeed(filters: FeedFilters) {
   const isRandom = (filters.sort ?? 'random') === 'random';
+  const { user, authStatus, accessToken } = useAuth();
 
   return useInfiniteQuery({
     queryKey: queryKeys.photos.feed({
-      viewerId: null,
+      viewerId: user ? user.id : null,
       ...filters,
       limit: FEED_LIMIT,
     }),
 
     queryFn: ({ pageParam }) =>
-      getFeedPhotos({
-        ...filters,
-        limit: FEED_LIMIT,
-        cursor: pageParam,
-        seed: isRandom ? getFeedSeed() : undefined,
-      }),
+      getFeedPhotos(
+        {
+          ...filters,
+          limit: FEED_LIMIT,
+          cursor: pageParam,
+          seed: isRandom ? getFeedSeed() : undefined,
+        },
+        accessToken,
+      ),
+
+    enabled: authStatus !== 'initializing',
 
     initialPageParam: undefined as string | undefined,
 
