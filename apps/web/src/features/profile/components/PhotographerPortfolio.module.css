@@ -1,0 +1,106 @@
+/* 포트폴리오 전체 영역 */
+.portfolio {
+  width: 100%;
+  margin-top: 48px;
+}
+
+/* 포트폴리오 제목 */
+.title {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 데스크톱: 사진 그룹을 4열로 배치 */
+.photoList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* 각 열의 사진을 세로로 배치 */
+.photoColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 사진 카드 스타일 */
+.photoItem {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  list-style: none;
+}
+
+/* 사진 원본 비율 유지 */
+.photoImage {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 이미지가 없는 경우 임시 배경 표시 */
+.placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-color: var(--color-bg-subtle);
+}
+
+/* 포트폴리오가 없는 경우 안내 문구 표시 */
+.emptyState {
+  padding: 48px 0;
+  color: var(--color-text-secondary, #777);
+  text-align: center;
+}
+
+/* 포트폴리오 더 보기 버튼 */
+.moreButton {
+  margin-top: 24px;
+}
+
+/* 태블릿: 사진을 3열로 재배치 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .photoList {
+    display: block;
+    columns: 3;
+    column-gap: 16px;
+  }
+
+  /* 기존 4개 그룹의 시각적 배치를 해제 */
+  .photoColumn {
+    display: contents;
+  }
+
+  /* 사진 카드가 열 사이에서 나뉘지 않도록 처리 */
+  .photoItem {
+    break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}
+
+/* 모바일: 사진을 2열로 재배치 */
+@media (max-width: 767px) {
+  .photoList {
+    display: block;
+    columns: 2;
+    column-gap: 12px;
+  }
+
+  /* 기존 4개 그룹의 시각적 배치를 해제 */
+  .photoColumn {
+    display: contents;
+  }
+
+  /* 모바일 사진 카드 간격 조정 */
+  .photoItem {
+    break-inside: avoid;
+    margin-bottom: 12px;
+  }
+}

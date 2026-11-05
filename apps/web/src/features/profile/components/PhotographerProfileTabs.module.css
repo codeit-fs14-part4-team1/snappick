@@ -1,0 +1,52 @@
+/* 작가 프로필 콘텐츠 탭 영역 */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  margin-top: 32px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 개별 탭 항목 */
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-bottom: 14px;
+  color: var(--color-text-secondary, #777);
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 현재 선택된 탭 강조 */
+.activeTab {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+/* 선택된 탭 아래 밑줄 표시 */
+.activeTab::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background-color: var(--color-primary);
+  content: '';
+}
+
+/* 모바일: 탭 글자 크기와 간격 조정 */
+@media (max-width: 767px) {
+  .tabs {
+    gap: 20px;
+    overflow-x: auto;
+    overflow-y: hidden; /* 세로 스크롤바 표시 방지 */
+  }
+
+  .tab {
+    padding-bottom: 12px;
+    font-size: 14px;
+  }
+}
