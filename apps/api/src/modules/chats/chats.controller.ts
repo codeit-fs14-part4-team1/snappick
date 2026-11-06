@@ -1,9 +1,15 @@
 import type { Request, Response } from 'express';
-import { createChat, getChats, sendMessage } from './chats.service.js';
+import {
+  createChat,
+  getChats,
+  getMessages,
+  sendMessage,
+} from './chats.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
 import {
   chatRoomParamsSchema,
   createChatSchema,
+  getMessagesQuerySchema,
   sendMessageSchema,
 } from './chats.schema.js';
 import { HttpError } from '../../utils/http-error.js';
@@ -103,4 +109,32 @@ export async function sendMessageHandler(req: Request, res: Response) {
     readAt: message.read_at,
     createdAt: message.created_at,
   });
+}
+
+export async function getMessagesHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const params = chatRoomParamsSchema.parse(req.params);
+  const queryResult = getMessagesQuerySchema.safeParse(req.query);
+
+  if (!queryResult.success) {
+    const isInvalidCursor = queryResult.error.issues.some(
+      (issue) => issue.path[0] === 'cursor',
+    );
+
+    if (isInvalidCursor) {
+      throw new HttpError(400, 'INVALID_CURSOR', '잘못된 선택자입니다.');
+    }
+
+    throw queryResult.error;
+  }
+  const query = queryResult.data;
+
+  const result = await getMessages(
+    auth.accountId,
+    params.chatRoomId,
+    query.limit,
+    query.cursor,
+  );
+
+  res.status(200).json(result);
 }
