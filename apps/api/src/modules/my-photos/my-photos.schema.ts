@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 const MESSAGE = '요청 값이 올바르지 않아요.';
 
+// 한 번에 수정·삭제할 수 있는 사진 수
+export const MAX_BATCH_PHOTOS = 20;
+const TOO_MANY = `한 번에 ${MAX_BATCH_PHOTOS}장까지 수정·삭제할 수 있어요.`;
+
 export const myPhotoParamsSchema = z.object({
   photoId: z.uuid(MESSAGE),
 });
@@ -28,8 +32,14 @@ const photoUpdateSchema = z
 export const photoBatchBodySchema = z
   .object(
     {
-      updates: z.array(photoUpdateSchema, MESSAGE).default([]),
-      deletePhotoIds: z.array(z.uuid(MESSAGE), MESSAGE).default([]),
+      updates: z
+        .array(photoUpdateSchema, MESSAGE)
+        .max(MAX_BATCH_PHOTOS, TOO_MANY)
+        .default([]),
+      deletePhotoIds: z
+        .array(z.uuid(MESSAGE), MESSAGE)
+        .max(MAX_BATCH_PHOTOS, TOO_MANY)
+        .default([]),
       representativePhotoId: z.uuid(MESSAGE).nullable().optional(),
     },
     MESSAGE,
