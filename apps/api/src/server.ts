@@ -3,6 +3,9 @@ import { app } from './app.js';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { verifyAccessToken } from './utils/tokens.js';
+import { chatRoomParamsSchema } from './modules/chats/chats.schema.js';
+import { checkChatRoomAccess } from './modules/chats/chats.service.js';
+import { HttpError } from './utils/http-error.js';
 
 const httpServer = createServer(app);
 
@@ -33,8 +36,49 @@ io.use((socket, next) => {
   next();
 });
 
+// io.on('connection', ...) 서버에 새 연결이 들어와서 누군가 연결되면 실행
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
+
+  // socket.on('이름', 함수)  는 이벤트가 오면 실행할 함수 등록
+  // 입장 요청을 보내면 실행
+  socket.on('chat:join', async (payload: unknown) => {
+    const result = chatRoomParamsSchema.safeParse(payload);
+
+    // socket.emit('이름', 데이터) 는 상대편에 이벤트 전송
+    if (!result.success) {
+      socket.emit('chat:error', {
+        code: 'VALIDATION_FAILED',
+        message: 'chatRoomId는 UUID여야 합니다.',
+      });
+      return;
+    }
+    const chatRoomId = result.data.chatRoomId;
+
+    try {
+      await checkChatRoomAccess(socket.data.auth.accountId, chatRoomId);
+
+      await socket.join(`chat:${chatRoomId}`);
+
+      socket.emit('chat:joined', {
+        chatRoomId,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) {
+        socket.emit('chat:error', {
+          code: error.code,
+          message: error.message,
+        });
+      } else {
+        console.error(error);
+
+        socket.emit('chat:error', {
+          code: 'INTERNAL_ERROR',
+          message: '채팅방 입장 중 오류가 발생했습니다.',
+        });
+      }
+    }
+  });
 });
 
 httpServer.listen(PORT, () => {
