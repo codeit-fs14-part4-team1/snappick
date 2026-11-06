@@ -1,0 +1,14 @@
+/* 추가 로딩·실패·종료 안내 (감지 대상이므로 내용이 없어도 크기를 유지) */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 1px;
+  padding: 32px 0;
+  color: var(--color-text-secondary);
+}
+
+.message p {
+  margin: 0;
+}
