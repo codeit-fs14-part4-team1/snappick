@@ -96,3 +96,50 @@ Authorization: Bearer {{token}}
 ### MY 픽: 저장한 작가 (일반 사용자 토큰)
 GET {{host}}/me/saved-photographers?limit=20
 Authorization: Bearer {{token}}
+
+### 업로드 URL 발급 (작가 토큰, 응답의 uploadUrl로 파일을 PUT)
+POST {{host}}/me/photos/upload-urls
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "policyAgreed": true,
+  "files": [
+    { "fileName": "WED-1-1.webp", "contentType": "image/webp", "fileSize": 177362 }
+  ]
+}
+
+### 업로드 URL 발급: 400 POLICY_NOT_AGREED
+POST {{host}}/me/photos/upload-urls
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "files": [
+    { "fileName": "WED-1-1.webp", "contentType": "image/webp", "fileSize": 177362 }
+  ]
+}
+
+### 파일 올리기 (위 응답의 uploadUrl 전체를 붙여 넣기, Content-Type은 발급 때와 같게, S3도 같은 방식)
+PUT 붙여넣기
+Content-Type: image/webp
+
+< ../web/public/mock/photos/WED-1-1.webp
+
+### 사진 등록 (파일 문제는 그 사진만 failed로 응답)
+POST {{host}}/me/photos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "uploadKey": "붙여넣기",
+      "categories": ["WEDDING"],
+      "styles": ["CINEMATIC"],
+      "keywords": ["서촌", "노을"],
+      "description": "서촌 돌담길 노을빛 웨딩 스냅"
+    }
+  ],
+  "representativeUploadKey": null
+}
