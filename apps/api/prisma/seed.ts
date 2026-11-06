@@ -30,6 +30,9 @@ const TABLES = [
   'photographer_saves',
 ] as const satisfies readonly (keyof MockData)[];
 
+// 예전 목데이터의 비밀번호 자리 (실제 해시가 아니라 로그인할 수 없음)
+const LEGACY_PASSWORD_HASH = 'mock-not-a-real-hash';
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error('DATABASE_URL이 설정되지 않았습니다.');
@@ -81,6 +84,24 @@ async function main() {
   TABLES.forEach((table, i) => {
     console.log(`${table}: ${counts[i]?.count ?? 0}건 추가`);
   });
+
+  // 예전 시드로 넣은 DB는 비밀번호가 임시 값이라 로그인할 수 없다. 임시 값인 계정만 바꾼다
+  const updated = await prisma.$transaction(
+    data.auth_providers.flatMap(({ id, password_hash }) =>
+      id && password_hash
+        ? [
+            prisma.auth_providers.updateMany({
+              where: { id, password_hash: LEGACY_PASSWORD_HASH },
+              data: { password_hash },
+            }),
+          ]
+        : [],
+    ),
+  );
+  const fixed = updated.reduce((sum, { count }) => sum + count, 0);
+  if (fixed > 0) {
+    console.log(`auth_providers: 임시 비밀번호 ${fixed}건 교체`);
+  }
 }
 
 main()
