@@ -14,7 +14,7 @@ export type ReviewsQuery = z.infer<typeof reviewsQuerySchema>;
 export const createReviewSchema = z.object({
   reservationId: z.uuid(),
   rating: z.number().int().min(1).max(5),
-  comment: z.string().trim().min(1).max(1000),
+  comment: z.string().trim().min(1).max(200),
 });
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
