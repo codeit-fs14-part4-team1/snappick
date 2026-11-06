@@ -64,3 +64,7 @@ terraform.rc
 
 # AWS public RDS CA certificate
 !/apps/api/certs/ap-southeast-2-bundle.pem
+
+# 로컬 업로드 저장소 (STORAGE_DRIVER=local)
+apps/web/public/uploads/
+apps/web/public/photos/

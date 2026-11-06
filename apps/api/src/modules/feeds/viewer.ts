@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { HttpError } from '../../utils/http-error.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
 import type { Viewer } from './feeds.service.js';
 
@@ -29,4 +30,15 @@ export async function resolveViewer(
     select: { id: true },
   });
   return { userId: null, photographerId: photographer?.id ?? null };
+}
+
+// requireAccountType('PHOTOGRAPHER') 다음에 쓰므로 작가 프로필이 있어야 한다
+export async function requirePhotographerId(
+  auth: AccessTokenPayload,
+): Promise<string> {
+  const { photographerId } = await resolveViewer(auth);
+  if (!photographerId) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+  return photographerId;
 }

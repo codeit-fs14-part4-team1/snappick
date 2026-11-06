@@ -297,7 +297,9 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
         storage_location: true,
         width: true,
         height: true,
-        photographer: { select: { id: true, nickname: true } },
+        photographer: {
+          select: { id: true, nickname: true, profile_image_url: true },
+        },
         _count: { select: { photoLike: true } },
       },
     }),
@@ -318,6 +320,9 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
               photographer: {
                 id: photo.photographer.id,
                 nickname: photo.photographer.nickname,
+                profileImageUrl: toImageUrl(
+                  photo.photographer.profile_image_url,
+                ),
               },
               likeCount: photo._count.photoLike,
               liked: liked.has(photo.id),
