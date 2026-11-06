@@ -1,0 +1,48 @@
+.surface {
+  width: 400px;
+  --modal-gap: 8px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 4px;
+  text-align: center;
+}
+
+.logo {
+  display: block;
+  height: auto;
+}
+
+.message {
+  margin: 12px 0 24px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.signup {
+  margin: 12px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.signupLink {
+  color: var(--color-text-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.signupLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.signupLink:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 3px;
+}

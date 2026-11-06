@@ -24,6 +24,10 @@ import cors from 'cors';
 import { usersRouter } from './modules/users/users.routes.js';
 import { photographersRouter } from './modules/photographers/photographers.routes.js';
 import { photographerProductsRouter } from './modules/products/products.routes.js';
+import {
+  photographerReviewsRouter,
+  myReviewsRouter,
+} from './modules/reviews/reviews.routes.js';
 
 export const app: Express = express();
 
@@ -68,6 +72,8 @@ app.use('/photos', photoLikesRouter);
 app.use('/photographers', photographerSavesRouter);
 app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
+app.use('/photographers', photographerReviewsRouter);
+app.use('/me', myReviewsRouter);
 app.use('/me/photos', myPhotoUploadsRouter);
 if (storageDriver === 'local') {
   app.use(LOCAL_UPLOAD_PATH, localUploadRouter);
