@@ -126,7 +126,7 @@ Content-Type: image/webp
 
 < ../web/public/mock/photos/WED-1-1.webp
 
-### 사진 등록 (처음 등록하는 작가는 3장 이상)
+### 사진 등록 (파일 문제는 그 사진만 failed로 응답)
 POST {{host}}/me/photos
 Authorization: Bearer {{token}}
 Content-Type: application/json

@@ -25,6 +25,8 @@ const STYLE_VALUES = new Set<string>(Object.values(Style));
 const MAX_STYLES = 3;
 const MAX_KEYWORDS = 5;
 const MAX_KEYWORD_LENGTH = 10;
+// PF-07 한 줄 설명
+const MAX_DESCRIPTION_LENGTH = 50;
 
 function assertNoDuplicates(values: string[]): void {
   if (new Set(values).size !== values.length) {
@@ -92,6 +94,14 @@ export function parseKeywords(values: string[]): string[] {
 
 export function parseDescription(value: string | null | undefined) {
   const description = value?.trim() ?? '';
+  // 이모지 같은 글자도 한 글자로 센다
+  if ([...description].length > MAX_DESCRIPTION_LENGTH) {
+    throw new HttpError(
+      400,
+      'INVALID_DESCRIPTION',
+      `한 줄 설명은 ${MAX_DESCRIPTION_LENGTH}자 이내로 입력해 주세요.`,
+    );
+  }
   return description === '' ? null : description;
 }
 

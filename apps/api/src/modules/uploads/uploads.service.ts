@@ -120,6 +120,11 @@ async function storePhoto(item: NewPhoto): Promise<StoredImage> {
   return image;
 }
 
+// 사진 한 장만 실패로 처리하는 파일 오류
+const FILE_ERRORS = new Set(['UPLOAD_NOT_FOUND', 'INVALID_FILE']);
+
+type FailedPhoto = { uploadKey: string; code: string; message: string };
+
 type RegisteredPhoto = {
   id: string;
   storage_location: string;
@@ -131,7 +136,8 @@ type RegisteredPhoto = {
  * 사진 등록 (POST /me/photos)
  * 저장소에 올라온 파일을 WebP로 바꿔 저장하고 photos 행을 만든다
  * 이미 등록한 업로드 키는 기존 사진을 돌려준다(멱등)
- * 하나라도 실패하면 아무것도 등록하지 않는다
+ * 파일 문제(없는 파일, 이미지가 아님)는 그 사진만 failed로 돌려주고 나머지는 등록한다 (PF-04)
+ * 입력값 오류나 저장 오류는 아무것도 등록하지 않는다
  */
 export async function registerPhotos(
   photographerId: string,
@@ -186,9 +192,21 @@ async function saveNewPhotos(
   const newItems = items.filter((item) => !registered.has(item.photoKey));
 
   const stored: { item: NewPhoto; image: StoredImage }[] = [];
+  const failed: FailedPhoto[] = [];
   try {
     for (const item of newItems) {
-      stored.push({ item, image: await storePhoto(item) });
+      try {
+        stored.push({ item, image: await storePhoto(item) });
+      } catch (error) {
+        if (!(error instanceof HttpError) || !FILE_ERRORS.has(error.code)) {
+          throw error;
+        }
+        failed.push({
+          uploadKey: item.uploadKey,
+          code: error.code,
+          message: error.message,
+        });
+      }
     }
 
     await prisma.$transaction(async (tx) => {
@@ -211,7 +229,7 @@ async function saveNewPhotos(
         registered.set(item.photoKey, photo);
       }
 
-      // PF-12: 작가당 1장, 새로 지정하면 기존 대표를 바꾼다
+      // PF-12: 작가당 1장, 새로 지정하면 기존 대표를 바꾼다. 대표로 고른 사진이 실패하면 바꾸지 않는다
       const representative = items.find(
         (item) => item.uploadKey === representativeKey,
       );
@@ -241,16 +259,21 @@ async function saveNewPhotos(
   ]);
 
   return {
-    items: items.map((item) => {
-      const photo = registered.get(item.photoKey) as RegisteredPhoto;
-      return {
-        uploadKey: item.uploadKey,
-        photoId: photo.id,
-        imageUrl: toImageUrl(photo.storage_location),
-        width: photo.width,
-        height: photo.height,
-      };
+    items: items.flatMap((item) => {
+      const photo = registered.get(item.photoKey);
+      return photo
+        ? [
+            {
+              uploadKey: item.uploadKey,
+              photoId: photo.id,
+              imageUrl: toImageUrl(photo.storage_location),
+              width: photo.width,
+              height: photo.height,
+            },
+          ]
+        : [];
     }),
+    failed,
     representativePhotoId: representative?.photo_id ?? null,
     photoCount,
   };
