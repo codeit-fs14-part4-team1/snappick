@@ -16,3 +16,8 @@ export const chatRoomParamsSchema = z.object({
     error: 'chatRoomId는 UUID여야 합니다',
   }),
 });
+
+export const getMessagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+  cursor: z.uuid().optional(),
+});
