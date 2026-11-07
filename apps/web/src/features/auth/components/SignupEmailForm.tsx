@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -80,6 +81,7 @@ function getPasswordConfirmError(
 
 export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   const { login } = useAuth();
+  const router = useRouter();
 
   const emailId = useId();
   const passwordId = useId();
@@ -175,6 +177,9 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
 
       // 사용자 정보 조회까지 성공하면 회원가입 완료로 처리함
       setSignupStatus('success');
+
+      // 회원가입 완료 후 메인 페이지로 이동함
+      router.replace('/');
     } catch (error) {
       if (signupApiSucceeded) {
         // 가입 후 인증 상태 확인에 실패한 경우

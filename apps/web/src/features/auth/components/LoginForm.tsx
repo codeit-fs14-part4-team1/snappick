@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -32,6 +33,7 @@ function getEmailError(value: string): string {
 
 export default function LoginForm() {
   const { login } = useAuth();
+  const router = useRouter();
 
   const emailId = useId();
   const passwordId = useId();
@@ -98,6 +100,9 @@ export default function LoginForm() {
 
       // 사용자 정보 조회까지 성공하면 로그인 완료로 처리함
       setLoginStatus('success');
+
+      // 로그인 완료 후 메인 페이지로 이동함
+      router.replace('/');
     } catch (error) {
       // 로그인 API의 인증 정보 오류만 invalid로 처리함
       if (
