@@ -10,22 +10,27 @@ const PHOTOGRAPHER_PHOTOS_LIMIT = 20;
 //excludePhotoId: 상세 모달에 띄운 사진 1장 제외, 프로필에서는 생략
 export function usePhotographerPhotos(
   photographerId: string | undefined,
-  excludePhotoId?: string,
+  options: { excludePhotoId?: string; limit?: number } = {},
 ) {
   const { user, authStatus, fetchWithAuth } = useAuth();
+  const { excludePhotoId, limit = PHOTOGRAPHER_PHOTOS_LIMIT } = options;
 
   return useInfiniteQuery({
     queryKey: queryKeys.photos.portfolio(
       photographerId ?? '',
       user ? user.id : null,
-      PHOTOGRAPHER_PHOTOS_LIMIT,
+      limit,
       excludePhotoId,
     ),
 
     queryFn: ({ pageParam }) =>
       getPhotographerPhotos(
         photographerId!,
-        { cursor: pageParam, limit: PHOTOGRAPHER_PHOTOS_LIMIT, excludePhotoId },
+        {
+          cursor: pageParam,
+          limit,
+          excludePhotoId,
+        },
         fetchWithAuth,
       ),
     //인증 초기화가 끝났고 id가 truthy한 값일 때
