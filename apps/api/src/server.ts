@@ -9,11 +9,16 @@ import { HttpError } from './utils/http-error.js';
 
 const httpServer = createServer(app);
 
+// socket.io 서버를 만듬. io는 접속한 소켓과 room을 관리.
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.ORIGIN || 'http://localhost:3000',
   },
 });
+
+// Express 앱에 'io'라는 이름으로 socket.io 객체를 등록
+// 'io'는 이름이고, io는 실제 객체
+app.set('io', io);
 
 const PORT = Number(process.env.PORT) || 4000;
 
