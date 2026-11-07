@@ -1,3 +1,5 @@
+'use client';
+
 //InfiniteScrollTrigger: 목록 끝에 닿으면 다음 페이지 요청
 import { useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
