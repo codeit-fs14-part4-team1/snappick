@@ -3,27 +3,33 @@ import { useSyncExternalStore } from 'react';
 const MOBILE_QUERY = '(max-width: 767px)';
 const TABLET_QUERY = '(max-width: 1199px)';
 
-function getSnapshot(): number {
-  if (window.matchMedia(MOBILE_QUERY).matches) return 2;
-  if (window.matchMedia(TABLET_QUERY).matches) return 3;
-  return 5;
+const BREAKPOINTS = [
+  { query: MOBILE_QUERY, columns: 2 },
+  { query: TABLET_QUERY, columns: 3 },
+];
+
+function getColumnCount(desktopColumns: number): number {
+  const matched = BREAKPOINTS.find(
+    ({ query }) => window.matchMedia(query).matches,
+  );
+  return matched ? matched.columns : desktopColumns;
 }
 
 function getServerSnapshot(): null {
   return null;
 }
 
+//열 수와 무관 → 훅 바깥에 두어 렌더마다 재구독되지 않게
 function subscribe(onChange: () => void) {
-  const mobile = window.matchMedia(MOBILE_QUERY);
-  const tablet = window.matchMedia(TABLET_QUERY);
-  mobile.addEventListener('change', onChange);
-  tablet.addEventListener('change', onChange);
+  const lists = BREAKPOINTS.map(({ query }) => window.matchMedia(query));
+  lists.forEach((list) => list.addEventListener('change', onChange));
   return () => {
-    mobile.removeEventListener('change', onChange);
-    tablet.removeEventListener('change', onChange);
+    lists.forEach((list) => list.removeEventListener('change', onChange));
   };
 }
 
-export function useColumnCount() {
+//브라우저의 미디어 쿼리 상태 sync
+export function useColumnCount(desktopColumns: number) {
+  const getSnapshot = () => getColumnCount(desktopColumns);
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
