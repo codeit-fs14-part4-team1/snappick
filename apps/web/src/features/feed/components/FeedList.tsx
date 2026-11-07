@@ -5,7 +5,7 @@ import type { FeedPhoto } from '../types';
 import styles from './FeedList.module.css';
 import InfiniteScrollTrigger, {
   type InfiniteScrollTriggerProps,
-} from './InfiniteScrollTrigger';
+} from '@/components/ui/InfiniteScrollTrigger';
 import FeedMasonry from './FeedMasonry';
 
 //FeedList가 받는 Props

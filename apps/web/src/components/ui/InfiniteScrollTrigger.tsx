@@ -38,7 +38,7 @@ export default function InfiniteScrollTrigger({
   if (isError) {
     return (
       <div role="alert" className={styles.message}>
-        <p>사진을 더 불러오지 못했어요</p>
+        <p>내용을 불러오지 못했어요</p>
         <Button variant="outline" onClick={() => onLoadMore()}>
           다시 시도
         </Button>
@@ -47,8 +47,8 @@ export default function InfiniteScrollTrigger({
   }
   return (
     <div ref={targetRef} className={styles.message}>
-      {isFetchingNextPage && <p role="status">사진을 더 불러오는 중이에요</p>}
-      {!hasNextPage && <p role="status">사진을 모두 불러왔어요</p>}
+      {isFetchingNextPage && <p role="status">내용을 더 불러오는 중이에요</p>}
+      {!hasNextPage && <p role="status">내용을 모두 불러왔어요</p>}
     </div>
   );
 }
