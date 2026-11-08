@@ -1,0 +1,20 @@
+.surface {
+  --modal-padding: 56px 48px;
+}
+/* 상세 로딩·오류 안내 */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 64px 0;
+  text-align: center;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.message p {
+  margin: 0;
+}

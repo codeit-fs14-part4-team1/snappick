@@ -1,0 +1,188 @@
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+  gap: 48px;
+  width: min(1200px, calc(100vw - 224px));
+}
+.imageArea {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 160px);
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* 카테고리 배지 */
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.category {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.description {
+  color: var(--color-text-primary);
+  margin: 16px 0 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.33;
+  overflow-wrap: anywhere;
+}
+
+/* 스타일 · 키워드 */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.styleChip,
+.keywordChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.styleChip {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.keywordChip {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* 작가 정보 */
+.photographer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.photographer:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.avatar,
+.avatarPlaceholder {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-border);
+  color: var(--color-text-tertiary);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.photographerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nickname {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rating {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.arrow {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: 22px;
+}
+
+.photographer:hover .nickname {
+  text-decoration: underline;
+}
+
+@media (max-width: 1199px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+  }
+  .image {
+    object-fit: contain;
+    width: auto;
+    max-width: 100%;
+  }
+}
