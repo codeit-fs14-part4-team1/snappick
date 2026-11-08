@@ -5,6 +5,7 @@ import styles from './PhotoDetailModal.module.css';
 import PhotoDetailContent from './PhotoDetailContent';
 import PhotographerOtherPhotos from './PhotographerOtherPhotos';
 import PhotoDetailSkeleton from './PhotoDetailSkeleton';
+import { useEffect, useRef } from 'react';
 
 type PhotoDetailModalProps = {
   photoId: string | null;
@@ -18,6 +19,11 @@ export default function PhotoDetailModal({
   onSelectPhoto,
 }: PhotoDetailModalProps) {
   const { data, status, refetch } = usePhotoDetail(photoId);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ block: 'start' });
+  }, [photoId]);
 
   return (
     <Modal
@@ -28,6 +34,7 @@ export default function PhotoDetailModal({
       closeButtonPosition="outside"
       className={styles.surface}
     >
+      <div ref={topRef} />
       {status === 'pending' && <PhotoDetailSkeleton />}
       {status === 'error' && (
         <div role="alert" className={styles.message}>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CategoryLabel, StyleLabel } from '@/constants/enum-labels';
 import type { PhotoDetail } from '../types';
 import styles from './PhotoDetailContent.module.css';
+import type { CSSProperties } from 'react';
 
 type PhotoDetailContentProps = {
   photo: PhotoDetail;
@@ -21,8 +22,11 @@ export default function PhotoDetailContent({ photo }: PhotoDetailContentProps) {
           alt={`${photographer.nickname}의 사진`}
           width={photo.width}
           height={photo.height}
-          sizes="(max-width: 767px) 100vw, 50vw"
+          sizes="(max-width: 1199px) 100vw, 50vw"
           className={styles.image}
+          style={
+            { '--photo-ratio': photo.width / photo.height } as CSSProperties
+          }
         />
       </div>
 

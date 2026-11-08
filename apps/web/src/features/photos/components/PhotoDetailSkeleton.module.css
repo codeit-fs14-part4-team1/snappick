@@ -19,6 +19,14 @@
   height: 28px;
 }
 
+/* 태블릿 이하: 실제 사진과 같은 계산식, 비율은 세로형 기본값 4:5 */
+@media (max-width: 1199px) {
+  .photo {
+    width: min(100%, calc(70dvh * 4 / 5));
+    max-height: none;
+  }
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.5;
