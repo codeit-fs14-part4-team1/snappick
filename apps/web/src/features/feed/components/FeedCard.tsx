@@ -6,7 +6,7 @@ import styles from './FeedCard.module.css';
 import HeartIcon from '@/components/ui/HeartIcon';
 import { getViewerKind } from '../viewerKind';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { usePhotoLike } from '../hooks/usePhotoLike';
+import { usePhotoLike } from '@/features/photos/hooks/usePhotoLike';
 import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
 
 type FeedCardProps = {

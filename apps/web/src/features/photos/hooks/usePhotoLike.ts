@@ -3,8 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { updatePhotoLike } from '../api';
-import type { PhotoLikeResponse } from '../types';
+import { updatePhotoLike } from '@/features/feed/api';
+import type { PhotoLikeResponse } from '@/features/feed/types';
 import { useToast } from '@/components/ui/ToastProvider';
 import { invalidateLikedPhotos, updatePhotoLikeCache } from '../likeCache';
 
