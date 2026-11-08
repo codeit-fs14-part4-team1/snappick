@@ -23,12 +23,14 @@ export async function createReservation(
     where: { id: input.paymentId },
     select: {
       user_id: true,
-      photographer_id: true,
       status: true,
+      pg_provider: true,
+      photographer: { select: { id: true, nickname: true } },
       reservation: { select: { id: true } },
       quote: {
         select: {
           id: true,
+          product_name: true,
           shoot_at: true,
           location: true,
           price: true,
@@ -67,7 +69,7 @@ export async function createReservation(
     );
   }
 
-  if (!payment.photographer_id) {
+  if (!payment.photographer) {
     throw new HttpError(
       409,
       'PHOTOGRAPHER_UNAVAILABLE',
@@ -81,7 +83,7 @@ export async function createReservation(
         payment_id: input.paymentId,
         quote_id: payment.quote.id,
         user_id: userId,
-        photographer_id: payment.photographer_id,
+        photographer_id: payment.photographer.id,
         status: 'CONFIRMED',
         shoot_at: payment.quote.shoot_at,
         location: payment.quote.location,
@@ -89,27 +91,20 @@ export async function createReservation(
       },
       select: {
         id: true,
-        payment_id: true,
-        quote_id: true,
-        photographer_id: true,
-        status: true,
         shoot_at: true,
         location: true,
         total_amount: true,
-        created_at: true,
       },
     });
 
     return {
       reservationId: reservation.id,
-      paymentId: reservation.payment_id,
-      quoteId: reservation.quote_id,
-      photographerId: reservation.photographer_id,
-      status: reservation.status,
+      photographerNickname: payment.photographer.nickname,
+      productName: payment.quote.product_name,
       shootAt: reservation.shoot_at,
       location: reservation.location,
       totalAmount: reservation.total_amount,
-      createdAt: reservation.created_at,
+      paymentProvider: payment.pg_provider,
     };
   } catch (error) {
     // 동시 요청으로 위 확인을 통과한 뒤 다른 요청이 먼저 생성한 경우
