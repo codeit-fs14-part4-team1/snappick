@@ -7,3 +7,9 @@ export const createReservationSchema = z.object({
 });
 
 export type CreateReservationInput = z.infer<typeof createReservationSchema>;
+
+export const reservationParamsSchema = z.object({
+  reservationId: z.uuid({
+    error: 'reservationId는 올바른 UUID여야 합니다.',
+  }),
+});

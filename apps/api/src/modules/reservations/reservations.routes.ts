@@ -3,7 +3,10 @@ import {
   authenticate,
   requireAccountType,
 } from '../../middlewares/authenticate.js';
-import { createReservationHandler } from './reservations.controller.js';
+import {
+  createReservationHandler,
+  getReservationDetailHandler,
+} from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
 
@@ -12,4 +15,10 @@ myReservationsRouter.post(
   authenticate,
   requireAccountType('USER'),
   createReservationHandler,
+);
+
+myReservationsRouter.get(
+  '/reservations/:reservationId',
+  authenticate,
+  getReservationDetailHandler,
 );
