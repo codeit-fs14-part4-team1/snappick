@@ -4,48 +4,51 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { updatePhotoLike } from '../api';
-import { updateFeedPhoto } from '../likeCache';
-import type { FeedPhoto, PhotoLikeResponse } from '../types';
-import { queryKeys } from '@/lib/queryKeys';
+import type { PhotoLikeResponse } from '../types';
 import { useToast } from '@/components/ui/ToastProvider';
+import { invalidateLikedPhotos, updatePhotoLikeCache } from '../likeCache';
 
+type UsePhotoLikeParams = { photoId: string; liked: boolean };
 const LIKE_DEBOUNCE_MS = 300;
 
-export function usePhotoLike(photo: FeedPhoto) {
+export function usePhotoLike({ photoId, liked }: UsePhotoLikeParams) {
   const queryClient = useQueryClient();
-  const { accessToken } = useAuth();
+  const { user, accessToken } = useAuth();
   const { showToast } = useToast();
 
   //화면에 쓰지 않는 요청 제어용 기록
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
-  const latestIntentRef = useRef(photo.liked); // 사용자의 최신 의도
-  const confirmedRef = useRef(photo.liked); // 서버가 마지막으로 확정한 값
+  const latestIntentRef = useRef(liked); // 사용자의 최신 의도
+  const confirmedRef = useRef(liked); // 서버가 마지막으로 확정한 값
 
   //요청에 대한 처리 담당
   const { mutate } = useMutation({
     mutationFn: async (nextLiked: boolean): Promise<PhotoLikeResponse> => {
       if (!accessToken) throw new Error('토큰이 없습니다.');
-      return await updatePhotoLike(photo.photoId, nextLiked, accessToken);
+      return await updatePhotoLike(photoId, nextLiked, accessToken);
     },
     onSuccess: (result) => {
       confirmedRef.current = result.liked;
       if (latestIntentRef.current === result.liked)
-        updateFeedPhoto(queryClient, result.photoId, (p) => ({
-          ...p,
-          liked: result.liked,
-          likeCount: result.likeCount,
-        }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.photos.likedAll() });
+        updatePhotoLikeCache(
+          queryClient,
+          result.photoId,
+          user ? user.id : null,
+          () => ({
+            liked: result.liked,
+            likeCount: result.likeCount,
+          }),
+        );
+      invalidateLikedPhotos(queryClient);
     },
     onError: () => {
       //확정 상태로 복원
       latestIntentRef.current = confirmedRef.current;
-      updateFeedPhoto(queryClient, photo.photoId, (p) =>
+      updatePhotoLikeCache(queryClient, photoId, user ? user.id : null, (p) =>
         p.liked === confirmedRef.current
           ? p
           : {
-              ...p,
               liked: confirmedRef.current,
               likeCount: p.likeCount + (confirmedRef.current ? 1 : -1),
             },
@@ -71,8 +74,7 @@ export function usePhotoLike(photo: FeedPhoto) {
     const next = !latestIntentRef.current;
     latestIntentRef.current = next;
     //임시값으로 캐시변경
-    updateFeedPhoto(queryClient, photo.photoId, (p) => ({
-      ...p,
+    updatePhotoLikeCache(queryClient, photoId, user ? user.id : null, (p) => ({
       liked: next,
       likeCount: p.likeCount + (next ? 1 : -1),
     }));
@@ -83,12 +85,12 @@ export function usePhotoLike(photo: FeedPhoto) {
       flush();
     }, LIKE_DEBOUNCE_MS);
   }
-  //외부에서 바뀐 photo.liked 최신화
+  //외부에서 바뀐 liked 최신화
   useEffect(() => {
     if (inFlightRef.current || timerRef.current !== null) return;
-    latestIntentRef.current = photo.liked;
-    confirmedRef.current = photo.liked;
-  }, [photo.liked]);
+    latestIntentRef.current = liked;
+    confirmedRef.current = liked;
+  }, [liked]);
 
   useEffect(() => {
     return () => {
