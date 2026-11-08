@@ -1,18 +1,41 @@
-//사진 상세 표시 전용: 조회·상태 분기는 PhotoDetailModal, 여기는 받은 photo를 그리기만
+//사진 상세 내용: 조회·상태 분기는 PhotoDetailModal, 여기는 받은 photo 표시 + 좋아요
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { CategoryLabel, StyleLabel } from '@/constants/enum-labels';
 import type { PhotoDetail } from '../types';
-import styles from './PhotoDetailContent.module.css';
 import type { CSSProperties } from 'react';
+import styles from './PhotoDetailContent.module.css';
+import HeartIcon from '@/components/ui/HeartIcon';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
+import { usePhotoLike } from '../hooks/usePhotoLike';
+import { getViewerKind } from '@/features/feed/viewerKind';
+import PhotoShareButton from './PhotoShareButton';
 
 type PhotoDetailContentProps = {
   photo: PhotoDetail;
+  getShareUrl?: (photoId: string) => string;
 };
 
-export default function PhotoDetailContent({ photo }: PhotoDetailContentProps) {
+export default function PhotoDetailContent({
+  photo,
+  getShareUrl,
+}: PhotoDetailContentProps) {
   const { photographer } = photo;
+  const { authStatus, user } = useAuth();
+  const { openGuestLoginModal } = useGuestLoginModal();
+  const { toggleLike } = usePhotoLike(photo);
+  const viewerKind = getViewerKind(authStatus, user);
+
+  function handleLikeClick() {
+    if (viewerKind === 'pending') return;
+    if (viewerKind === 'guest') {
+      openGuestLoginModal();
+      return;
+    }
+    if (viewerKind === 'user') toggleLike();
+  }
 
   return (
     <div className={styles.content}>
@@ -68,7 +91,38 @@ export default function PhotoDetailContent({ photo }: PhotoDetailContentProps) {
               </ul>
             </div>
           )}
-          {/* 좋아요 · 공유: #127에서 (지금은 자리만) */}
+          {/* 좋아요: 정책은 FeedCard와 같음 (작가는 읽기 전용, 비회원은 로그인 안내) */}
+          <div className={styles.actions}>
+            {viewerKind === 'photographer' ? (
+              <span
+                className={styles.like}
+                role="img"
+                aria-label={`좋아요 ${photo.likeCount}개`}
+              >
+                <HeartIcon filled className={styles.heart} />
+                <span>{photo.likeCount}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className={styles.like}
+                aria-pressed={viewerKind === 'user' ? photo.liked : undefined}
+                aria-disabled={viewerKind === 'pending' ? true : undefined}
+                aria-label={`좋아요 ${photo.likeCount}개`}
+                onClick={handleLikeClick}
+              >
+                <HeartIcon filled={photo.liked} className={styles.heart} />
+                <span>{photo.likeCount}</span>
+              </button>
+            )}
+            {getShareUrl && (
+              <PhotoShareButton
+                photoId={photo.photoId}
+                getShareUrl={getShareUrl}
+                className={styles.share}
+              />
+            )}
+          </div>
         </div>
         <Link
           href={`/photographers/${photographer.id}`}
