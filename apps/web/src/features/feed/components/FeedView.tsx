@@ -6,8 +6,14 @@ import { useExploreFeed } from '../hooks/useExploreFeed';
 import FeedList from './FeedList';
 import FilterBar from './FilterBar';
 import { useState } from 'react';
+import PhotoDetailModal from '@/features/photos/components/PhotoDetailModal';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export default function FeedView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const photoId = searchParams.get('photoId');
   const [resetCount, setResetCount] = useState(0);
   const { filters, setFilters, resetAll } = useExploreParams();
   const {
@@ -35,6 +41,19 @@ export default function FeedView() {
     resetAll();
   }
 
+  //null : 모달이 닫힘
+  function pushPhotoId(next: string | null) {
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('photoId', next);
+    else params.delete('photoId');
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }
+  const openPhoto = (id: string) => pushPhotoId(id);
+  const closePhoto = () => pushPhotoId(null);
+
   return (
     <>
       <FilterBar
@@ -55,6 +74,12 @@ export default function FeedView() {
           isError: isFetchNextPageError,
           onLoadMore: fetchNextPage,
         }}
+        onOpenPhoto={openPhoto}
+      />
+      <PhotoDetailModal
+        photoId={photoId}
+        onClose={closePhoto}
+        onSelectPhoto={openPhoto}
       />
     </>
   );
