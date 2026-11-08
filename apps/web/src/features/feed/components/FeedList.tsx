@@ -5,8 +5,9 @@ import type { FeedPhoto } from '../types';
 import styles from './FeedList.module.css';
 import InfiniteScrollTrigger, {
   type InfiniteScrollTriggerProps,
-} from './InfiniteScrollTrigger';
-import FeedMasonry from './FeedMasonry';
+} from '@/components/ui/InfiniteScrollTrigger';
+import Masonry from '@/components/ui/Masonry';
+import FeedCard from './FeedCard';
 
 //FeedList가 받는 Props
 type FeedListProps = {
@@ -60,7 +61,14 @@ export default function FeedList({
 
   return (
     <>
-      <FeedMasonry photos={photos} />
+      <Masonry
+        items={photos}
+        desktopColumns={5}
+        gap={{ desktop: 16, mobile: 8 }}
+        ariaLabel="사진 목록"
+        getKey={(photo) => photo.photoId}
+        renderItem={(photo) => <FeedCard photo={photo} />}
+      />
       <InfiniteScrollTrigger {...pagination} />
     </>
   );
