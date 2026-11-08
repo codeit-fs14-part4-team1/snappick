@@ -80,6 +80,7 @@ export default function FeedView() {
         photoId={photoId}
         onClose={closePhoto}
         onSelectPhoto={openPhoto}
+        getShareUrl={(id) => `${window.location.origin}/?photoId=${id}`}
       />
     </>
   );

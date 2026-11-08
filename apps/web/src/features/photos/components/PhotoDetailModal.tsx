@@ -11,12 +11,14 @@ type PhotoDetailModalProps = {
   photoId: string | null;
   onClose: () => void;
   onSelectPhoto?: (photoId: string) => void;
+  getShareUrl?: (photoId: string) => string;
 };
 
 export default function PhotoDetailModal({
   photoId,
   onClose,
   onSelectPhoto,
+  getShareUrl,
 }: PhotoDetailModalProps) {
   const { data, status, refetch } = usePhotoDetail(photoId);
   const topRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ export default function PhotoDetailModal({
       )}
       {status === 'success' && (
         <>
-          <PhotoDetailContent photo={data} />
+          <PhotoDetailContent photo={data} getShareUrl={getShareUrl} />
           {onSelectPhoto && (
             <PhotographerOtherPhotos
               photographerId={data.photographer.id}
