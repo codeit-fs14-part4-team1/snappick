@@ -118,15 +118,17 @@ export const queryKeys = {
         normalizePhotoExploreFilters(filters),
       ),
 
-    //특정 작가프로필 내 포트폴리오 | 작가 사진관리 내 목록 | 작가의 다른 사진 목록
+    //특정 작가프로필 내 포트폴리오 | 작가의 다른 사진 목록(excludePhotoId)
     portfolio: (
       photographerId: string,
       viewerId: ViewerId,
       limit = DEFAULT_LIMIT,
+      excludePhotoId?: string,
     ) =>
       createQueryKey('photos', 'infinite', 'portfolio', photographerId, {
         viewerId,
         limit,
+        excludePhotoId: excludePhotoId ?? null,
       }),
 
     //마이픽 사진 무효화
