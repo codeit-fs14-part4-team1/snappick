@@ -26,7 +26,10 @@ export default function PhotographerProfileTabs({
           key={id}
           className={`${styles.tab} ${id === 'portfolio' ? styles.activeTab : ''}`}
         >
-          {label} {count.toLocaleString('ko-KR')}
+          <span>{label}</span>
+          <span className={styles.tabCount}>
+            {count.toLocaleString('ko-KR')}
+          </span>
         </span>
       ))}
     </div>

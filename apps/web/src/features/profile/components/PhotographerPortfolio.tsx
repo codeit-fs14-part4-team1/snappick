@@ -1,5 +1,8 @@
+'use client';
+
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
+import Masonry from '@/components/ui/Masonry';
 import styles from './PhotographerPortfolio.module.css';
 
 // 포트폴리오 사진 데이터 타입 정의
@@ -18,23 +21,41 @@ type PhotographerPortfolioProps = {
   totalCount: number;
 };
 
+// 실제 표시 비율에 맞는 Masonry 계산용 크기 반환
+function getMasonrySize(photo: PortfolioPhoto) {
+  // 이미지가 없으면 임시 배경 비율 사용
+  if (!photo.imageUrl) {
+    return { width: 4, height: 5 };
+  }
+
+  // 지정한 표시 비율을 가로·세로 값으로 변환
+  const ratioValues = photo.displayAspectRatio?.split('/').map(Number) ?? [];
+  const [width = 0, height = 1] = ratioValues;
+
+  if (
+    ratioValues.length <= 2 &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0
+  ) {
+    return { width, height };
+  }
+
+  // 유효한 표시 비율이 없으면 원본 크기 사용
+  return { width: photo.width, height: photo.height };
+}
+
 export default function PhotographerPortfolio({
   photos,
   totalCount,
 }: PhotographerPortfolioProps) {
-  // 데스크톱 기준 사진 열 개수 정의
-  const columnCount = 4;
-
-  // 사진 수에 따라 각 열에 배치할 사진 개수 계산
-  const photosPerColumn = Math.ceil(photos.length / columnCount);
-
-  // 사진 목록을 열 단위로 분리함
-  const photoColumns = Array.from({ length: columnCount }, (_, columnIndex) =>
-    photos.slice(
-      columnIndex * photosPerColumn,
-      (columnIndex + 1) * photosPerColumn,
-    ),
-  ).filter((column) => column.length > 0);
+  // 원본 사진과 배치용 크기를 함께 구성
+  const masonryPhotos = photos.map((photo, index) => ({
+    photo,
+    imageIndex: index + 1,
+    ...getMasonrySize(photo),
+  }));
 
   return (
     <section
@@ -52,54 +73,41 @@ export default function PhotographerPortfolio({
         <p className={styles.emptyState}>아직 등록된 포트폴리오가 없습니다.</p>
       ) : (
         <>
-          {/* 포트폴리오 사진을 열 단위로 배치 */}
-          <div className={styles.photoList}>
-            {photoColumns.map((column, columnIndex) => (
-              <ul key={columnIndex} className={styles.photoColumn}>
-                {column.map((photo, photoIndex) => {
-                  // 전체 사진 목록에서의 순서 계산
-                  const imageIndex =
-                    columnIndex * photosPerColumn + photoIndex + 1;
-
-                  return (
-                    <li key={photo.photoId} className={styles.photoItem}>
-                      {photo.imageUrl ? (
-                        <Image
-                          src={photo.imageUrl}
-                          alt={`포트폴리오 사진 ${imageIndex}`}
-                          width={photo.width}
-                          height={photo.height}
-                          sizes="(max-width: 767px) 50vw, (max-width: 1199px) 33vw, 25vw"
-                          className={styles.photoImage}
-                          // 표시 비율이 지정된 경우 썸네일 영역에 맞춰 이미지 자르기
-                          style={
-                            photo.displayAspectRatio
-                              ? {
-                                  aspectRatio: photo.displayAspectRatio,
-                                  objectFit: 'cover',
-                                }
-                              : undefined
-                          }
-                        />
-                      ) : (
-                        // 이미지가 없는 경우 임시 배경 표시
-                        <div
-                          className={styles.placeholder}
-                          role="img"
-                          aria-label={`포트폴리오 예시 사진 ${imageIndex}`}
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ))}
-          </div>
+          {/* 공통 Masonry로 사진 목록 배치 */}
+          <Masonry
+            items={masonryPhotos}
+            desktopColumns={4}
+            gap={16}
+            ariaLabel="포트폴리오 사진 목록"
+            getKey={({ photo }) => photo.photoId}
+            renderItem={({ photo, imageIndex, width, height }) => (
+              <div className={styles.photoItem}>
+                {photo.imageUrl ? (
+                  <Image
+                    src={photo.imageUrl}
+                    alt={`포트폴리오 사진 ${imageIndex}`}
+                    width={photo.width}
+                    height={photo.height}
+                    sizes="(max-width: 767px) 50vw, (max-width: 1199px) 33vw, 25vw"
+                    className={styles.photoImage}
+                    style={{ aspectRatio: `${width} / ${height}` }}
+                  />
+                ) : (
+                  // 이미지가 없는 경우 임시 배경 표시
+                  <div
+                    className={styles.placeholder}
+                    role="img"
+                    aria-label={`포트폴리오 예시 사진 ${imageIndex}`}
+                  />
+                )}
+              </div>
+            )}
+          />
 
           {/* 추가 사진이 있는 경우 더 보기 버튼 표시 */}
           {totalCount > photos.length && (
             <div className={styles.moreButton}>
-              <Button variant="outline" fullWidth>
+              <Button variant="outline" size="lg" fullWidth>
                 포트폴리오 더 보기
               </Button>
             </div>

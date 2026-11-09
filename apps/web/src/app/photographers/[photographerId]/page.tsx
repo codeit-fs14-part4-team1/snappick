@@ -31,7 +31,7 @@ const mockPhotographer = {
 
 // 포트폴리오 UI 확인용 임시 사진 데이터 실제 포트폴리오 API 연동 시 제거 필요
 const mockPortfolioPhotos: PortfolioPhoto[] = [
-  // 첫 번째 열
+  // 커플 사진
   {
     photoId: 'CPL-1-1',
     imageUrl: '/mock/photos/CPL-1-1.webp',
@@ -54,7 +54,7 @@ const mockPortfolioPhotos: PortfolioPhoto[] = [
     displayAspectRatio: '188 / 195',
   },
 
-  // 두 번째 열
+  // 가족 사진
   {
     photoId: 'FAM-1-1',
     imageUrl: '/mock/photos/FAM-1-1.webp',
@@ -77,7 +77,7 @@ const mockPortfolioPhotos: PortfolioPhoto[] = [
     displayAspectRatio: '188 / 156',
   },
 
-  // 세 번째 열
+  // 반려동물 사진
   {
     photoId: 'PET-1-1',
     imageUrl: '/mock/photos/PET-1-1.webp',
@@ -100,7 +100,7 @@ const mockPortfolioPhotos: PortfolioPhoto[] = [
     displayAspectRatio: '188 / 235',
   },
 
-  // 네 번째 열
+  // 웨딩 사진
   {
     photoId: 'WED-1-1',
     imageUrl: '/mock/photos/WED-1-1.webp',

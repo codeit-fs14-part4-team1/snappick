@@ -5,7 +5,6 @@
   gap: 32px;
   width: 100%;
   margin-top: 48px;
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* 개별 탭 항목 */
@@ -13,11 +12,19 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
   padding-bottom: 14px;
-  color: var(--color-text-secondary, #777);
-  font-size: 16px;
+  color: var(--color-text-tertiary);
+  font-size: 18px;
   font-weight: 500;
+  line-height: 26px;
   white-space: nowrap;
+}
+
+/* 탭 숫자의 글자 굵기 설정 */
+.tabCount {
+  font-weight: 500;
 }
 
 /* 현재 선택된 탭 강조 */
@@ -26,27 +33,31 @@
   font-weight: 700;
 }
 
+/* 선택된 탭 숫자 색상 */
+.activeTab .tabCount {
+  color: var(--color-primary);
+}
+
 /* 선택된 탭 아래 밑줄 표시 */
 .activeTab::after {
   position: absolute;
   right: 0;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   height: 2px;
-  background-color: var(--color-primary);
+  background-color: var(--color-text-primary);
   content: '';
 }
 
-/* 모바일: 탭 글자 크기와 간격 조정 */
+/* 모바일 탭 글자 크기와 스크롤 설정 */
 @media (max-width: 767px) {
   .tabs {
-    gap: 20px;
     overflow-x: auto;
-    overflow-y: hidden; /* 세로 스크롤바 표시 방지 */
+    overflow-y: hidden;
   }
 
   .tab {
-    padding-bottom: 12px;
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 24px;
   }
 }
