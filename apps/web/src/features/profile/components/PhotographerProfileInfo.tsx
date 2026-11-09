@@ -1,9 +1,10 @@
 import Image from 'next/image';
-import Button from '@/components/ui/Button';
+import StartChatButton from '@/features/chats/components/StartChatButton';
 import styles from './PhotographerProfileInfo.module.css';
 
 // 작가 기본 정보 컴포넌트에서 사용할 데이터 타입 정의
 type PhotographerProfileInfoProps = {
+  photographerId: string;
   nickname: string;
   profileImageUrl: string | null;
   categories: string[];
@@ -23,6 +24,7 @@ function formatCount(value: number | null | undefined) {
 }
 
 export default function PhotographerProfileInfo({
+  photographerId,
   nickname,
   profileImageUrl,
   categories,
@@ -100,10 +102,10 @@ export default function PhotographerProfileInfo({
 
         {/* 작가 문의, 저장, 공유 버튼 영역 */}
         <div className={styles.profileActions}>
-          {/* 공통 Button 재사용, 채팅 연결은 추후 구현 */}
-          <Button variant="accent" size="lg" fullWidth>
-            문의하기
-          </Button>
+          <StartChatButton
+            key={photographerId}
+            photographerId={photographerId}
+          />
 
           {/* 저장 및 공유 아이콘 버튼을 가로로 배치 */}
           <div className={styles.iconActions}>
