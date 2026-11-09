@@ -111,6 +111,19 @@ resource "aws_elastic_beanstalk_environment" "api" {
     value     = "none"
   }
 
+  # 사진 업로드 저장소 (apps/api STORAGE_DRIVER=s3, 배포 기본값)
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "S3_BUCKET"
+    value     = aws_s3_bucket.images.bucket
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_REGION"
+    value     = "ap-southeast-2"
+  }
+
   setting {
     namespace = "aws:elasticbeanstalk:application:environmentsecrets"
     name      = "DB_CREDENTIALS"
