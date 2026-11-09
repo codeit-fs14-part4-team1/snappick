@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, type Prisma } from '../src/generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+import { prisma } from '../lib/prisma.js';
 
 type MockData = {
   auth_accounts: Prisma.auth_accountsCreateManyInput[];
@@ -35,17 +35,13 @@ const TABLES = [
 // 예전 목데이터의 비밀번호 자리 (실제 해시가 아니라 로그인할 수 없음)
 const LEGACY_PASSWORD_HASH = 'mock-not-a-real-hash';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL이 설정되지 않았습니다.');
-}
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString }),
-});
-
+// 로컬은 DATABASE_URL, staging은 DB_HOST와 DB_CREDENTIALS로 접속한다 (lib/prisma.ts)
+// 빌드하면 dist/scripts/seed.js가 되어 배포 hook에서 tsx 없이 실행한다
 async function main() {
-  const file = new URL('./seed-data/snappick-mock.json', import.meta.url);
+  const file = new URL(
+    '../../prisma/seed-data/snappick-mock.json',
+    import.meta.url,
+  );
   const data = JSON.parse(await readFile(file, 'utf-8')) as MockData;
 
   // FK 순서대로 넣고, 이미 있는 행은 건너뛰어 여러 번 실행해도 결과가 같게 한다
