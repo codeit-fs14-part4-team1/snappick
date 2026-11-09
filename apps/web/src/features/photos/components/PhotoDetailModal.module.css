@@ -1,6 +1,6 @@
 .surface {
   --modal-padding: 56px 48px;
-  width: min(1296px, calc(100vw - 128px));
+  width: min(1200px, calc(100vw - 128px));
 }
 /* 상세 로딩·오류 안내 */
 .message {
