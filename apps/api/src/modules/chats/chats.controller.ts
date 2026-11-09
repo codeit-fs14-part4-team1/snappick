@@ -13,6 +13,7 @@ import {
   sendMessageSchema,
 } from './chats.schema.js';
 import { HttpError } from '../../utils/http-error.js';
+import type { Server } from 'socket.io';
 
 export async function createChatHandler(req: Request, res: Response) {
   const auth = getAuth(req);
@@ -97,7 +98,11 @@ export async function sendMessageHandler(req: Request, res: Response) {
     input.content,
   );
 
-  res.status(201).json({
+  // 저장된 메시지를 채팅방 Room에 전달하기 위해
+  // server.ts에서 생성해 Express 앱에 등록한 socket.io 서버 객체를 가져옴.
+  const io: Server = req.app.get('io');
+
+  const messageData = {
     id: message.id,
     chatRoomId: message.chat_room_id,
     recipientAccountId: message.recipient_account_id,
@@ -108,7 +113,12 @@ export async function sendMessageHandler(req: Request, res: Response) {
     reservation: null,
     readAt: message.read_at,
     createdAt: message.created_at,
-  });
+  };
+
+  // 해당 방에 입장한 모든 연결에 새 메시지 전달
+  io.to(`chat:${params.chatRoomId}`).emit('message:new', messageData);
+
+  res.status(201).json(messageData);
 }
 
 export async function getMessagesHandler(req: Request, res: Response) {
