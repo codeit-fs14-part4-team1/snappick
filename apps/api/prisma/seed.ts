@@ -14,6 +14,7 @@ type MockData = {
   representative_photos: Prisma.representative_photosCreateManyInput[];
   photo_likes: Prisma.photo_likesCreateManyInput[];
   photographer_saves: Prisma.photographer_savesCreateManyInput[];
+  notifications: Prisma.notificationsCreateManyInput[];
 };
 
 // 넣는 순서 (FK 순서)
@@ -28,6 +29,7 @@ const TABLES = [
   'representative_photos',
   'photo_likes',
   'photographer_saves',
+  'notifications',
 ] as const satisfies readonly (keyof MockData)[];
 
 // 예전 목데이터의 비밀번호 자리 (실제 해시가 아니라 로그인할 수 없음)
@@ -77,6 +79,10 @@ async function main() {
     }),
     prisma.photographer_saves.createMany({
       data: data.photographer_saves,
+      skipDuplicates: true,
+    }),
+    prisma.notifications.createMany({
+      data: data.notifications,
       skipDuplicates: true,
     }),
   ]);
