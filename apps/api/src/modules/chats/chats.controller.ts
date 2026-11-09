@@ -4,6 +4,7 @@ import {
   getChats,
   getMessages,
   sendMessage,
+  markChatAsRead,
 } from './chats.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
 import {
@@ -147,4 +148,13 @@ export async function getMessagesHandler(req: Request, res: Response) {
   );
 
   res.status(200).json(result);
+}
+
+export async function markChatAsReadHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const params = chatRoomParamsSchema.parse(req.params);
+
+  await markChatAsRead(auth.accountId, params.chatRoomId);
+
+  res.status(204).send();
 }

@@ -448,3 +448,18 @@ export async function checkChatRoomAccess(
     );
   }
 }
+
+export async function markChatAsRead(accountId: string, chatRoomId: string) {
+  await checkChatRoomAccess(accountId, chatRoomId);
+
+  await prisma.chat_messages.updateMany({
+    where: {
+      chat_room_id: chatRoomId,
+      recipient_account_id: accountId,
+      read_at: null,
+    },
+    data: {
+      read_at: new Date(),
+    },
+  });
+}
