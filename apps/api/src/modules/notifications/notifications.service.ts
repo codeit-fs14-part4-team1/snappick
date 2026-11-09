@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../lib/prisma.js';
 import { decodeCursor, encodeCursor } from '../../utils/cursor.js';
@@ -5,14 +6,18 @@ import { HttpError } from '../../utils/http-error.js';
 
 type PageQuery = { cursor?: string | undefined; limit: number };
 
+const cursorIdSchema = z.uuid();
+
 // 새 알림이 생겨도 페이지가 밀리지 않도록 마지막 항목의 시각과 ID를 커서로 쓴다
+// ID가 uuid가 아니면 DB 조회에서 500이 나므로 여기서 400으로 막는다
 function readCursor(cursor: string): { createdAt: Date; id: string } {
   const { t, i } = decodeCursor(cursor);
   const createdAt = new Date(typeof t === 'string' ? t : NaN);
-  if (typeof i !== 'string' || Number.isNaN(createdAt.getTime())) {
+  const id = cursorIdSchema.safeParse(i);
+  if (!id.success || Number.isNaN(createdAt.getTime())) {
     throw new HttpError(400, 'INVALID_CURSOR', '목록을 다시 불러와 주세요.');
   }
-  return { createdAt, id: i };
+  return { createdAt, id: id.data };
 }
 
 // 예약 알림은 보낼 시각이 지난 뒤에만 사용자에게 보인다
