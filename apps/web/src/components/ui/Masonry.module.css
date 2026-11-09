@@ -1,0 +1,29 @@
+/* 간격: Masonry가 gap prop을 --gap-desktop · --gap-tablet · --gap-mobile로 넘김 */
+/* 브레이크포인트는 useColumnCount와 같게 유지 (767 / 1199px) */
+
+.masonry {
+  --_gap: var(--gap-desktop);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--_gap);
+}
+
+.column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--_gap);
+  min-width: 0;
+}
+
+@media (max-width: 1199px) {
+  .masonry {
+    --_gap: var(--gap-tablet);
+  }
+}
+
+@media (max-width: 767px) {
+  .masonry {
+    --_gap: var(--gap-mobile);
+  }
+}
