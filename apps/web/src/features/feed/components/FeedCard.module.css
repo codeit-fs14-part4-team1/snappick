@@ -22,7 +22,7 @@
   border: 0;
   border-radius: inherit;
   background: transparent;
-  cursor: zoom-in;
+  cursor: pointer;
 }
 
 .open:focus-visible {
