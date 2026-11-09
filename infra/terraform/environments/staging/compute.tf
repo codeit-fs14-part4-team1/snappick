@@ -131,6 +131,13 @@ resource "aws_elastic_beanstalk_environment" "api" {
     value     = "ap-southeast-2"
   }
 
+  # 배포할 때 목데이터 시드 실행 (.platform/hooks/predeploy/seed.sh, 이미 있는 행은 건너뜀)
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "SEED_MOCK_DATA"
+    value     = "true"
+  }
+
   setting {
     namespace = "aws:elasticbeanstalk:application:environmentsecrets"
     name      = "DB_CREDENTIALS"
