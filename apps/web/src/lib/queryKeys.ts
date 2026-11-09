@@ -118,6 +118,7 @@ export const queryKeys = {
         normalizePhotoExploreFilters(filters),
       ),
 
+    portfolioAll: () => createQueryKey('photos', 'infinite', 'portfolio'),
     //특정 작가프로필 내 포트폴리오 | 작가의 다른 사진 목록(excludePhotoId)
     portfolio: (
       photographerId: string,

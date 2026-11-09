@@ -410,3 +410,41 @@ export async function getMessages(
     hasNext,
   };
 }
+
+export async function checkChatRoomAccess(
+  accountId: string,
+  chatRoomId: string,
+) {
+  const chatRoom = await prisma.chat_rooms.findUnique({
+    where: {
+      id: chatRoomId,
+    },
+    include: {
+      user: {
+        select: { auth_account_id: true },
+      },
+      photographer: {
+        select: { auth_account_id: true },
+      },
+    },
+  });
+
+  if (!chatRoom) {
+    throw new HttpError(
+      404,
+      'CHAT_ROOM_NOT_FOUND',
+      '존재하지 않는 문의입니다.',
+    );
+  }
+
+  const userAccountId = chatRoom.user?.auth_account_id;
+  const photographerAccountId = chatRoom.photographer?.auth_account_id;
+
+  if (accountId !== userAccountId && accountId !== photographerAccountId) {
+    throw new HttpError(
+      403,
+      'CHAT_ROOM_ACCESS_DENIED',
+      '해당 문의에 접근할 권한이 없습니다.',
+    );
+  }
+}

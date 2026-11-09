@@ -6,14 +6,15 @@ import styles from './FeedCard.module.css';
 import HeartIcon from '@/components/ui/HeartIcon';
 import { getViewerKind } from '../viewerKind';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { usePhotoLike } from '../hooks/usePhotoLike';
+import { usePhotoLike } from '@/features/photos/hooks/usePhotoLike';
 import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
 
 type FeedCardProps = {
   photo: FeedPhoto;
+  onOpen: (id: string) => void;
 };
 
-export default function FeedCard({ photo }: FeedCardProps) {
+export default function FeedCard({ photo, onOpen }: FeedCardProps) {
   const { authStatus, user } = useAuth();
   const { openGuestLoginModal } = useGuestLoginModal();
   const { toggleLike } = usePhotoLike(photo);
@@ -38,7 +39,12 @@ export default function FeedCard({ photo }: FeedCardProps) {
         sizes="(max-width: 767px) 50vw, (max-width: 1199px) 33vw, 20vw "
         className={styles.image}
       />
-
+      <button
+        type="button"
+        className={styles.open}
+        aria-label={`${photo.photographer.nickname}의 사진 자세히 보기`}
+        onClick={() => onOpen(photo.photoId)}
+      />
       <div className={styles.overlay}>
         {viewerKind === 'photographer' ? (
           <span
