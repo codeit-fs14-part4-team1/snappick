@@ -1,12 +1,18 @@
 import PageContainer from '@/components/layout/PageContainer';
 import PhotographerProfileInfo from '@/features/profile/components/PhotographerProfileInfo';
 import PhotographerProfileTabs from '@/features/profile/components/PhotographerProfileTabs';
+
 import PhotographerPortfolio, {
   type PortfolioPhoto,
 } from '@/features/profile/components/PhotographerPortfolio';
+
 import PhotographerProducts, {
   type PhotographerProduct,
 } from '@/features/profile/components/PhotographerProducts';
+
+import PhotographerReviews, {
+  type PhotographerReview,
+} from '@/features/profile/components/PhotographerReviews';
 
 // 임시 데이터 실제 작가 프로필 API 연동 시 제거 필요
 const mockPhotographer = {
@@ -149,6 +155,64 @@ const mockProducts: PhotographerProduct[] = [
   },
 ];
 
+// 리뷰 UI 확인용 임시 데이터 실제 리뷰 API 연동 시 제거 필요
+const mockReviews: PhotographerReview[] = [
+  {
+    reviewId: 'review-1',
+    authorName: '소풍가는날',
+    createdAt: '2026-10-02T10:00:00+09:00',
+    rating: 5,
+    comment:
+      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
+    reply: {
+      createdAt: '2026-10-03T10:00:00+09:00',
+      comment: '소중한 후기 감사합니다! 다음 촬영 때도 편하게 찾아 주세요 :)',
+    },
+  },
+  {
+    reviewId: 'review-2',
+    authorName: '민트초코',
+    createdAt: '2026-10-02T11:00:00+09:00',
+    rating: 5,
+    comment:
+      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
+    reply: null,
+  },
+  {
+    reviewId: 'review-3',
+    authorName: '여름사진첩',
+    createdAt: '2026-10-02T12:00:00+09:00',
+    rating: 5,
+    comment:
+      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
+    reply: {
+      createdAt: '2026-10-03T12:00:00+09:00',
+      comment: '소중한 후기 감사합니다! 다음 촬영 때도 편하게 찾아 주세요 :)',
+    },
+  },
+];
+
+// 페이지네이션 테스트를 위해 기존 리뷰를 기반으로 임시 데이터 생성
+const mockAllReviews: PhotographerReview[] = Array.from(
+  { length: mockPhotographer.reviewCount },
+  (_, index) => {
+    const originalReview = mockReviews[index % mockReviews.length];
+
+    if (!originalReview) {
+      throw new Error('리뷰 Mock Data가 없습니다.');
+    }
+
+    return {
+      ...originalReview,
+      reviewId: `review-${index + 1}`,
+      authorName:
+        index < mockReviews.length
+          ? originalReview.authorName
+          : `테스트 작성자 ${index + 1}`,
+    };
+  },
+);
+
 export default function PhotographerProfilePage() {
   return (
     // 공통 PageContainer를 사용해 최대 너비 1200px 적용
@@ -168,6 +232,13 @@ export default function PhotographerProfilePage() {
 
       {/* 작가 촬영 상품 목록에 임시 데이터 전달 */}
       <PhotographerProducts products={mockProducts} />
+
+      {/* 페이지네이션 테스트용 리뷰 데이터 전달 */}
+      <PhotographerReviews
+        reviews={mockAllReviews}
+        reviewCount={mockPhotographer.reviewCount}
+        ratingAvg={mockPhotographer.ratingAvg}
+      />
     </PageContainer>
   );
 }
