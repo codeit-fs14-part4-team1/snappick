@@ -81,6 +81,22 @@ Authorization: Bearer 액세스토큰
 GET http://localhost:4000/chats/01a18aab-8cad-76fc-816f-2653e88c6235/messages
 Authorization: Bearer 액세스토큰 
 
+### 촬영 정보 전송
+POST http://localhost:4000/chats/01a18aab-8cad-76fc-816f-2653e88c6235/messages
+Authorization: Bearer 액세스토큰
+Content-Type: application/json
+
+{
+  "messageType": "INITIAL_REQUEST",
+  "payload": {
+    "date": "2026-11-20",
+    "timeSlot": "AFTERNOON",
+    "region": "SEOUL",
+    "location": "서울숲",
+    "concept": ["NATURAL", "FILM"],
+    "category": "COUPLE"
+  }
+}
 
 ### API 서버 상태 확인
 GET http://localhost:4000/health

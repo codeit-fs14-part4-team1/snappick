@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Region, Style, Category } from '@snappick/shared';
 
 export const createChatSchema = z.object({
   photographerId: z.uuid({
@@ -21,3 +22,34 @@ export const getMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
   cursor: z.uuid().optional(),
 });
+
+export const sendInquirySchema = z.object({
+  messageType: z.literal('INITIAL_REQUEST'),
+  payload: z
+    .object({
+      date: z.iso.date().optional(),
+      timeSlot: z
+        .enum(['MORNING', 'AFTERNOON', 'EVENING', 'UNDECIDED'])
+        .optional(),
+      region: z.enum(Region).optional(),
+      location: z.string().trim().optional(),
+      concept: z.array(z.enum(Style)).optional(),
+      category: z.enum(Category).optional(),
+    })
+    .refine(
+      (payload) =>
+        Boolean(
+          payload.date ||
+          payload.timeSlot ||
+          payload.region ||
+          payload.location ||
+          payload.concept?.length ||
+          payload.category?.length,
+        ),
+      {
+        message: '촬영 정보를 하나 이상 입력해 주세요.',
+      },
+    ),
+});
+
+export type InquiryPayload = z.infer<typeof sendInquirySchema>['payload'];
