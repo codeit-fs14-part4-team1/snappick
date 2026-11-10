@@ -253,7 +253,7 @@ export async function getReservationDetail(
   };
 }
 
-// POST /me/reservations/:reservationId
+// POST /me/reservations/:reservationId/cancel
 export async function createCancelReservation(
   requester: {
     accountId: string;
@@ -313,21 +313,41 @@ export async function createCancelReservation(
       );
     }
 
+    const isPhotographer =
+      requester.photographerId !== null && requester.userId === null;
+
     const cancelRequest = await tx.reservation_cancel_requests.create({
       data: {
         reservation_id: reservationId,
         requested_by_account_id: requester.accountId,
         reason: input.reason,
-        status: 'PENDING',
+        status: isPhotographer ? 'ACCEPTED' : 'PENDING',
+        processed_at: isPhotographer ? new Date() : null,
       },
-      select: { id: true, status: true, reason: true, created_at: true },
+      select: {
+        id: true,
+        status: true,
+        reason: true,
+        created_at: true,
+        processed_at: true,
+      },
     });
+
+    if (cancelRequest.status === 'ACCEPTED') {
+      await tx.reservations.update({
+        where: { id: reservationId },
+        data: {
+          status: 'CANCELED',
+        },
+      });
+    }
 
     return {
       cancelRequestId: cancelRequest.id,
       status: cancelRequest.status,
       reason: cancelRequest.reason,
       requestedAt: cancelRequest.created_at,
+      processedAt: cancelRequest.processed_at,
     };
   });
 }
