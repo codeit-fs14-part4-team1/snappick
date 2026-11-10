@@ -13,6 +13,7 @@
   background: var(--color-bg-subtle);
 }
 .previous {
+  min-height: 24px;
   align-self: center;
   flex-shrink: 0;
   text-align: center;

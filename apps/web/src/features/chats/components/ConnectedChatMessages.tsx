@@ -59,6 +59,7 @@ export default function ConnectedChatMessages({
         }
         hasPrevious={query.hasNextPage}
         isFetchingPrevious={query.isFetchingNextPage}
+        isFetching={query.isFetching}
         isPreviousError={query.isFetchNextPageError}
         onLoadPrevious={() => {
           if (query.hasNextPage && !query.isFetching)

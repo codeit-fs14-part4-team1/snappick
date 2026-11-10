@@ -1,6 +1,12 @@
 'use client';
 
-import { Fragment, useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import Button from '@/components/ui/Button';
 import type { ChatMessageItem } from '../types';
 import { formatChatDate, formatChatTime } from '../utils';
@@ -13,6 +19,7 @@ type Props = {
   greeting?: string;
   hasPrevious: boolean;
   isFetchingPrevious: boolean;
+  isFetching?: boolean;
   isPreviousError: boolean;
   onLoadPrevious: () => void;
   scrollToMessageId?: string;
@@ -25,13 +32,33 @@ export default function ChatMessageList({
   greeting,
   hasPrevious,
   isFetchingPrevious,
+  isFetching = false,
   isPreviousError,
   onLoadPrevious,
   scrollToMessageId,
 }: Props) {
   const scrollRef = useRef<HTMLElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadPendingRef = useRef(false);
   const prependRef = useRef<{ height: number; top: number } | null>(null);
   const revealedMessageRef = useRef<string | undefined>(undefined);
+  const loadPrevious = useCallback(() => {
+    const element = scrollRef.current;
+    if (
+      !element ||
+      !hasPrevious ||
+      isFetching ||
+      isFetchingPrevious ||
+      loadPendingRef.current
+    )
+      return;
+    loadPendingRef.current = true;
+    prependRef.current = {
+      height: element.scrollHeight,
+      top: element.scrollTop,
+    };
+    onLoadPrevious();
+  }, [hasPrevious, isFetching, isFetchingPrevious, onLoadPrevious]);
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (element) element.scrollTop = element.scrollHeight;
@@ -43,7 +70,36 @@ export default function ChatMessageList({
     if (!element || !previous || isFetchingPrevious) return;
     element.scrollTop = previous.top + element.scrollHeight - previous.height;
     prependRef.current = null;
+    loadPendingRef.current = false;
   }, [messages, isFetchingPrevious]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollRef.current;
+    if (
+      !sentinel ||
+      !root ||
+      !hasPrevious ||
+      isFetching ||
+      isFetchingPrevious ||
+      isPreviousError
+    )
+      return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadPrevious();
+      },
+      { root, rootMargin: '80px 0px 0px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [
+    hasPrevious,
+    isFetching,
+    isFetchingPrevious,
+    isPreviousError,
+    loadPrevious,
+  ]);
 
   useLayoutEffect(() => {
     if (
@@ -90,30 +146,28 @@ export default function ChatMessageList({
       tabIndex={0}
     >
       {(hasPrevious || isPreviousError) && (
-        <div className={styles.previous}>
+        <div ref={sentinelRef} className={styles.previous}>
           {isPreviousError && (
-            <p role="alert">이전 메시지를 불러오지 못했어요.</p>
+            <>
+              <p role="alert">이전 메시지를 불러오지 못했어요.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isFetching || isFetchingPrevious}
+                onClick={loadPrevious}
+              >
+                다시 시도
+              </Button>
+            </>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isFetchingPrevious}
-            onClick={() => {
-              const element = scrollRef.current;
-              if (!element || isFetchingPrevious) return;
-              prependRef.current = {
-                height: element.scrollHeight,
-                top: element.scrollTop,
-              };
-              onLoadPrevious();
-            }}
+          <span
+            role="status"
+            className={isFetchingPrevious ? undefined : styles.srOnly}
           >
             {isFetchingPrevious
               ? '이전 메시지를 불러오는 중…'
-              : isPreviousError
-                ? '다시 시도'
-                : '이전 메시지 보기'}
-          </Button>
+              : '위로 스크롤하면 이전 메시지를 불러옵니다.'}
+          </span>
         </div>
       )}
       {messages.length === 0 && !greeting ? (
