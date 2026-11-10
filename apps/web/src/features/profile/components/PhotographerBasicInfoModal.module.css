@@ -1,0 +1,417 @@
+/* 기본 정보 수정 모달의 너비 설정 */
+.modalSurface {
+  width: 720px;
+  max-width: 100%;
+}
+
+/* 기본 정보 입력 항목을 세로로 배치함 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 활동명과 경력 입력 필드를 가로로 배치함 */
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* 입력 항목의 라벨과 입력 필드를 배치함 */
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 입력 항목의 제목 스타일 */
+.label {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 필수 입력 항목의 별표를 빨간색으로 표시함 */
+.requiredMark {
+  color: var(--color-danger);
+}
+
+/* 입력 필드 공통 스타일 */
+.input,
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 활동명과 경력 입력 필드 */
+.input {
+  height: 52px;
+  padding: 0 14px;
+}
+
+/* 경력 입력창과 년 단위의 배치 기준을 설정함 */
+.careerInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* 경력 입력값과 년 단위가 겹치지 않도록 처리함 */
+.careerInputWrapper .input {
+  padding-right: 42px;
+  appearance: textfield;
+}
+
+/* 경력 입력창의 기본 숫자 증감 버튼을 숨김 */
+.careerInputWrapper .input::-webkit-inner-spin-button,
+.careerInputWrapper .input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* 경력 입력창 오른쪽 내부에 년 단위를 표시함 */
+.careerUnit {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--color-text-secondary, #595959);
+  font-size: 14px;
+  line-height: 22px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* 상세 소개 입력 영역 */
+.textarea {
+  min-height: 140px;
+  padding: 14px;
+  resize: vertical;
+}
+
+/* 입력 필드에 포커스가 생겨도 추가 테두리를 표시하지 않음 */
+.input:focus,
+.textarea:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* 프로필 이미지와 변경 버튼을 가로로 배치함 */
+.profileImageRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 프로필 이미지 미리보기를 원형으로 표시함 */
+.profileImagePreview {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+/* 등록된 프로필 이미지가 영역을 채우도록 표시함 */
+.profileImagePreview img {
+  object-fit: cover;
+}
+
+/* 프로필 이미지가 없을 때 기본 영역을 표시함 */
+.profileImagePlaceholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 이미지 변경 버튼과 파일 형식 안내를 세로로 배치함 */
+.profileImageActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* 프로필 이미지 변경 버튼 스타일 */
+.imageChangeButton {
+  display: inline-flex;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* 이미지 변경 기능 연결 전 비활성화 상태를 표시함 */
+.imageChangeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 업로드 가능한 이미지 파일 형식을 안내함 */
+.imageHint {
+  margin: 0;
+  color: var(--color-text-secondary, #595959);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* 활동 지역 선택 팝오버의 위치 기준을 설정함 */
+.regionPickerAnchor {
+  position: relative;
+  z-index: 1;
+}
+
+/* 선택된 활동 지역과 추가 버튼을 배치함 */
+.regionChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 선택된 활동 지역을 검은색 칩으로 표시함 */
+.regionChip {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 지역 추가 버튼을 점선 테두리로 표시함 */
+.addRegionButton {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* 활동 지역 선택 팝오버를 기존 입력 영역 위에 표시함 */
+.regionPicker {
+  position: absolute;
+  z-index: 10;
+  bottom: -24px;
+  left: 176px;
+  box-sizing: border-box;
+  width: 272px;
+  max-width: calc(100% - 176px);
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-base);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 12%);
+}
+
+/* 활동 지역 선택 팝오버의 제목을 표시함 */
+.regionPickerTitle {
+  margin: 0 0 12px;
+  padding: 0 4px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 활동 지역 17개를 세로 순서의 2열로 배치함 */
+.regionOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(9, 34px);
+  grid-auto-flow: column;
+  gap: 4px 6px;
+}
+
+/* 각 활동 지역의 체크박스와 이름을 배치함 */
+.regionOption {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 선택된 활동 지역을 연두색 배경으로 강조함 */
+.regionOption[data-selected='true'] {
+  background: #f4f8e8;
+  color: var(--color-accent-strong);
+}
+
+/* 선택하지 않은 지역에 마우스를 올렸을 때 강조함 */
+.regionOption:not([data-selected='true']):hover {
+  background: #f5f5f5;
+}
+
+/* 활동 지역 선택 체크박스의 기본 스타일을 설정함 */
+.regionCheckbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-bg-base);
+  cursor: pointer;
+}
+
+/* 선택된 체크박스를 연두색으로 표시함 */
+.regionCheckbox:checked {
+  position: relative;
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/* 선택된 체크박스 내부에 체크 표시를 추가함 */
+.regionCheckbox:checked::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 7px;
+  height: 4px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  content: '';
+  transform: rotate(-45deg);
+}
+
+/* 팝오버 하단에 초기화와 적용 버튼을 배치함 */
+.regionPickerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+/* 선택 초기화 버튼을 표시함 */
+.regionResetButton {
+  height: 38px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 선택 적용 버튼을 검은색으로 표시함 */
+.regionApplyButton {
+  height: 38px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 키보드로 선택할 때 포커스를 표시함 */
+.addRegionButton:focus-visible,
+.regionCheckbox:focus-visible,
+.regionResetButton:focus-visible,
+.regionApplyButton:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 촬영 카테고리 선택 칩을 가로로 배치함 */
+.categoryChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 촬영 카테고리의 기본 선택 버튼을 표시함 */
+.categoryChip {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #595959;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+/* 선택된 촬영 카테고리를 검은색으로 강조함 */
+.categoryChip[data-selected='true'] {
+  background: var(--color-text-primary);
+  color: #fff;
+}
+
+/* 선택하지 않은 카테고리에 마우스를 올렸을 때 강조함 */
+.categoryChip[data-selected='false']:hover {
+  background: #e9e9e9;
+}
+
+/* 키보드로 카테고리를 선택할 때 포커스를 표시함 */
+.categoryChip:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 모바일 화면에서 팝오버가 가로로 넘치지 않도록 처리함 */
+@media (max-width: 767px) {
+  .regionPicker {
+    right: auto;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: min(272px, 100%);
+    max-width: 100%;
+    max-height: min(440px, calc(100dvh - 120px));
+    overflow-y: auto;
+  }
+}

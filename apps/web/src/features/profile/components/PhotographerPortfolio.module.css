@@ -41,6 +41,38 @@
   text-align: center;
 }
 
+/* 작가 본인 미설정 상태의 포트폴리오 빈 카드 */
+.emptyStateOwn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 146px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  background-color: #f5f5f5;
+  text-align: center;
+}
+
+/* 포트폴리오 미등록 안내 제목 */
+.emptyStateOwnTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 포트폴리오 등록 조건 안내 문구 */
+.emptyStateOwnDescription {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
 /* 포트폴리오 더 보기 버튼 */
 .moreButton {
   margin-top: 20px;

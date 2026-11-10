@@ -1,244 +1,380 @@
+'use client';
+
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+
 import PageContainer from '@/components/layout/PageContainer';
+import Button from '@/components/ui/Button';
+import PhotographerBasicInfoModal from '@/features/profile/components/PhotographerBasicInfoModal';
+
+import { CategoryLabel, RegionLabel } from '@/constants/enum-labels';
+import { useAuth } from '@/features/auth/context/AuthContext';
+
+import { usePhotographerProfile } from '@/features/profile/hooks/usePhotographerProfile';
+import { usePhotographerPhotos } from '@/features/photos/hooks/usePhotographerPhotos';
+import { usePhotographerProducts } from '@/features/profile/hooks/usePhotographerProducts';
+import { usePhotographerReviews } from '@/features/profile/hooks/usePhotographerReviews';
+import { usePhotographerReadiness } from '@/features/profile/hooks/usePhotographerReadiness';
+
 import PhotographerProfileInfo from '@/features/profile/components/PhotographerProfileInfo';
 import PhotographerProfileTabs from '@/features/profile/components/PhotographerProfileTabs';
-
-import PhotographerPortfolio, {
-  type PortfolioPhoto,
-} from '@/features/profile/components/PhotographerPortfolio';
-
-import PhotographerProducts, {
-  type PhotographerProduct,
-} from '@/features/profile/components/PhotographerProducts';
+import PhotographerPortfolio from '@/features/profile/components/PhotographerPortfolio';
+import PhotographerProducts from '@/features/profile/components/PhotographerProducts';
 
 import PhotographerReviews, {
   type PhotographerReview,
 } from '@/features/profile/components/PhotographerReviews';
 
-// 임시 데이터 실제 작가 프로필 API 연동 시 제거 필요
-const mockPhotographer = {
-  nickname: '하루필름',
-  profileImageUrl: null,
-  categories: ['우정 스냅', '커플 스냅', '프로필'],
-  careerLabel: '경력 7년',
-  regions: ['서울', '경기'],
-  introduction:
-    '안녕하세요, 자연광으로 꾸밈없는 순간을 담는 하루필름입니다. 친구들과의 하루, 연인과의 기념일을 필름 같은 색감으로 기록해드려요. 성수·서울숲·한강 야외 촬영을 주로 하고, 촬영 전 콘셉트 상담을 꼭 진행합니다.',
-  reviewCount: 178,
-  ratingAvg: 4.9,
-  savedCount: 1284,
-  completedCount: 334,
-};
+import PhotographerPreparing from '@/features/profile/components/PhotographerPreparing';
+import styles from './PhotographerProfileEdit.module.css';
 
-// 포트폴리오 UI 확인용 임시 사진 데이터 실제 포트폴리오 API 연동 시 제거 필요
-const mockPortfolioPhotos: PortfolioPhoto[] = [
-  // 커플 사진
-  {
-    photoId: 'CPL-1-1',
-    imageUrl: '/mock/photos/CPL-1-1.webp',
-    width: 1448,
-    height: 1086,
-    displayAspectRatio: '188 / 222',
-  },
-  {
-    photoId: 'CPL-1-2',
-    imageUrl: '/mock/photos/CPL-1-2.webp',
-    width: 1402,
-    height: 1122,
-    displayAspectRatio: '188 / 170',
-  },
-  {
-    photoId: 'CPL-1-3',
-    imageUrl: '/mock/photos/CPL-1-3.webp',
-    width: 1024,
-    height: 1536,
-    displayAspectRatio: '188 / 195',
-  },
-
-  // 가족 사진
-  {
-    photoId: 'FAM-1-1',
-    imageUrl: '/mock/photos/FAM-1-1.webp',
-    width: 1402,
-    height: 1122,
-    displayAspectRatio: '188 / 169',
-  },
-  {
-    photoId: 'FAM-1-2',
-    imageUrl: '/mock/photos/FAM-1-2.webp',
-    width: 1122,
-    height: 1402,
-    displayAspectRatio: '188 / 247',
-  },
-  {
-    photoId: 'FAM-1-3',
-    imageUrl: '/mock/photos/FAM-1-3.webp',
-    width: 1024,
-    height: 1536,
-    displayAspectRatio: '188 / 156',
-  },
-
-  // 반려동물 사진
-  {
-    photoId: 'PET-1-1',
-    imageUrl: '/mock/photos/PET-1-1.webp',
-    width: 1122,
-    height: 1402,
-    displayAspectRatio: '188 / 196',
-  },
-  {
-    photoId: 'PET-1-2',
-    imageUrl: '/mock/photos/PET-1-2.webp',
-    width: 1024,
-    height: 1536,
-    displayAspectRatio: '188 / 155',
-  },
-  {
-    photoId: 'PET-1-3',
-    imageUrl: '/mock/photos/PET-1-3.webp',
-    width: 1086,
-    height: 1448,
-    displayAspectRatio: '188 / 235',
-  },
-
-  // 웨딩 사진
-  {
-    photoId: 'WED-1-1',
-    imageUrl: '/mock/photos/WED-1-1.webp',
-    width: 1122,
-    height: 1402,
-    displayAspectRatio: '188 / 247',
-  },
-  {
-    photoId: 'WED-1-2',
-    imageUrl: '/mock/photos/WED-1-2.webp',
-    width: 1122,
-    height: 1402,
-    displayAspectRatio: '188 / 195',
-  },
-  {
-    photoId: 'WED-1-3',
-    imageUrl: '/mock/photos/WED-1-3.webp',
-    width: 1024,
-    height: 1536,
-    displayAspectRatio: '188 / 170',
-  },
-];
-
-// 촬영 상품 UI 확인용 임시 데이터 실제 상품 API 연동 시 제거 필요
-const mockProducts: PhotographerProduct[] = [
-  {
-    productId: 'product-1',
-    name: '우정 스냅 베이직',
-    price: 150000,
-    durationMinutes: 60,
-    photoCount: 40,
-    includesOriginal: true,
-    commonNotice: '2인 기준이며 1인 추가 시 2만 원이 추가돼요.',
-  },
-  {
-    productId: 'product-2',
-    name: '우정 스냅 스탠다드',
-    price: 220000,
-    durationMinutes: 120,
-    photoCount: 80,
-    includesOriginal: true,
-    commonNotice: '장소 2곳까지 이동 촬영해요.',
-  },
-  {
-    productId: 'product-3',
-    name: '커플 스냅 프리미엄',
-    price: 320000,
-    durationMinutes: 180,
-    photoCount: 120,
-    includesOriginal: true,
-    commonNotice: '의상 2벌 촬영, 야간 촬영 포함이에요.',
-  },
-];
-
-// 리뷰 UI 확인용 임시 데이터 실제 리뷰 API 연동 시 제거 필요
-const mockReviews: PhotographerReview[] = [
-  {
-    reviewId: 'review-1',
-    authorName: '소풍가는날',
-    createdAt: '2026-10-02T10:00:00+09:00',
-    rating: 5,
-    comment:
-      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
-    reply: {
-      createdAt: '2026-10-03T10:00:00+09:00',
-      comment: '소중한 후기 감사합니다! 다음 촬영 때도 편하게 찾아 주세요 :)',
-    },
-  },
-  {
-    reviewId: 'review-2',
-    authorName: '민트초코',
-    createdAt: '2026-10-02T11:00:00+09:00',
-    rating: 5,
-    comment:
-      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
-    reply: null,
-  },
-  {
-    reviewId: 'review-3',
-    authorName: '여름사진첩',
-    createdAt: '2026-10-02T12:00:00+09:00',
-    rating: 5,
-    comment:
-      '사진 찍는 게 어색해서 걱정이었는데 작가님이 편하게 이끌어 주셔서 자연스러운 사진을 많이 건졌어요. 결과물도 약속보다 빨리 받았어요!',
-    reply: {
-      createdAt: '2026-10-03T12:00:00+09:00',
-      comment: '소중한 후기 감사합니다! 다음 촬영 때도 편하게 찾아 주세요 :)',
-    },
-  },
-];
-
-// 페이지네이션 테스트를 위해 기존 리뷰를 기반으로 임시 데이터 생성
-const mockAllReviews: PhotographerReview[] = Array.from(
-  { length: mockPhotographer.reviewCount },
-  (_, index) => {
-    const originalReview = mockReviews[index % mockReviews.length];
-
-    if (!originalReview) {
-      throw new Error('리뷰 Mock Data가 없습니다.');
-    }
-
-    return {
-      ...originalReview,
-      reviewId: `review-${index + 1}`,
-      authorName:
-        index < mockReviews.length
-          ? originalReview.authorName
-          : `테스트 작성자 ${index + 1}`,
-    };
-  },
-);
+// 사진작가 프로필 공개에 필요한 필수 항목을 정의함
+const REQUIRED_PROFILE_CHECKS = [
+  { key: 'profileImage', label: '프로필 이미지' },
+  { key: 'regions', label: '활동 지역' },
+  { key: 'categories', label: '촬영 카테고리' },
+  { key: 'introduction', label: '상세 소개' },
+  { key: 'photos', label: '포트폴리오 3장 이상' },
+  { key: 'product', label: '촬영 상품 1개 이상' },
+] as const;
 
 export default function PhotographerProfilePage() {
+  const router = useRouter();
+
+  // 현재 로그인한 사용자 정보를 가져옴
+  const { user } = useAuth();
+
+  // URL에서 조회할 작가 ID를 가져옴
+  const { photographerId } = useParams<{ photographerId: string }>();
+
+  // 현재 선택한 리뷰 페이지 번호를 관리함
+  const [reviewPage, setReviewPage] = useState(1);
+
+  // 작가 본인의 프로필 편집 모드 진입 여부를 관리함
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  // 기본 정보 수정 모달의 열림 상태를 관리함
+  const [isBasicInfoModalOpen, setIsBasicInfoModalOpen] = useState(false);
+
+  // 실제 작가 프로필 정보를 조회함
+  const {
+    data: photographer,
+    isPending,
+    isError,
+  } = usePhotographerProfile(photographerId);
+
+  // 사진작가 본인이 편집 중일 때 준비 상태를 조회함
+  const readinessQuery = usePhotographerReadiness(
+    photographerId === 'me' &&
+      isEditingProfile &&
+      photographer?.isSelf === true,
+  );
+
+  // 공개 가능한 프로필 또는 작가 본인인지 확인함
+  const canFetchContent =
+    photographer?.isReady === true || photographer?.isSelf === true;
+
+  // 조회가 허용된 경우 API 응답의 실제 작가 ID를 사용함
+  const contentPhotographerId = canFetchContent ? photographer?.id : undefined;
+
+  // 실제 작가 ID로 포트폴리오를 조회함
+  const photosQuery = usePhotographerPhotos(contentPhotographerId);
+
+  // 조회한 사진 페이지들을 하나의 목록으로 합침
+  const portfolioPhotos =
+    photosQuery.data?.pages.flatMap((page) => page.items) ?? [];
+
+  // 첫 번째 응답에서 전체 사진 수를 가져옴
+  const portfolioTotalCount = photosQuery.data?.pages[0]?.totalCount ?? 0;
+
+  // 실제 작가 ID로 촬영 상품을 조회함
+  const productsQuery = usePhotographerProducts(contentPhotographerId);
+
+  const products = productsQuery.data?.items ?? [];
+
+  // 실제 작가 ID로 리뷰 목록을 조회함
+  const reviewsQuery = usePhotographerReviews(
+    contentPhotographerId,
+    reviewPage,
+  );
+
+  // 실제 리뷰 API 응답을 기존 UI 데이터 형태로 변환함
+  const reviews: PhotographerReview[] = (reviewsQuery.data?.items ?? []).map(
+    (review) => ({
+      reviewId: review.reviewId,
+      authorName: review.author?.nickname ?? '알 수 없는 사용자',
+      createdAt: review.createdAt,
+      rating: review.rating,
+      comment: review.comment,
+      reply: review.reply
+        ? {
+            createdAt: review.reply.createdAt,
+            comment: review.reply.comment,
+          }
+        : null,
+    }),
+  );
+
+  // 실제 리뷰 전체 개수를 사용함
+  const reviewCount =
+    reviewsQuery.data?.totalCount ?? photographer?.reviewCount ?? 0;
+
+  // 서버 기준 필수 항목 완료 개수를 계산함
+  const completedReadinessCount = REQUIRED_PROFILE_CHECKS.filter(
+    ({ key }) => readinessQuery.data?.checks[key] === true,
+  ).length;
+
+  // 서버 응답에 없는 준비 상태 항목이 있는지 확인함
+  const hasUnknownReadinessChecks = REQUIRED_PROFILE_CHECKS.some(
+    ({ key }) => typeof readinessQuery.data?.checks[key] !== 'boolean',
+  );
+
+  // 프로필 조회 중 로딩 상태 표시
+  if (isPending) {
+    return (
+      <PageContainer width="default">
+        <p role="status">작가 프로필을 불러오는 중이에요.</p>
+      </PageContainer>
+    );
+  }
+
+  // 프로필 조회 실패 시 오류 표시
+  if (isError || !photographer) {
+    return (
+      <PageContainer width="default">
+        <p role="alert">작가 프로필을 불러오지 못했어요.</p>
+      </PageContainer>
+    );
+  }
+
+  // 프로필이 미완성이면서 본인이 아닌 경우 준비 중 화면 표시
+  if (!photographer.isReady && !photographer.isSelf) {
+    return (
+      <PageContainer width="default">
+        <PhotographerPreparing onExplore={() => router.push('/')} />
+      </PageContainer>
+    );
+  }
+
+  // API 응답을 기존 기본 정보 컴포넌트의 Props에 맞게 변환함
+  const profileInfo = {
+    nickname: photographer.nickname,
+    profileImageUrl: photographer.profileImageUrl,
+
+    // 저장 대상 작가 ID와 현재 사용자의 저장 여부를 전달함
+    photographerId: photographer.id,
+    saved: photographer.saved,
+
+    // 촬영 카테고리를 공통 한글 라벨로 변환함
+    categories: photographer.categories.map(
+      (category) =>
+        CategoryLabel[category as keyof typeof CategoryLabel] ?? category,
+    ),
+
+    careerLabel:
+      photographer.career === null ? null : `경력 ${photographer.career}년`,
+
+    // 활동 지역을 공통 한글 라벨로 변환함
+    regions: photographer.regions.map(
+      (region) => RegionLabel[region as keyof typeof RegionLabel] ?? region,
+    ),
+
+    introduction: photographer.introduction,
+    reviewCount: photographer.reviewCount,
+    ratingAvg: photographer.ratingAvg,
+
+    // 실제 API 응답에서 저장 수와 구매 확정된 예약 건수를 가져옴
+    savedCount: photographer.savedCount,
+    completedCount: photographer.completedCount,
+
+    // 작가 본인 여부와 프로필 준비 상태 전달
+    isSelf: photographer.isSelf,
+    isReady: photographer.isReady,
+
+    // 작가 본인의 프로필 편집 모드 진입을 처리함
+    onEditProfile: () => setIsEditingProfile(true),
+
+    // 작가 본인의 편집 모드 상태를 전달함
+    isEditingProfile: photographer.isSelf && isEditingProfile,
+
+    // 기본 정보 수정 버튼 클릭 시 모달을 표시함
+    onEditBasicInfo: () => setIsBasicInfoModalOpen(true),
+
+    // 로그인 계정 유형을 전달하고 비회원은 null로 처리함
+    viewerAccountType: user?.accountType ?? null,
+  };
+
   return (
-    // 공통 PageContainer를 사용해 최대 너비 1200px 적용
     <PageContainer width="default">
-      {/* 작가 프로필 기본 정보에 임시 데이터 전달 */}
-      <PhotographerProfileInfo {...mockPhotographer} />
+      {/* 작가 본인의 프로필 편집 상태와 준비 현황을 표시함 */}
+      {isEditingProfile && photographer.isSelf && (
+        <section className={styles.editPanel} aria-label="프로필 편집">
+          <div className={styles.editHeader}>
+            <div className={styles.editTitleArea}>
+              <h2 className={styles.editTitle}>프로필 수정 중</h2>
 
-      {/* 작가 프로필 콘텐츠 탭 표시 */}
+              <p className={styles.editDescription}>
+                프로필 정보를 수정하고 필수 항목을 확인해 주세요.
+              </p>
+            </div>
+
+            {/* 전체 프로필 편집 모드를 종료함 */}
+            <div className={styles.editAction}>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => setIsEditingProfile(false)}
+              >
+                수정 완료
+              </Button>
+            </div>
+          </div>
+
+          {/* 서버에서 조회한 프로필 준비 현황을 표시함 */}
+          <div className={styles.readinessSection}>
+            <div className={styles.readinessHeader}>
+              <h3 className={styles.readinessTitle}>프로필 필수 항목</h3>
+
+              <span
+                className={styles.readinessBadge}
+                data-ready={readinessQuery.data?.isReady === true}
+              >
+                {readinessQuery.isPending
+                  ? '확인 중'
+                  : readinessQuery.isError
+                    ? '상태 확인 실패'
+                    : readinessQuery.data?.isReady
+                      ? '준비 완료'
+                      : '준비 중'}
+              </span>
+            </div>
+
+            {readinessQuery.isPending ? (
+              <p className={styles.readinessMessage} role="status">
+                프로필 준비 상태를 확인하고 있어요.
+              </p>
+            ) : readinessQuery.isError ? (
+              <p className={styles.readinessMessage} role="alert">
+                프로필 준비 상태를 불러오지 못했어요.
+              </p>
+            ) : readinessQuery.isSuccess ? (
+              <>
+                <p className={styles.readinessMessage}>
+                  {readinessQuery.data.isReady
+                    ? '필수 항목이 모두 준비되었어요.'
+                    : hasUnknownReadinessChecks
+                      ? '일부 항목의 완료 여부를 확인할 수 없어요.'
+                      : `필수 항목 ${completedReadinessCount}/${REQUIRED_PROFILE_CHECKS.length}개 완료`}
+                </p>
+
+                {/* 필수 항목별 완료 여부를 표시함 */}
+                <ul className={styles.readinessList}>
+                  {REQUIRED_PROFILE_CHECKS.map(({ key, label }) => {
+                    const completed = readinessQuery.data.checks[key];
+
+                    const state =
+                      completed === true
+                        ? 'complete'
+                        : completed === false
+                          ? 'incomplete'
+                          : 'unknown';
+
+                    return (
+                      <li
+                        key={key}
+                        className={styles.readinessItem}
+                        data-state={state}
+                      >
+                        <span aria-hidden="true">
+                          {completed === true ? '✓' : '○'}
+                        </span>
+
+                        <span>{label}</span>
+
+                        <span className={styles.readinessItemStatus}>
+                          {completed === true
+                            ? '완료'
+                            : completed === false
+                              ? '미완료'
+                              : '확인 필요'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        </section>
+      )}
+
+      {/* 실제 API로 조회한 작가 기본 정보 표시 */}
+      <PhotographerProfileInfo {...profileInfo} />
+
+      {/* 작가 본인의 기본 정보 수정 모달을 표시함 */}
+      <PhotographerBasicInfoModal
+        open={isBasicInfoModalOpen && isEditingProfile && photographer.isSelf}
+        onClose={() => setIsBasicInfoModalOpen(false)}
+        photographer={photographer}
+      />
+
+      {/* 실제 포트폴리오·상품·리뷰 개수 표시 */}
       <PhotographerProfileTabs
-        portfolioCount={42}
-        productCount={mockProducts.length}
-        reviewCount={mockPhotographer.reviewCount}
+        portfolioCount={portfolioTotalCount}
+        productCount={products.length}
+        reviewCount={reviewCount}
       />
 
-      {/* 작가 포트폴리오 목록에 임시 사진 데이터 전달 */}
-      <PhotographerPortfolio photos={mockPortfolioPhotos} totalCount={42} />
+      {/* 실제 포트폴리오 사진 목록 표시 */}
+      {photosQuery.isPending ? (
+        <p role="status">포트폴리오를 불러오는 중이에요.</p>
+      ) : photosQuery.isError && portfolioPhotos.length === 0 ? (
+        <p role="alert">포트폴리오를 불러오지 못했어요.</p>
+      ) : (
+        <PhotographerPortfolio
+          photos={portfolioPhotos}
+          totalCount={portfolioTotalCount}
+          hasNextPage={photosQuery.hasNextPage}
+          isFetchingNextPage={photosQuery.isFetchingNextPage}
+          onLoadMore={() => void photosQuery.fetchNextPage()}
+          isSelf={photographer.isSelf}
+          isReady={photographer.isReady}
+        />
+      )}
 
-      {/* 작가 촬영 상품 목록에 임시 데이터 전달 */}
-      <PhotographerProducts products={mockProducts} />
+      {/* 실제 촬영 상품 목록 표시 */}
+      {productsQuery.isPending ? (
+        <p role="status">촬영 상품을 불러오는 중이에요.</p>
+      ) : productsQuery.isError ? (
+        <p role="alert">촬영 상품을 불러오지 못했어요.</p>
+      ) : (
+        <PhotographerProducts
+          products={products}
+          isSelf={photographer.isSelf}
+          isReady={photographer.isReady}
+          isEditing={isEditingProfile && photographer.isSelf}
+        />
+      )}
 
-      {/* 페이지네이션 테스트용 리뷰 데이터 전달 */}
-      <PhotographerReviews
-        reviews={mockAllReviews}
-        reviewCount={mockPhotographer.reviewCount}
-        ratingAvg={mockPhotographer.ratingAvg}
-      />
+      {/* 실제 리뷰 및 작가 답글 목록 표시 */}
+      {reviewsQuery.isPending ? (
+        <p role="status">리뷰를 불러오는 중이에요.</p>
+      ) : reviewsQuery.isError ? (
+        <p role="alert">리뷰를 불러오지 못했어요.</p>
+      ) : (
+        <PhotographerReviews
+          reviews={reviews}
+          reviewCount={reviewCount}
+          ratingAvg={photographer.ratingAvg}
+          pagination={{
+            currentPage: reviewPage,
+            totalPages: reviewsQuery.data?.totalPages ?? 0,
+            onPageChange: setReviewPage,
+          }}
+          isSelf={photographer.isSelf}
+          isReady={photographer.isReady}
+        />
+      )}
     </PageContainer>
   );
 }

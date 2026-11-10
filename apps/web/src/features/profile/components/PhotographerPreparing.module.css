@@ -1,0 +1,54 @@
+/* 준비 중인 작가 안내 화면을 중앙에 배치함 */
+.preparing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: calc(100dvh - 81px - var(--page-padding));
+  padding: 48px 0;
+  text-align: center;
+}
+
+/* 준비 중 안내 제목 */
+.title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 30px;
+}
+
+/* 준비 중 안내 설명 */
+.description {
+  margin: 16px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  overflow-wrap: break-word;
+}
+
+/* 탐색 이동 버튼 영역 */
+.action {
+  width: 200px;
+  max-width: 100%;
+  margin-top: 36px;
+}
+
+/* 모바일 화면에 맞춰 높이와 여백을 조정함 */
+@media (max-width: 767px) {
+  .preparing {
+    min-height: calc(100dvh - 57px - var(--page-padding));
+    padding: 40px 0;
+  }
+
+  .title {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .description {
+    max-width: 330px;
+  }
+}

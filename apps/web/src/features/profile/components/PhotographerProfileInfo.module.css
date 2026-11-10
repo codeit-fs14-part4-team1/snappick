@@ -27,6 +27,11 @@
   background: linear-gradient(135deg, #e1d1b7, #b18b5c);
 }
 
+/* 작가 본인 미설정 상태의 기본 프로필 이미지 */
+.profileImageUnset {
+  background: #f5f5f5;
+}
+
 /* 이미지가 원형 영역을 채우도록 설정 */
 .profileImage img {
   object-fit: cover;

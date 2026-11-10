@@ -24,32 +24,51 @@ export type PhotographerReview = {
   reply: PhotographerReviewReply | null;
 };
 
+// 서버 페이지네이션 데이터 타입 정의
+type ReviewPagination = {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+};
+
 // 리뷰 목록 컴포넌트 Props 정의
 type PhotographerReviewsProps = {
   reviews: PhotographerReview[];
   reviewCount: number;
   ratingAvg: number | null;
+  pagination?: ReviewPagination;
+  isSelf?: boolean;
+  isReady?: boolean;
 };
 
 export default function PhotographerReviews({
   reviews,
   reviewCount,
   ratingAvg,
+  pagination,
+  isSelf = false,
+  isReady = true,
 }: PhotographerReviewsProps) {
-  // 현재 리뷰 페이지 번호 관리
-  const [currentPage, setCurrentPage] = useState(1);
+  // API 연결 전 기존 Mock 페이지네이션 상태 유지
+  const [mockCurrentPage, setMockCurrentPage] = useState(1);
 
-  // 전체 페이지 수 계산
-  const totalPages = Math.ceil(reviewCount / REVIEW_PAGE_SIZE);
+  // 서버 페이지네이션이 전달되면 해당 페이지 번호를 사용함
+  const currentPage = pagination?.currentPage ?? mockCurrentPage;
 
-  // 현재 페이지의 첫 번째 리뷰 인덱스 계산
-  const startIndex = (currentPage - 1) * REVIEW_PAGE_SIZE;
+  // 서버 페이지 수를 우선 사용하고 Mock에서는 직접 계산함
+  const totalPages =
+    pagination?.totalPages ?? Math.ceil(reviewCount / REVIEW_PAGE_SIZE);
 
-  // 현재 페이지에 표시할 리뷰만 추출
-  const currentReviews = reviews.slice(
-    startIndex,
-    startIndex + REVIEW_PAGE_SIZE,
-  );
+  // 서버 데이터는 그대로 표시하고 Mock 데이터만 분할함
+  const currentReviews = pagination
+    ? reviews
+    : reviews.slice(
+        (currentPage - 1) * REVIEW_PAGE_SIZE,
+        currentPage * REVIEW_PAGE_SIZE,
+      );
+
+  // 서버 페이지네이션과 Mock 페이지네이션 동작을 구분함
+  const handlePageChange = pagination?.onPageChange ?? setMockCurrentPage;
 
   return (
     <section
@@ -77,9 +96,17 @@ export default function PhotographerReviews({
         </span>
       </div>
 
-      {reviews.length === 0 ? (
-        // 리뷰가 없는 경우 안내 문구 표시
-        <p className={styles.emptyState}>아직 작성된 리뷰가 없습니다.</p>
+      {/* 리뷰가 없는 경우 본인 미설정 상태와 공개 상태를 구분함 */}
+      {currentReviews.length === 0 ? (
+        isSelf && !isReady && reviewCount === 0 ? (
+          // 작가 본인 미설정 상태의 리뷰 안내
+          <div className={styles.emptyStateOwn}>
+            <p className={styles.emptyStateOwnTitle}>아직 받은 리뷰가 없어요</p>
+          </div>
+        ) : (
+          // 공개 프로필에서는 기존 빈 상태 안내를 유지함
+          <p className={styles.emptyState}>아직 작성된 리뷰가 없습니다.</p>
+        )
       ) : (
         // 리뷰 목록 표시
         <ul className={styles.reviewList}>
@@ -128,12 +155,13 @@ export default function PhotographerReviews({
           ))}
         </ul>
       )}
+
       {/* 리뷰가 있는 경우 페이지네이션 표시 */}
-      {reviews.length > 0 && (
+      {currentReviews.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={setCurrentPage}
+          onPageChange={handlePageChange}
           className={styles.pagination}
           aria-label="작가 리뷰 페이지 이동"
         />
