@@ -45,3 +45,25 @@ export const patchCancelReservationSchema = z.object({
 export type PatchCancelReservationInput = z.infer<
   typeof patchCancelReservationSchema
 >;
+
+export const getReservationSchema = z.object({
+  type: z
+    .enum(['ALL', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'], {
+      error:
+        'type은 반드시 ALL, IN_PROGRESS, COMPLETED, CANCELED 중 하나여야 합니다.',
+    })
+    .default('ALL'),
+  page: z.coerce
+    .number({ error: 'page는 숫자여야 합니다.' })
+    .int({ error: 'page는 정수여야 합니다.' })
+    .min(1, { error: 'page의 최소값은 1 이상이어야 합니다.' })
+    .default(1),
+  pageSize: z.coerce
+    .number({ error: 'pageSize는 숫자여야 합니다.' })
+    .int({ error: 'pageSize는 정수여야 합니다.' })
+    .min(1, { error: 'pageSize의 최소값은 1 이상이어야 합니다.' })
+    .max(50, { error: 'pageSize의 최대값은 50 이하이어야 합니다.' })
+    .default(10),
+});
+
+export type GetReservationInput = z.infer<typeof getReservationSchema>;

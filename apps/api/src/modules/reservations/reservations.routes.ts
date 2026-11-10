@@ -8,6 +8,7 @@ import {
   getReservationDetailHandler,
   createCancelReservationHandler,
   patchCancelReservationHandler,
+  getReservationHandler,
 } from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
@@ -37,3 +38,5 @@ myReservationsRouter.patch(
   requireAccountType('PHOTOGRAPHER'),
   patchCancelReservationHandler,
 );
+
+myReservationsRouter.get('/reservations', authenticate, getReservationHandler);

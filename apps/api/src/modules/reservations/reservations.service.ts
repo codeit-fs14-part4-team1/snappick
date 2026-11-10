@@ -1,12 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
-import {
-  Prisma,
-  type ReservationStatus,
-} from '../../generated/prisma/client.js';
+import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
   CreateReservationInput,
+  GetReservationInput,
   PatchCancelReservationInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
@@ -26,6 +24,16 @@ const CANCELABLE_STATUSES: ReservationStatus[] = [
   'CONFIRMED',
   'SHOOT_COMPLETED',
 ];
+
+const GET_RESERVATION_ENUM: Record<
+  GetReservationInput['type'],
+  ReservationStatus[] | null
+> = {
+  ALL: null,
+  IN_PROGRESS: ['SHOOT_COMPLETED', 'DELIVERED', 'CONFIRMED'],
+  COMPLETED: ['PURCHASE_CONFIRMED'],
+  CANCELED: ['CANCELED'],
+};
 
 const DELIVERY_DUE_DAYS = 14;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -430,4 +438,79 @@ export async function patchCancelReservation(
       reservationStatus: updatedReservation.status,
     };
   });
+}
+
+// GET /me/reservations?tyep=&page=n&pageSize=n
+export async function getReservation(
+  viewer: {
+    userId: string | null;
+    photographerId: string | null;
+  },
+  query: GetReservationInput,
+) {
+  const statuses = GET_RESERVATION_ENUM[query.type];
+  const where = {
+    ...(viewer.userId
+      ? { user_id: viewer.userId }
+      : { photographer_id: viewer.photographerId }),
+    ...(statuses && { status: { in: statuses } }),
+  };
+  const [totalCount, rows] = await Promise.all([
+    prisma.reservations.count({ where }),
+    prisma.reservations.findMany({
+      where,
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        quote: {
+          select: {
+            product_name: true,
+          },
+        },
+        user: {
+          select: {
+            nickname: true,
+            profile_image_url: true,
+          },
+        },
+        photographer: {
+          select: {
+            nickname: true,
+            profile_image_url: true,
+          },
+        },
+        status: true,
+        shoot_at: true,
+        location: true,
+        total_amount: true,
+        created_at: true,
+      },
+    }),
+  ]);
+
+  return {
+    items: rows.map((reservation) => {
+      // 조회한 계정의 상대방: 유저가 보면 작가, 작가가 보면 유저
+      const other = viewer.userId ? reservation.photographer : reservation.user;
+      return {
+        reservationId: reservation.id,
+        name: reservation.quote?.product_name ?? null,
+        counterpart: other && {
+          nickname: other.nickname,
+          profileImageUrl: toImageUrl(other.profile_image_url),
+        },
+        status: reservation.status,
+        shootAt: reservation.shoot_at,
+        location: reservation.location,
+        totalAmount: reservation.total_amount,
+        createdAt: reservation.created_at,
+      };
+    }),
+    page: query.page,
+    pageSize: query.pageSize,
+    totalCount,
+    totalPages: Math.ceil(totalCount / query.pageSize),
+  };
 }

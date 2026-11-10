@@ -8,12 +8,14 @@ import {
   cancelReservationSchema,
   cancelRequestParamsSchema,
   patchCancelReservationSchema,
+  getReservationSchema,
 } from './reservations.schema.js';
 import {
   createReservation,
   getReservationDetail,
   createCancelReservation,
   patchCancelReservation,
+  getReservation,
 } from './reservations.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -80,4 +82,13 @@ export async function patchCancelReservationHandler(
       input,
     ),
   );
+}
+
+export async function getReservationHandler(req: Request, res: Response) {
+  const query = getReservationSchema.parse(req.query);
+  const viewer = await resolveViewer(getAuth(req));
+  if (!viewer.userId && !viewer.photographerId) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+  res.json(await getReservation(viewer, query));
 }
