@@ -20,6 +20,7 @@ import styles from './ChatsLayout.module.css';
 
 type ChatRoomsContextValue = {
   rooms: ChatRoomSummary[];
+  now: string;
   isLoading: boolean;
   isError: boolean;
 };
@@ -128,6 +129,7 @@ export default function ConnectedChatsLayout({
     <ChatRoomsContext.Provider
       value={{
         rooms: query.rooms,
+        now: now.toISOString(),
         isLoading: query.isPending,
         isError: query.isError,
       }}

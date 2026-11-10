@@ -98,6 +98,12 @@
 }
 
 @media (max-width: 767px) {
+  :global(body):has(.workspace[data-room-open='true']) > :global(header) {
+    display: none;
+  }
+  .page:has(.workspace[data-room-open='true']) {
+    height: 100dvh;
+  }
   :global(html):has(.page) {
     scrollbar-gutter: auto;
   }
