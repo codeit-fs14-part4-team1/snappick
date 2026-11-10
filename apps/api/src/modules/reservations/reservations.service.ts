@@ -1,7 +1,13 @@
 import { prisma } from '../../lib/prisma.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import {
+  Prisma,
+  type ReservationStatus,
+} from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
-import type { CreateReservationInput } from './reservations.schema.js';
+import type {
+  CancelReservationInput,
+  CreateReservationInput,
+} from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
@@ -14,6 +20,11 @@ function reservationAlreadyExists(reservationId: string) {
     { reservationId },
   );
 }
+
+const CANCELABLE_STATUSES: ReservationStatus[] = [
+  'CONFIRMED',
+  'SHOOT_COMPLETED',
+];
 
 const DELIVERY_DUE_DAYS = 14;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -210,7 +221,9 @@ export async function getReservationDetail(
       processedAt: latest.processed_at,
     },
     canRequestCancel:
-      reservation.status === 'CONFIRMED' && latest?.status !== 'PENDING',
+      (reservation.status === 'CONFIRMED' ||
+        reservation.status === 'SHOOT_COMPLETED') &&
+      latest?.status !== 'PENDING',
   };
 
   // 조회한 계정에 따라 상대방 정보만 내려준다
@@ -237,4 +250,83 @@ export async function getReservationDetail(
     },
     ...cancel,
   };
+}
+
+// POST /me/reservations/:reservationId
+export async function createcancelReservation(
+  requester: {
+    accountId: string;
+    userId: string | null;
+    photographerId: string | null;
+  },
+  reservationId: string,
+  input: CancelReservationInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: {
+        user_id: true,
+        photographer_id: true,
+        status: true,
+        reservation_cancel_request: {
+          where: { status: 'PENDING' },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+
+    const isParticipant =
+      !!reservation &&
+      ((requester.userId !== null &&
+        reservation.user_id === requester.userId) ||
+        (requester.photographerId !== null &&
+          reservation.photographer_id === requester.photographerId));
+
+    if (!isParticipant) {
+      throw new HttpError(
+        404,
+        'RESERVATION_NOT_FOUND',
+        '예약을 찾을 수 없어요.',
+      );
+    }
+
+    if (!CANCELABLE_STATUSES.includes(reservation.status)) {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_CANCELABLE',
+        '해당 예약은 취소가 불가능해요.',
+      );
+    }
+
+    const pending = reservation.reservation_cancel_request[0];
+    if (pending) {
+      throw new HttpError(
+        409,
+        'CANCEL_REQUEST_ALREADY_PENDING',
+        '이미 처리 대기 중인 취소 요청이 있어요.',
+        { cancelRequestId: pending.id },
+      );
+    }
+
+    const cancelRequest = await tx.reservation_cancel_requests.create({
+      data: {
+        reservation_id: reservationId,
+        requested_by_account_id: requester.accountId,
+        reason: input.reason,
+        status: 'PENDING',
+      },
+      select: { id: true, status: true, reason: true, created_at: true },
+    });
+
+    return {
+      cancelRequestId: cancelRequest.id,
+      status: cancelRequest.status,
+      reason: cancelRequest.reason,
+      requestedAt: cancelRequest.created_at,
+    };
+  });
 }

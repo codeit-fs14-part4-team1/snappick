@@ -6,6 +6,7 @@ import {
 import {
   createReservationHandler,
   getReservationDetailHandler,
+  createCancelReservationHandler,
 } from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
@@ -21,4 +22,10 @@ myReservationsRouter.get(
   '/reservations/:reservationId',
   authenticate,
   getReservationDetailHandler,
+);
+
+myReservationsRouter.post(
+  '/reservations/:reservationId/cancel',
+  authenticate,
+  createCancelReservationHandler,
 );
