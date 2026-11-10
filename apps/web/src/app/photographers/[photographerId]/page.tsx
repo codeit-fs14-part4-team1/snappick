@@ -16,12 +16,20 @@ const mockPhotographer = {
   completedCount: 334,
 };
 
-export default function PhotographerProfilePage() {
+export default async function PhotographerProfilePage({
+  params,
+}: {
+  params: Promise<{ photographerId: string }>;
+}) {
+  const { photographerId } = await params;
   return (
     // 공통 PageContainer를 사용해 최대 너비 1200px 적용
     <PageContainer width="default">
       {/* 작가 프로필 기본 정보에 임시 데이터 전달 */}
-      <PhotographerProfileInfo {...mockPhotographer} />
+      <PhotographerProfileInfo
+        {...mockPhotographer}
+        photographerId={photographerId}
+      />
     </PageContainer>
   );
 }
