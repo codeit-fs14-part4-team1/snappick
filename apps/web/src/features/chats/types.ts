@@ -40,3 +40,15 @@ export type ChatRoomListLoader = (
 ) => Promise<ChatRoomListPage>;
 
 export type ChatViewerRole = 'user' | 'photographer';
+
+/** POST /chats: 새 문의를 만들거나 이미 있는 문의 반환 */
+export type CreateChatResponse = {
+  chatRoomId: string;
+  isNew: boolean;
+  photographer: {
+    id: string;
+    nickname: string;
+    profileImageUrl: string | null;
+  };
+  createdAt: string;
+};

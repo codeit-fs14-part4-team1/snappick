@@ -1,7 +1,27 @@
-import type { GetChatRoomsParams, ChatRoomListPage } from './types';
+import type {
+  GetChatRoomsParams,
+  ChatRoomListPage,
+  CreateChatResponse,
+} from './types';
 import { authFetch } from '@/features/auth/authFetch';
+import type { useAuth } from '@/features/auth/context/AuthContext';
 
 type ChatAuth = Parameters<typeof authFetch>[2];
+
+export async function createChat(
+  photographerId: string,
+  fetchWithAuth: ReturnType<typeof useAuth>['fetchWithAuth'],
+  signal?: AbortSignal,
+): Promise<CreateChatResponse> {
+  const result = await fetchWithAuth<CreateChatResponse>('/chats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photographerId }),
+    signal,
+  });
+  if (!result?.chatRoomId) throw new Error('채팅방 생성 응답이 없습니다.');
+  return result;
+}
 
 type ChatRoomsResponse = Pick<ChatRoomListPage, 'items'> &
   Partial<Pick<ChatRoomListPage, 'nextCursor' | 'hasNext'>>;
