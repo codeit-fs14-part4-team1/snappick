@@ -7,6 +7,7 @@ import {
   createReservationHandler,
   getReservationDetailHandler,
   createCancelReservationHandler,
+  patchCancelReservationHandler,
 } from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
@@ -28,4 +29,11 @@ myReservationsRouter.post(
   '/reservations/:reservationId/cancel',
   authenticate,
   createCancelReservationHandler,
+);
+
+myReservationsRouter.patch(
+  '/reservations/:reservationId/cancel/:cancelRequestId',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  patchCancelReservationHandler,
 );

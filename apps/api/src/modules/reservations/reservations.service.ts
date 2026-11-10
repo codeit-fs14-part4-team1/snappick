@@ -7,6 +7,7 @@ import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
   CreateReservationInput,
+  PatchCancelReservationInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 
@@ -253,7 +254,7 @@ export async function getReservationDetail(
 }
 
 // POST /me/reservations/:reservationId
-export async function createcancelReservation(
+export async function createCancelReservation(
   requester: {
     accountId: string;
     userId: string | null;
@@ -327,6 +328,86 @@ export async function createcancelReservation(
       status: cancelRequest.status,
       reason: cancelRequest.reason,
       requestedAt: cancelRequest.created_at,
+    };
+  });
+}
+
+// PATCH /me/reservations/:reservationId/cancel/:cancelRequestId
+export async function patchCancelReservation(
+  photographerId: string,
+  reservationId: string,
+  cancelRequestId: string,
+  input: PatchCancelReservationInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: {
+        photographer_id: true,
+        status: true,
+        reservation_cancel_request: {
+          where: { id: cancelRequestId },
+          select: { id: true, status: true },
+        },
+      },
+    });
+
+    if (!reservation || reservation.photographer_id !== photographerId) {
+      throw new HttpError(
+        404,
+        'RESERVATION_NOT_FOUND',
+        '예약을 찾을 수 없어요.',
+      );
+    }
+
+    const cancelRequest = reservation.reservation_cancel_request[0];
+    if (!cancelRequest) {
+      throw new HttpError(
+        404,
+        'CANCEL_REQUEST_NOT_FOUND',
+        '취소 요청을 찾을 수 없어요.',
+      );
+    }
+
+    if (cancelRequest.status !== 'PENDING') {
+      throw new HttpError(
+        409,
+        'CANCEL_REQUEST_ALREADY_PROCESSED',
+        '이미 처리된 취소 요청이에요.',
+        { status: cancelRequest.status },
+      );
+    }
+
+    const accepted = input.status === 'ACCEPTED';
+    if (accepted && !CANCELABLE_STATUSES.includes(reservation.status)) {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_CANCELABLE',
+        '해당 예약은 취소가 불가능해요.',
+      );
+    }
+
+    const processed = await tx.reservation_cancel_requests.update({
+      where: { id: cancelRequest.id },
+      data: { status: input.status, processed_at: new Date() },
+      select: { id: true, status: true, processed_at: true },
+    });
+
+    const updatedReservation = accepted
+      ? await tx.reservations.update({
+          where: { id: reservationId },
+          data: { status: 'CANCELED' },
+          select: { status: true },
+        })
+      : { status: reservation.status };
+
+    return {
+      cancelRequestId: processed.id,
+      status: processed.status,
+      processedAt: processed.processed_at,
+      reservationStatus: updatedReservation.status,
     };
   });
 }

@@ -14,6 +14,12 @@ export const reservationParamsSchema = z.object({
   }),
 });
 
+export const cancelRequestParamsSchema = reservationParamsSchema.extend({
+  cancelRequestId: z.uuid({
+    error: 'cancelRequestId는 올바른 UUID여야 합니다.',
+  }),
+});
+
 export const cancelReservationSchema = z.object({
   reason: z
     .string({
@@ -29,3 +35,13 @@ export const cancelReservationSchema = z.object({
 });
 
 export type CancelReservationInput = z.infer<typeof cancelReservationSchema>;
+
+export const patchCancelReservationSchema = z.object({
+  status: z.enum(['ACCEPTED', 'REJECTED'], {
+    error: 'status는 반드시 ACCEPTED, REJECTED 중 하나이어야 합니다.',
+  }),
+});
+
+export type PatchCancelReservationInput = z.infer<
+  typeof patchCancelReservationSchema
+>;

@@ -1,16 +1,19 @@
 import type { Request, Response } from 'express';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
-import { resolveViewer } from '../../utils/viewer.js';
+import { requirePhotographerId, resolveViewer } from '../../utils/viewer.js';
 import {
   createReservationSchema,
   reservationParamsSchema,
   cancelReservationSchema,
+  cancelRequestParamsSchema,
+  patchCancelReservationSchema,
 } from './reservations.schema.js';
 import {
   createReservation,
   getReservationDetail,
-  createcancelReservation,
+  createCancelReservation,
+  patchCancelReservation,
 } from './reservations.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -52,10 +55,29 @@ export async function createCancelReservationHandler(
   res
     .status(201)
     .json(
-      await createcancelReservation(
+      await createCancelReservation(
         { ...requester, accountId: auth.accountId },
         reservationId,
         reason,
       ),
     );
+}
+
+export async function patchCancelReservationHandler(
+  req: Request,
+  res: Response,
+) {
+  const { reservationId, cancelRequestId } = cancelRequestParamsSchema.parse(
+    req.params,
+  );
+  const input = patchCancelReservationSchema.parse(req.body);
+  const photographerId = await requirePhotographerId(getAuth(req));
+  res.json(
+    await patchCancelReservation(
+      photographerId,
+      reservationId,
+      cancelRequestId,
+      input,
+    ),
+  );
 }
