@@ -14,6 +14,7 @@ type MockData = {
   representative_photos: Prisma.representative_photosCreateManyInput[];
   photo_likes: Prisma.photo_likesCreateManyInput[];
   photographer_saves: Prisma.photographer_savesCreateManyInput[];
+  notifications: Prisma.notificationsCreateManyInput[];
 };
 
 type ProfileMockData = {
@@ -113,11 +114,16 @@ async function main() {
       data: data.photographer_saves,
       skipDuplicates: true,
     }),
+    prisma.notifications.createMany({
+      data: data.notifications,
+      skipDuplicates: true,
+    }),
   ]);
 
   console.log(`representative_photos: ${relationCounts[0]?.count ?? 0}건 추가`);
   console.log(`photo_likes: ${relationCounts[1]?.count ?? 0}건 추가`);
   console.log(`photographer_saves: ${relationCounts[2]?.count ?? 0}건 추가`);
+  console.log(`notifications: ${relationCounts[3]?.count ?? 0}건 추가`);
 
   // 프로필 화면용 데이터는 기본 사용자·작가 시드가 끝난 뒤 FK 순서로 동기화한다.
   await prisma.$transaction([
