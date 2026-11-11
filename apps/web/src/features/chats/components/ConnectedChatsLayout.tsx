@@ -14,6 +14,7 @@ import { useSelectedLayoutSegment } from 'next/navigation';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { getChatRooms } from '../api';
 import useChatRooms from '../useChatRooms';
+import useChatSocket from '../useChatSocket';
 import type { ChatRoomListLoader, ChatRoomSummary } from '../types';
 import ChatsLayout from './ChatsLayout';
 import styles from './ChatsLayout.module.css';
@@ -23,6 +24,7 @@ type ChatRoomsContextValue = {
   now: string;
   isLoading: boolean;
   isError: boolean;
+  isRealtimeConnected: boolean;
 };
 const ChatRoomsContext = createContext<ChatRoomsContextValue | null>(null);
 
@@ -97,6 +99,10 @@ export default function ConnectedChatsLayout({
       authStatus === 'authenticated' && accessToken ? (user?.id ?? null) : null,
     loadPage,
   });
+  const realtime = useChatSocket(
+    query.rooms.map((room) => room.id),
+    selectedRoomId,
+  );
 
   if (authStatus === 'initializing')
     return <p role="status">로그인 정보를 확인하고 있어요.</p>;
@@ -132,6 +138,7 @@ export default function ConnectedChatsLayout({
         now: now.toISOString(),
         isLoading: query.isPending,
         isError: query.isError,
+        isRealtimeConnected: realtime.status === 'connected',
       }}
     >
       <ChatsLayout
@@ -143,7 +150,9 @@ export default function ConnectedChatsLayout({
           now,
           getRoomHref: (id) => `/chats/${encodeURIComponent(id)}`,
           isLoading: query.isPending,
-          isError: query.isError,
+          isError:
+            query.isError &&
+            (query.rooms.length === 0 || realtime.status === 'connected'),
           hasNextPage: query.hasNextPage,
           isFetchingNextPage: query.isFetchingNextPage,
           isFetchNextPageError: query.isFetchNextPageError,

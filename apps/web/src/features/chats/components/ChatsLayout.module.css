@@ -31,6 +31,21 @@
   flex-direction: column;
   background: var(--color-bg-subtle);
 }
+.connectionNotice {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base);
+  font-size: 13px;
+  line-height: 20px;
+}
+.connectionNotice > button {
+  flex-shrink: 0;
+}
 .workspace[data-empty='true'] .conversation {
   background: var(--color-bg-base);
 }

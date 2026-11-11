@@ -7,6 +7,7 @@ import useChatMessages from '../useChatMessages';
 import ChatMessageList from './ChatMessageList';
 import ChatMessageComposer from './ChatMessageComposer';
 import useSendChatMessage from '../useSendChatMessage';
+import { useConnectedChatRooms } from './ConnectedChatsLayout';
 import styles from './ChatsLayout.module.css';
 
 export default function ConnectedChatMessages({
@@ -20,6 +21,7 @@ export default function ConnectedChatMessages({
 }) {
   const query = useChatMessages(room.id);
   const { sendMessage, isSending, sentMessageId } = useSendChatMessage(room.id);
+  const { isRealtimeConnected } = useConnectedChatRooms();
   if (query.isPending)
     return (
       <div className={styles.empty} role="status">
@@ -45,6 +47,20 @@ export default function ConnectedChatMessages({
   }
   return (
     <>
+      {isRealtimeConnected &&
+        query.isRefetchError &&
+        !query.isFetchNextPageError && (
+          <div className={styles.connectionNotice} role="alert">
+            <span>대화를 갱신하지 못했어요.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void query.refetch()}
+            >
+              다시 시도
+            </Button>
+          </div>
+        )}
       <ChatMessageList
         scrollToMessageId={sentMessageId}
         messages={query.messages}
