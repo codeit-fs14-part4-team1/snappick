@@ -28,13 +28,10 @@ type ProfileRow = Prisma.photographersGetPayload<{
 const READINESS_KEYS = [
   'profileImage',
   'regions',
+  'career',
   'categories',
   'introduction',
-  'photos',
-  'product',
 ] as const;
-
-const MIN_PHOTOS_FOR_READY = 3;
 
 type ReadinessKey = (typeof READINESS_KEYS)[number];
 
@@ -48,25 +45,12 @@ const hasText = (value: string | null): boolean =>
   value !== null && value.trim() !== '';
 
 async function getReadiness(photographer: ProfileRow): Promise<Readiness> {
-  const [photos, product] = await Promise.all([
-    prisma.photos.findMany({
-      where: { photographer_id: photographer.id },
-      select: { id: true },
-      take: MIN_PHOTOS_FOR_READY,
-    }),
-    prisma.products.findFirst({
-      where: { photographer_id: photographer.id },
-      select: { id: true },
-    }),
-  ]);
-
   const checks: Record<ReadinessKey, boolean> = {
     profileImage: hasText(photographer.profile_image_url),
     regions: photographer.regions.length > 0,
+    career: photographer.career !== null,
     categories: photographer.categories.length > 0,
     introduction: hasText(photographer.introduction),
-    photos: photos.length >= MIN_PHOTOS_FOR_READY,
-    product: product !== null,
   };
   // false인 항목만 모은다
   const missing = READINESS_KEYS.filter((key) => !checks[key]);
