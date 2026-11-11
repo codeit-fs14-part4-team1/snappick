@@ -16,7 +16,11 @@ export default function ChatRoomView({
 }) {
   const profile = (
     <>
-      <ChatAvatar src={room.partner.profileImageUrl} size={32} />
+      <ChatAvatar
+        src={room.partner.profileImageUrl}
+        nickname={room.partner.nickname}
+        size={32}
+      />
       <span className={styles.profileName}>{getPartnerName(room.partner)}</span>
     </>
   );
