@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { useConnectedChatRooms } from './ConnectedChatsLayout';
-import { getPartnerName } from '../utils';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import ChatRoomView from './ChatRoomView';
+import ConnectedChatMessages from './ConnectedChatMessages';
 import styles from './ChatsLayout.module.css';
 
 export default function ConnectedChatRoom({ roomId }: { roomId: string }) {
-  const { rooms, isLoading, isError } = useConnectedChatRooms();
+  const { rooms, isLoading, isError, now } = useConnectedChatRooms();
+  const { user } = useAuth();
   const room = rooms.find((item) => item.id === roomId);
   if (!room)
     return (
@@ -24,15 +27,16 @@ export default function ConnectedChatRoom({ roomId }: { roomId: string }) {
       </section>
     );
 
+  if (!user) return null;
+  const role = user.accountType === 'PHOTOGRAPHER' ? 'photographer' : 'user';
   return (
-    <section className={styles.empty} aria-label="선택한 문의 안내">
-      <h2 id="chat-room-title" tabIndex={-1}>
-        {getPartnerName(room.partner)}
-      </h2>
-      <p>대화 내역은 상세·메시지 API 연결 후 표시됩니다.</p>
-      <Link className={styles.exploreLink} href="/chats" scroll={false}>
-        문의 목록으로
-      </Link>
-    </section>
+    <ChatRoomView room={room} viewerRole={role}>
+      <ConnectedChatMessages
+        key={`${room.id}:${user.id}`}
+        room={room}
+        viewerRole={role}
+        now={now}
+      />
+    </ChatRoomView>
   );
 }
