@@ -7,30 +7,24 @@ type MockData = {
   auth_accounts: Prisma.auth_accountsCreateManyInput[];
   auth_providers: Prisma.auth_providersCreateManyInput[];
   users: Prisma.usersCreateManyInput[];
-  photographers: Prisma.photographersCreateManyInput[];
-  products: Prisma.productsCreateManyInput[];
-  photos: Prisma.photosCreateManyInput[];
-  photo_keywords: Prisma.photo_keywordsCreateManyInput[];
+  photographers: (Prisma.photographersCreateManyInput & { id: string })[];
+  products: (Prisma.productsCreateManyInput & { id: string })[];
+  photos: (Prisma.photosCreateManyInput & { id: string })[];
+  photo_keywords: (Prisma.photo_keywordsCreateManyInput & { id: string })[];
   representative_photos: Prisma.representative_photosCreateManyInput[];
   photo_likes: Prisma.photo_likesCreateManyInput[];
   photographer_saves: Prisma.photographer_savesCreateManyInput[];
   notifications: Prisma.notificationsCreateManyInput[];
 };
 
-// 넣는 순서 (FK 순서)
-const TABLES = [
-  'auth_accounts',
-  'auth_providers',
-  'users',
-  'photographers',
-  'products',
-  'photos',
-  'photo_keywords',
-  'representative_photos',
-  'photo_likes',
-  'photographer_saves',
-  'notifications',
-] as const satisfies readonly (keyof MockData)[];
+type ProfileMockData = {
+  products: (Prisma.productsCreateManyInput & { id: string })[];
+  quotes: (Prisma.quotesCreateManyInput & { id: string })[];
+  reservations: (Prisma.reservationsCreateManyInput & { id: string })[];
+  deliverables: (Prisma.deliverablesCreateManyInput & { id: string })[];
+  reviews: (Prisma.reviewsCreateManyInput & { id: string })[];
+  review_replies: (Prisma.review_repliesCreateManyInput & { id: string })[];
+};
 
 // 예전 목데이터의 비밀번호 자리 (실제 해시가 아니라 로그인할 수 없음)
 const LEGACY_PASSWORD_HASH = 'mock-not-a-real-hash';
@@ -38,14 +32,23 @@ const LEGACY_PASSWORD_HASH = 'mock-not-a-real-hash';
 // 로컬은 DATABASE_URL, staging은 DB_HOST와 DB_CREDENTIALS로 접속한다 (lib/prisma.ts)
 // 빌드하면 dist/scripts/seed.js가 되어 배포 hook에서 tsx 없이 실행한다
 async function main() {
-  const file = new URL(
+  const baseFile = new URL(
     '../../prisma/seed-data/snappick-mock.json',
     import.meta.url,
   );
-  const data = JSON.parse(await readFile(file, 'utf-8')) as MockData;
+  const profileFile = new URL(
+    '../../prisma/seed-data/snappick-mock-profile.json',
+    import.meta.url,
+  );
+  const [data, profileData] = await Promise.all([
+    readFile(baseFile, 'utf-8').then((json) => JSON.parse(json) as MockData),
+    readFile(profileFile, 'utf-8').then(
+      (json) => JSON.parse(json) as ProfileMockData,
+    ),
+  ]);
 
-  // FK 순서대로 넣고, 이미 있는 행은 건너뛰어 여러 번 실행해도 결과가 같게 한다
-  const counts = await prisma.$transaction([
+  // 로그인·사용자 계정은 기존 행을 유지한다.
+  const accountCounts = await prisma.$transaction([
     prisma.auth_accounts.createMany({
       data: data.auth_accounts,
       skipDuplicates: true,
@@ -55,16 +58,50 @@ async function main() {
       skipDuplicates: true,
     }),
     prisma.users.createMany({ data: data.users, skipDuplicates: true }),
-    prisma.photographers.createMany({
-      data: data.photographers,
-      skipDuplicates: true,
-    }),
-    prisma.products.createMany({ data: data.products, skipDuplicates: true }),
-    prisma.photos.createMany({ data: data.photos, skipDuplicates: true }),
-    prisma.photo_keywords.createMany({
-      data: data.photo_keywords,
-      skipDuplicates: true,
-    }),
+  ]);
+
+  console.log(`auth_accounts: ${accountCounts[0]?.count ?? 0}건 추가`);
+  console.log(`auth_providers: ${accountCounts[1]?.count ?? 0}건 추가`);
+  console.log(`users: ${accountCounts[2]?.count ?? 0}건 추가`);
+
+  // 화면에 노출되는 콘텐츠는 재실행할 때 JSON의 최신 문구로 갱신한다.
+  await prisma.$transaction([
+    ...data.photographers.map(({ id, ...content }) =>
+      prisma.photographers.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...data.products.map(({ id, ...content }) =>
+      prisma.products.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...data.photos.map(({ id, ...content }) =>
+      prisma.photos.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...data.photo_keywords.map(({ id, ...content }) =>
+      prisma.photo_keywords.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+  ]);
+
+  console.log(`photographers: ${data.photographers.length}건 동기화`);
+  console.log(`products: ${data.products.length}건 동기화`);
+  console.log(`photos: ${data.photos.length}건 동기화`);
+  console.log(`photo_keywords: ${data.photo_keywords.length}건 동기화`);
+
+  const relationCounts = await prisma.$transaction([
     prisma.representative_photos.createMany({
       data: data.representative_photos,
       skipDuplicates: true,
@@ -83,9 +120,63 @@ async function main() {
     }),
   ]);
 
-  TABLES.forEach((table, i) => {
-    console.log(`${table}: ${counts[i]?.count ?? 0}건 추가`);
-  });
+  console.log(`representative_photos: ${relationCounts[0]?.count ?? 0}건 추가`);
+  console.log(`photo_likes: ${relationCounts[1]?.count ?? 0}건 추가`);
+  console.log(`photographer_saves: ${relationCounts[2]?.count ?? 0}건 추가`);
+  console.log(`notifications: ${relationCounts[3]?.count ?? 0}건 추가`);
+
+  // 프로필 화면용 데이터는 기본 사용자·작가 시드가 끝난 뒤 FK 순서로 동기화한다.
+  await prisma.$transaction([
+    ...profileData.products.map(({ id, ...content }) =>
+      prisma.products.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...profileData.quotes.map(({ id, ...content }) =>
+      prisma.quotes.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...profileData.reservations.map(({ id, ...content }) =>
+      prisma.reservations.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...profileData.deliverables.map(({ id, ...content }) =>
+      prisma.deliverables.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...profileData.reviews.map(({ id, ...content }) =>
+      prisma.reviews.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+    ...profileData.review_replies.map(({ id, ...content }) =>
+      prisma.review_replies.upsert({
+        where: { id },
+        create: { id, ...content },
+        update: content,
+      }),
+    ),
+  ]);
+
+  console.log(`profile products: ${profileData.products.length}건 동기화`);
+  console.log(`quotes: ${profileData.quotes.length}건 동기화`);
+  console.log(`reservations: ${profileData.reservations.length}건 동기화`);
+  console.log(`deliverables: ${profileData.deliverables.length}건 동기화`);
+  console.log(`reviews: ${profileData.reviews.length}건 동기화`);
+  console.log(`review_replies: ${profileData.review_replies.length}건 동기화`);
 
   // 예전 시드로 넣은 DB는 비밀번호가 임시 값이라 로그인할 수 없다. 임시 값인 계정만 바꾼다
   const updated = await prisma.$transaction(
