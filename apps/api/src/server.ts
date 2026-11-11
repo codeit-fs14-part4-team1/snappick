@@ -71,6 +71,7 @@ io.on('connection', (socket) => {
     } catch (error) {
       if (error instanceof HttpError) {
         socket.emit('chat:error', {
+          chatRoomId,
           code: error.code,
           message: error.message,
         });
@@ -78,6 +79,7 @@ io.on('connection', (socket) => {
         console.error(error);
 
         socket.emit('chat:error', {
+          chatRoomId,
           code: 'INTERNAL_ERROR',
           message: '채팅방 입장 중 오류가 발생했습니다.',
         });
