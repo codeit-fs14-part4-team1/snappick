@@ -21,3 +21,9 @@ export const getMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
   cursor: z.uuid().optional(),
 });
+
+export const markChatAsReadSchema = z.object({
+  lastReadMessageId: z.uuid({
+    error: '마지막으로 확인한 메시지 ID를 확인해 주세요.',
+  }),
+});
