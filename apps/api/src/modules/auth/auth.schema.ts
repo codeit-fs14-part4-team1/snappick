@@ -85,5 +85,28 @@ export const loginSchema = z.discriminatedUnion(
   { error: providerError },
 );
 
+// PATCH /auth/password
+// 새 비밀번호는 가입과 같은 규칙, 현재 비밀번호는 값만 확인한다 (규칙이 바뀌기 전 비밀번호도 받기 위해)
+export const changePasswordSchema = z.strictObject(
+  {
+    currentPassword: z
+      .string({
+        error: (issue) =>
+          isMissing(issue.input)
+            ? '현재 비밀번호는 필수 요소입니다.'
+            : '현재 비밀번호는 문자열이어야 합니다.',
+      })
+      .min(1, '현재 비밀번호를 입력해 주세요.'),
+    newPassword: passwordSchema,
+  },
+  {
+    error: (issue) =>
+      issue.code === 'unrecognized_keys'
+        ? '현재 비밀번호와 새 비밀번호만 보낼 수 있어요.'
+        : '요청 본문은 객체여야 합니다.',
+  },
+);
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

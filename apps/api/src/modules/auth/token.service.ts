@@ -58,6 +58,31 @@ export async function revokeFamily(familyId: string) {
   });
 }
 
+// 계정의 다른 로그인 세션을 모두 폐기 (비밀번호 변경에서 사용)
+// currentRawToken의 세션은 남긴다. 다른 계정의 토큰이거나 없으면 모든 세션을 폐기한다
+export async function revokeOtherSessions(
+  accountId: string,
+  currentRawToken: string | undefined,
+) {
+  const current = currentRawToken
+    ? await prisma.auth_refresh_tokens.findUnique({
+        where: { token_hash: hashToken(currentRawToken) },
+        select: { family_id: true, auth_account_id: true },
+      })
+    : null;
+  const keepFamilyId =
+    current?.auth_account_id === accountId ? current.family_id : undefined;
+
+  await prisma.auth_refresh_tokens.updateMany({
+    where: {
+      auth_account_id: accountId,
+      revoked_at: null,
+      ...(keepFamilyId ? { family_id: { not: keepFamilyId } } : {}),
+    },
+    data: { revoked_at: new Date() },
+  });
+}
+
 type RotateResult = {
   accessToken: string;
   // 유예 구간에서 access token만 새로 받는 경우에는 null (쿠키는 이미 새 값으로 바뀌어 있음)
