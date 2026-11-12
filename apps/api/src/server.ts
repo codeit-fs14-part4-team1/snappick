@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { app } from './app.js';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
-import { verifyAccessToken } from './utils/tokens.js';
+import { verifySocketAccessToken } from './utils/tokens.js';
 import { chatRoomParamsSchema } from './modules/chats/chats.schema.js';
 import { checkChatRoomAccess } from './modules/chats/chats.service.js';
 import { HttpError } from './utils/http-error.js';
@@ -24,7 +24,7 @@ const PORT = Number(process.env.PORT) || 4000;
 
 // socket: 접속하려는 클라이언트의 연결 정보
 // handshake: 연결을 시작하면서 주고받는 정보
-// verifyAccessToken으로 검증한 게정 정보를 socket.data.auth에 저장
+// verifySocketAccessToken으로 검증한 게정 정보를 socket.data.auth에 저장
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
 
@@ -33,7 +33,7 @@ io.use((socket, next) => {
   }
 
   try {
-    const auth = verifyAccessToken(token);
+    const auth = verifySocketAccessToken(token);
     socket.data.auth = auth;
   } catch {
     return next(new Error('UNAUTHORIZED'));
@@ -44,6 +44,36 @@ io.use((socket, next) => {
 // io.on('connection', ...) 서버에 새 연결이 들어와서 누군가 연결되면 실행
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
+
+  // 토큰 만료 시간 계산
+  const expiresAtMs = socket.data.auth.expiresAt * 1000;
+
+  let expiryTimer: ReturnType<typeof setTimeout>;
+
+  function scheduleExpiry() {
+    const remainingMs = expiresAtMs - Date.now();
+
+    if (remainingMs <= 0) {
+      socket.emit('auth:expired', {
+        code: 'ACCESS_TOKEN_EXPIRED',
+        message: '액세스 토큰이 만료되었습니다.',
+      });
+
+      socket.disconnect(true);
+      return;
+    }
+
+    // 노드js setTimeout()에 한 번에 지정할 수 있는 최대 지연 시간
+    // 2,147,483,647밀리초..약 24.8일 정도
+    // 최대 시간 또는 remainingMs 중 적은거니 주로 remainingMs가 선택됨
+    expiryTimer = setTimeout(scheduleExpiry, Math.min(remainingMs, 2147483647));
+  }
+
+  scheduleExpiry();
+
+  socket.on('disconnect', () => {
+    clearTimeout(expiryTimer);
+  });
 
   // socket.on('이름', 함수)  는 이벤트가 오면 실행할 함수 등록
   // 입장 요청을 보내면 실행
