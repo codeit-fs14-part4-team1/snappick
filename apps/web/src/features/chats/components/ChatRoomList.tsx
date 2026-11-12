@@ -134,7 +134,10 @@ export default function ChatRoomList({
                       room.id === selectedRoomId ? 'page' : undefined
                     }
                   >
-                    <ChatAvatar src={room.partner.profileImageUrl} />
+                    <ChatAvatar
+                      src={room.partner.profileImageUrl}
+                      nickname={room.partner.nickname}
+                    />
                     <span className={styles.roomContent}>
                       <span className={styles.roomTop}>
                         <strong className={styles.name}>
