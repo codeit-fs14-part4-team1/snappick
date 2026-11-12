@@ -384,6 +384,9 @@ export async function getMessages(
     where,
     orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     take: limit + 1,
+    include: {
+      quote: true,
+    },
   });
 
   const hasNext = messages.length > limit;
@@ -396,7 +399,24 @@ export async function getMessages(
     messageType: message.message_type,
     content: message.content,
     payload: message.payload,
-    quote: null,
+    quote: message.quote
+      ? {
+          id: message.quote.id,
+          chatRoomId: message.quote.chat_room_id,
+          shootingCaseId: message.quote.shooting_case_id,
+          version: message.quote.version,
+          productName: message.quote.product_name,
+          shootAt: message.quote.shoot_at,
+          location: message.quote.location,
+          durationMinutes: message.quote.duration_minutes,
+          price: message.quote.price,
+          photoCount: message.quote.photo_count,
+          includesOriginal: message.quote.includes_original,
+          additionalNotice: message.quote.additional_notice,
+          commonNotice: message.quote.common_notice,
+          createdAt: message.quote.created_at,
+        }
+      : null,
     reservation: null,
     readAt: message.read_at,
     createdAt: message.created_at,

@@ -30,6 +30,7 @@ import {
   photographerReviewsRouter,
   myReviewsRouter,
 } from './modules/reviews/reviews.routes.js';
+import { quotesRouter } from './modules/quotes/quotes.routes.js';
 
 export const app: Express = express();
 
@@ -82,6 +83,7 @@ if (storageDriver === 'local') {
 }
 app.use('/me/photos', myPhotosRouter);
 app.use('/me/notifications', notificationsRouter);
+app.use('/quotes', quotesRouter);
 
 // 반드시 해당 주석 위에 라우터들을 배치할 것
 app.use((_req, _res, next) => {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const createQuoteSchema = z.object({
   chatRoomId: z.uuid(),
+  shootingCaseId: z.uuid().optional(),
   productId: z.uuid(),
   shootAt: z.iso.datetime({ offset: true }),
   location: z.string().trim().min(1),
