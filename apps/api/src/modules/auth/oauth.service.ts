@@ -1,5 +1,5 @@
-import { HttpError } from '../../utils/http-error.js';
 import type { Provider } from '../../generated/prisma/enums.js';
+import { getGoogleProfile } from './google.oauth.js';
 import { getKakaoProfile } from './kakao.oauth.js';
 import { getNaverProfile } from './naver.oauth.js';
 
@@ -35,10 +35,6 @@ export async function getSocialProfile(
     case 'NAVER':
       return getNaverProfile(authorization);
     case 'GOOGLE':
-      throw new HttpError(
-        501,
-        'NOT_IMPLEMENTED',
-        '아직 지원하지 않는 소셜 로그인입니다.',
-      );
+      return getGoogleProfile(authorization);
   }
 }
