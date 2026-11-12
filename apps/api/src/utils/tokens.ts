@@ -40,6 +40,24 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   };
 }
 
+export function verifySocketAccessToken(token: string) {
+  const auth = verifyAccessToken(token);
+  const payload = jwt.decode(token);
+
+  if (
+    !payload ||
+    typeof payload === 'string' ||
+    typeof payload.exp !== 'number'
+  ) {
+    throw new Error('Invalid socket token expiration');
+  }
+
+  return {
+    ...auth,
+    expiresAt: payload.exp,
+  };
+}
+
 export function generateRefreshToken(): string {
   return randomBytes(48).toString('base64url');
 }
