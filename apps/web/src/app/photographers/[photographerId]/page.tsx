@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/ToastProvider';
 
 import PageContainer from '@/components/layout/PageContainer';
 import Button from '@/components/ui/Button';
@@ -28,14 +29,13 @@ import PhotographerReviews, {
 import PhotographerPreparing from '@/features/profile/components/PhotographerPreparing';
 import styles from './PhotographerProfileEdit.module.css';
 
-// 사진작가 프로필 공개에 필요한 필수 항목을 정의함
+// 변경된 정책에 따라 프로필 필수 항목 5개를 정의함
 const REQUIRED_PROFILE_CHECKS = [
   { key: 'profileImage', label: '프로필 이미지' },
   { key: 'regions', label: '활동 지역' },
   { key: 'categories', label: '촬영 카테고리' },
+  { key: 'career', label: '경력' },
   { key: 'introduction', label: '상세 소개' },
-  { key: 'photos', label: '포트폴리오 3장 이상' },
-  { key: 'product', label: '촬영 상품 1개 이상' },
 ] as const;
 
 export default function PhotographerProfilePage() {
@@ -43,6 +43,9 @@ export default function PhotographerProfilePage() {
 
   // 현재 로그인한 사용자 정보를 가져옴
   const { user } = useAuth();
+
+  // 프로필 수정 완료 및 필수 항목 누락 안내에 사용함
+  const { showToast } = useToast();
 
   // URL에서 조회할 작가 ID를 가져옴
   const { photographerId } = useParams<{ photographerId: string }>();
@@ -63,11 +66,9 @@ export default function PhotographerProfilePage() {
     isError,
   } = usePhotographerProfile(photographerId);
 
-  // 사진작가 본인이 편집 중일 때 준비 상태를 조회함
+  // 사진작가 본인이 편집 중이면 접근 경로와 관계없이 준비 상태를 조회함
   const readinessQuery = usePhotographerReadiness(
-    photographerId === 'me' &&
-      isEditingProfile &&
-      photographer?.isSelf === true,
+    isEditingProfile && photographer?.isSelf === true,
   );
 
   // 공개 가능한 프로필 또는 작가 본인인지 확인함
@@ -129,6 +130,69 @@ export default function PhotographerProfilePage() {
     ({ key }) => typeof readinessQuery.data?.checks[key] !== 'boolean',
   );
 
+  // 서버 응답을 기준으로 필수 항목 5개가 모두 완료됐는지 확인함
+  const isProfileReady =
+    readinessQuery.data?.isReady === true &&
+    REQUIRED_PROFILE_CHECKS.every(
+      ({ key }) => readinessQuery.data?.checks[key] === true,
+    );
+
+  // 저장하지 않은 프로필 편집을 취소하고 기존 화면으로 돌아감
+  const handleCancelProfileEdit = () => {
+    // 기본 정보 수정 모달 상태를 초기화함
+    setIsBasicInfoModalOpen(false);
+
+    // 프로필 편집 모드를 종료함
+    setIsEditingProfile(false);
+  };
+
+  // 수정 완료 버튼 클릭 시 최신 서버 상태를 다시 확인함
+  const handleCompleteProfileEdit = async () => {
+    // 서버에서 최신 프로필 준비 상태를 조회함
+    const result = await readinessQuery.refetch();
+
+    if (result.isError || !result.data) {
+      showToast(
+        '프로필 상태를 확인하지 못했어요. 다시 시도해 주세요.',
+        'error',
+      );
+      return;
+    }
+
+    // 서버에서 새로운 필수 항목을 제공하는지 확인함
+    const hasUnknownChecks = REQUIRED_PROFILE_CHECKS.some(
+      ({ key }) => typeof result.data?.checks[key] !== 'boolean',
+    );
+
+    if (hasUnknownChecks) {
+      showToast('프로필 필수 항목을 입력해 주세요.', 'error');
+      return;
+    }
+
+    // 아직 완료하지 않은 기본 정보 항목을 가져옴
+    const missingItems = REQUIRED_PROFILE_CHECKS.filter(
+      ({ key }) => result.data?.checks[key] !== true,
+    );
+
+    // 필수 항목이 누락됐다면 편집 모드를 유지함
+    if (missingItems.length > 0) {
+      const missingLabels = missingItems.map(({ label }) => label).join(', ');
+
+      showToast(`프로필 기본 정보를 설정해 주세요: ${missingLabels}`, 'error');
+      return;
+    }
+
+    // 서버에서 최종 준비 완료 상태를 확인함
+    if (!result.data.isReady) {
+      showToast('프로필 준비 상태가 아직 완료되지 않았어요.', 'error');
+      return;
+    }
+
+    // 모든 필수 항목을 충족한 경우에만 수정 모드를 종료함
+    setIsEditingProfile(false);
+    showToast('프로필 수정을 완료했어요.');
+  };
+
   // 프로필 조회 중 로딩 상태 표시
   if (isPending) {
     return (
@@ -155,6 +219,14 @@ export default function PhotographerProfilePage() {
       </PageContainer>
     );
   }
+
+  // 변경된 정책에 따라 기본 정보 5개가 모두 설정되었는지 확인함
+  const isBasicInfoComplete =
+    Boolean(photographer.profileImageUrl?.trim()) &&
+    photographer.regions.length > 0 &&
+    photographer.categories.length > 0 &&
+    photographer.career !== null &&
+    Boolean(photographer.introduction?.trim());
 
   // API 응답을 기존 기본 정보 컴포넌트의 Props에 맞게 변환함
   const profileInfo = {
@@ -218,15 +290,28 @@ export default function PhotographerProfilePage() {
               </p>
             </div>
 
-            {/* 전체 프로필 편집 모드를 종료함 */}
+            {/* 프로필 수정 취소 및 완료 버튼을 표시함 */}
             <div className={styles.editAction}>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => setIsEditingProfile(false)}
-              >
-                수정 완료
-              </Button>
+              <div className={styles.editButtonGroup}>
+                {/* 필수 항목 충족 여부와 관계없이 수정 모드를 종료함 */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCancelProfileEdit}
+                >
+                  수정 취소
+                </Button>
+
+                {/* 기본 정보 5개 완료 여부를 확인한 뒤 수정 모드를 종료함 */}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => void handleCompleteProfileEdit()}
+                  disabled={readinessQuery.isFetching}
+                >
+                  {readinessQuery.isFetching ? '확인 중...' : '수정 완료'}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -237,13 +322,13 @@ export default function PhotographerProfilePage() {
 
               <span
                 className={styles.readinessBadge}
-                data-ready={readinessQuery.data?.isReady === true}
+                data-ready={isProfileReady}
               >
                 {readinessQuery.isPending
                   ? '확인 중'
                   : readinessQuery.isError
                     ? '상태 확인 실패'
-                    : readinessQuery.data?.isReady
+                    : isProfileReady
                       ? '준비 완료'
                       : '준비 중'}
               </span>
@@ -260,7 +345,7 @@ export default function PhotographerProfilePage() {
             ) : readinessQuery.isSuccess ? (
               <>
                 <p className={styles.readinessMessage}>
-                  {readinessQuery.data.isReady
+                  {isProfileReady
                     ? '필수 항목이 모두 준비되었어요.'
                     : hasUnknownReadinessChecks
                       ? '일부 항목의 완료 여부를 확인할 수 없어요.'
@@ -311,12 +396,14 @@ export default function PhotographerProfilePage() {
       {/* 실제 API로 조회한 작가 기본 정보 표시 */}
       <PhotographerProfileInfo {...profileInfo} />
 
-      {/* 작가 본인의 기본 정보 수정 모달을 표시함 */}
-      <PhotographerBasicInfoModal
-        open={isBasicInfoModalOpen && isEditingProfile && photographer.isSelf}
-        onClose={() => setIsBasicInfoModalOpen(false)}
-        photographer={photographer}
-      />
+      {/* 작가 본인이 모달을 열었을 때만 기본 정보 수정 모달을 렌더링함 */}
+      {isBasicInfoModalOpen && isEditingProfile && photographer.isSelf && (
+        <PhotographerBasicInfoModal
+          open
+          onClose={() => setIsBasicInfoModalOpen(false)}
+          photographer={photographer}
+        />
+      )}
 
       {/* 실제 포트폴리오·상품·리뷰 개수 표시 */}
       <PhotographerProfileTabs
@@ -353,6 +440,7 @@ export default function PhotographerProfilePage() {
           isSelf={photographer.isSelf}
           isReady={photographer.isReady}
           isEditing={isEditingProfile && photographer.isSelf}
+          isBasicInfoComplete={isBasicInfoComplete}
         />
       )}
 
