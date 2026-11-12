@@ -61,6 +61,8 @@ const socialFields = {
   provider: z.enum(['GOOGLE', 'KAKAO', 'NAVER']),
   code: socialCodeSchema,
   redirectUri: redirectUriSchema,
+  // 로그인 URL에 넣었던 state (네이버는 필수, 없으면 서비스에서 막는다)
+  state: z.string({ error: SOCIAL_AUTH_MESSAGE }).optional(),
 };
 
 // 어느 분기도 고를 수 없을 때(provider 누락/오류, body 이상)의 문구

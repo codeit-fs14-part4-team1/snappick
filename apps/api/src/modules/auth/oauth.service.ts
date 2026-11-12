@@ -1,6 +1,7 @@
 import { HttpError } from '../../utils/http-error.js';
 import type { Provider } from '../../generated/prisma/enums.js';
 import { getKakaoProfile } from './kakao.oauth.js';
+import { getNaverProfile } from './naver.oauth.js';
 
 // 소셜 로그인 제공자에게서 받아 온 사용자 정보 (제공자마다 응답이 달라 이 형태로 맞춘다)
 export type SocialProfile = {
@@ -18,6 +19,8 @@ export type SocialProfile = {
 export type SocialAuthorization = {
   code: string;
   redirectUri: string;
+  // 로그인 URL에 넣었던 state (네이버는 토큰 교환에 필요, 카카오는 쓰지 않음)
+  state?: string | undefined;
 };
 
 export type SocialProvider = Exclude<Provider, 'BASIC'>;
@@ -29,8 +32,9 @@ export async function getSocialProfile(
   switch (provider) {
     case 'KAKAO':
       return getKakaoProfile(authorization);
-    case 'GOOGLE':
     case 'NAVER':
+      return getNaverProfile(authorization);
+    case 'GOOGLE':
       throw new HttpError(
         501,
         'NOT_IMPLEMENTED',
