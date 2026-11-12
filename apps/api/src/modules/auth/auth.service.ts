@@ -38,12 +38,13 @@ const NICKNAME_MAX = 20;
 /**
  * 제공자 닉네임을 우리 닉네임 규칙(앞뒤 공백 제거 후 2~20자)에 맞춘다
  * 길이는 가입·수정 검증(zod .max)과 같은 기준(string.length)으로 센다. 이모지는 2로 세어진다
- * 길면 20까지 자르되 이모지 중간에서 끊지 않고, 2 미만이면 이메일 가입과 같은 형식의 임시 닉네임을 쓴다
+ * 길면 20까지 자르되 이모지 중간에서 끊지 않는다
+ * 닉네임이 없거나(동의 안 함, 별명 미설정 등) 2 미만이면 이메일 가입과 같은 형식의 임시 닉네임을 쓴다
  * 닉네임은 가입 후 마이페이지에서 바꿀 수 있다
  */
-function toNickname(nickname: string): string {
+function toNickname(nickname: string | null): string {
   let result = '';
-  for (const char of nickname.trim()) {
+  for (const char of (nickname ?? '').trim()) {
     if (result.length + char.length > NICKNAME_MAX) break;
     result += char;
   }
@@ -119,19 +120,11 @@ export async function signup(input: SignupInput) {
  * 소셜 가입 (POST /auth/signup, provider: KAKAO 등)
  * 콜백에서 받은 인가 코드로 제공자 프로필을 가져오고, 인증된 이메일이 있을 때만 가입시킨다
  * 이메일은 선택 동의라 없을 수 있다 → 400으로 동의를 다시 받게 한다
- * 닉네임은 제공자 프로필의 닉네임(필수 동의)을 쓴다
+ * 닉네임은 제공자 프로필의 닉네임을 쓰고, 없으면 임시 닉네임을 쓴다 (모든 제공자 공통)
  * 같은 이메일의 계정이 이미 있으면 BASIC 가입과 같이 409 (기존 계정으로 로그인 후 연동하도록 유도)
  */
 async function socialSignup(input: SocialSignupInput) {
   const profile = await getSocialProfile(input.provider, input);
-
-  if (!profile.nickname) {
-    throw new HttpError(
-      400,
-      'SOCIAL_NICKNAME_REQUIRED',
-      '닉네임 제공에 동의해야 가입할 수 있어요.',
-    );
-  }
   const nickname = toNickname(profile.nickname);
 
   if (!profile.email) {
