@@ -1,6 +1,7 @@
 import argon2 from 'argon2';
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
+import type { AccessTokenPayload } from '../../utils/tokens.js';
 import type { SignupInput, LoginInput } from './auth.schema.js';
 import { issueTokens } from './token.service.js';
 import { Provider } from '../../generated/prisma/enums.js';
@@ -66,7 +67,7 @@ export async function signup(input: SignupInput) {
       });
 
       // 새 로그인 세션(family)의 시작: refresh token 행 저장 + 토큰 2개 발급
-      return issueTokens(tx, account);
+      return issueTokens(tx, account, Provider.BASIC);
     });
   } catch (e) {
     // 동시 요청으로 사전 검사(findFirst)를 둘 다 통과한 경우, DB 유니크가 막아줌
@@ -118,5 +119,38 @@ export async function login(input: LoginInput) {
   }
 
   // 새 로그인 세션(family)의 시작: refresh token 행 저장 + 토큰 2개 발급
-  return issueTokens(prisma, found.auth_account);
+  return issueTokens(prisma, found.auth_account, Provider.BASIC);
+}
+
+/**
+ * 내 계정 정보 (GET /auth/account)
+ * provider: 이번 로그인 세션의 로그인 방식 (access token에 담긴 값)
+ * email: 이메일(BASIC)로 로그인했을 때만 그 이메일, 소셜 로그인이면 null
+ * providers: 이 계정에 연결된 로그인 방식 전체 (연결한 순서)
+ */
+export async function getAccount(auth: AccessTokenPayload) {
+  const providers = await prisma.auth_providers.findMany({
+    where: { auth_account_id: auth.accountId },
+    // password_hash는 가져오지 않는다
+    select: { provider: true, provider_email: true },
+    orderBy: { created_at: 'asc' },
+  });
+
+  if (providers.length === 0) {
+    throw new HttpError(404, 'ACCOUNT_NOT_FOUND', '계정을 찾을 수 없습니다.');
+  }
+
+  const current = providers.find((row) => row.provider === auth.provider);
+
+  return {
+    provider: auth.provider,
+    email:
+      auth.provider === Provider.BASIC
+        ? (current?.provider_email ?? null)
+        : null,
+    providers: providers.map((row) => ({
+      provider: row.provider,
+      email: row.provider_email,
+    })),
+  };
 }

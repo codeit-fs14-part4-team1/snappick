@@ -5,7 +5,8 @@ import {
   setRefreshCookie,
 } from './auth.cookies.js';
 import { loginSchema, signupSchema } from './auth.schema.js';
-import { signup, login } from './auth.service.js';
+import { getAccount, signup, login } from './auth.service.js';
+import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
 import { revokeSession, rotateRefreshToken } from './token.service.js';
 
@@ -52,4 +53,9 @@ export async function logoutHandler(req: Request, res: Response) {
 
   clearRefreshCookie(res);
   res.status(204).end();
+}
+
+export async function getAccountHandler(req: Request, res: Response) {
+  res.set('Cache-Control', 'no-store'); // 이메일이 들어 있는 응답
+  res.json(await getAccount(getAuth(req)));
 }

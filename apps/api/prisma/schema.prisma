@@ -63,6 +63,8 @@ model auth_refresh_tokens {
   auth_account_id String    @db.Uuid
   token_hash      String    @unique
   family_id       String    @default(uuid(7)) @db.Uuid
+  // 이 로그인 세션을 시작한 로그인 방식 (회전해도 이어받음). 기존 세션은 BASIC으로 채운다
+  provider        Provider  @default(BASIC)
   revoked_at      DateTime?
   replaced_by_id  String?   @unique @db.Uuid
   created_at      DateTime  @default(now())
