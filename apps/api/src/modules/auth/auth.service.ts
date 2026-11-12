@@ -253,7 +253,8 @@ export async function login(input: LoginInput) {
 /**
  * 내 계정 정보 (GET /auth/account)
  * provider: 이번 로그인 세션의 로그인 방식 (access token에 담긴 값)
- * email: 이메일(BASIC)로 로그인했을 때만 그 이메일, 소셜 로그인이면 null
+ * email: 이번 로그인 방식의 이메일 (카카오로 로그인했으면 카카오 이메일)
+ *   비밀번호 변경 가능 여부는 email이 아니라 provider === 'BASIC'으로 판단한다
  * providers: 이 계정에 연결된 로그인 방식 전체 (연결한 순서)
  */
 export async function getAccount(auth: AccessTokenPayload) {
@@ -272,10 +273,8 @@ export async function getAccount(auth: AccessTokenPayload) {
 
   return {
     provider: auth.provider,
-    email:
-      auth.provider === Provider.BASIC
-        ? (current?.provider_email ?? null)
-        : null,
+    // 세션의 로그인 방식이 그 뒤 연결 해제됐다면 행이 없을 수 있다
+    email: current?.provider_email ?? null,
     providers: providers.map((row) => ({
       provider: row.provider,
       email: row.provider_email,
