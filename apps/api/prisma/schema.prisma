@@ -410,7 +410,7 @@ model quotes {
   duration_minutes  Int
   price             Int
   extra_fee         Int?
-  photo_count       Int
+  photo_count       Int?
   includes_original Boolean
   additional_notice String?
   common_notice     String?
