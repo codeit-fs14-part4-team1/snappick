@@ -91,25 +91,37 @@ async function buildProfile(
   photographer: ProfileRow,
   viewer: { isSelf: boolean; userId: string | null },
 ) {
-  const [reviews, save, readiness] = await Promise.all([
-    prisma.reviews.aggregate({
-      where: { photographer_id: photographer.id, deleted_at: null },
-      _avg: { rating: true },
-      _count: { _all: true },
-    }),
-    viewer.userId
-      ? prisma.photographer_saves.findUnique({
-          where: {
-            photographer_id_user_id: {
-              photographer_id: photographer.id,
-              user_id: viewer.userId,
+  const [reviews, savedCount, completedCount, save, readiness] =
+    await Promise.all([
+      prisma.reviews.aggregate({
+        where: { photographer_id: photographer.id, deleted_at: null },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+      // 이 작가를 저장한 전체 사용자 수 (로그인 여부와 무관)
+      prisma.photographer_saves.count({
+        where: { photographer_id: photographer.id },
+      }),
+      // 구매 확정까지 끝난 예약 수
+      prisma.reservations.count({
+        where: {
+          photographer_id: photographer.id,
+          status: 'PURCHASE_CONFIRMED',
+        },
+      }),
+      viewer.userId
+        ? prisma.photographer_saves.findUnique({
+            where: {
+              photographer_id_user_id: {
+                photographer_id: photographer.id,
+                user_id: viewer.userId,
+              },
             },
-          },
-          select: { user_id: true },
-        })
-      : null,
-    getReadiness(photographer),
-  ]);
+            select: { user_id: true },
+          })
+        : null,
+      getReadiness(photographer),
+    ]);
 
   return {
     id: photographer.id,
@@ -121,6 +133,8 @@ async function buildProfile(
     introduction: photographer.introduction,
     ratingAvg: roundRating(reviews._avg.rating),
     reviewCount: reviews._count._all,
+    savedCount,
+    completedCount,
     saved: save !== null,
     isSelf: viewer.isSelf,
     isReady: readiness.isReady,

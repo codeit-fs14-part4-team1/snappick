@@ -12,7 +12,7 @@
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 240px;
   column-gap: 40px;
-  row-gap: 20px;
+  row-gap: 22px;
   align-items: start;
 }
 
@@ -25,6 +25,11 @@
   overflow: hidden;
   border-radius: 50%;
   background: linear-gradient(135deg, #e1d1b7, #b18b5c);
+}
+
+/* 작가 본인 미설정 상태의 기본 프로필 이미지 */
+.profileImageUnset {
+  background: #f5f5f5;
 }
 
 /* 이미지가 원형 영역을 채우도록 설정 */
@@ -51,13 +56,13 @@
   align-self: start;
 }
 
-/* 저장 및 공유 아이콘을 문의하기 버튼 아래 오른쪽에 배치 */
+/* 저장 및 공유 아이콘 버튼 배치 */
 .iconActions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 24px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 /* 저장 및 공유 아이콘 버튼의 기본 스타일 */
@@ -85,18 +90,19 @@
 .categories {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 14px;
   margin-bottom: 12px;
 }
 
 /* 촬영 분야 태그 디자인 */
 .category {
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 700;
+  line-height: 22px;
   white-space: nowrap;
 }
 
@@ -110,7 +116,7 @@
 
 /* 경력 및 활동 지역 스타일 */
 .details {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: var(--color-text-secondary);
   font-size: 14px;
 }
@@ -121,7 +127,7 @@
   flex-wrap: wrap;
   grid-column: 2;
   grid-row: 2;
-  gap: 24px;
+  gap: 32px;
   margin: 0;
 }
 
@@ -135,21 +141,21 @@
 /* 통계 항목 제목 스타일 */
 .statistic dt {
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* 통계 항목 숫자 스타일 */
 .statistic dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 /* 작가 상세 소개 영역 */
 .introduction {
-  margin-top: 32px;
-  padding: 24px;
-  border-radius: 12px;
+  margin-top: 48px;
+  padding: 24px 28px;
+  border-radius: 16px;
   background: var(--color-bg-subtle);
 }
 
@@ -158,14 +164,15 @@
   margin: 0 0 12px;
   font-size: 18px;
   font-weight: 700;
+  line-height: 24px;
 }
 
-/* 상세 소개 내용 스타일 */
+/* 상세 소개 본문의 글자 크기와 줄 간격 설정 */
 .introduction p {
   margin: 0;
   color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -174,7 +181,7 @@
 ======================================== */
 
 @media (min-width: 768px) and (max-width: 1199px) {
-  /* 데스크톱 3열 구조를 1열로 변경 */
+  /* 프로필 정보를 세로 1열로 배치 */
   .profile {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 24px;
@@ -187,34 +194,54 @@
     margin-bottom: 16px;
   }
 
-  /* 촬영 분야, 닉네임, 경력 및 지역을 이미지 아래에 배치 */
+  /* 작가 정보를 이미지 아래에 배치 */
   .profileDetails {
     grid-column: 1;
     grid-row: 2;
   }
 
-  /* 저장, 진행, 리뷰, 평점을 작가 정보 아래에 배치 */
+  /* 촬영 분야와 닉네임 사이 간격 */
+  .categories {
+    margin-bottom: 14px;
+  }
+
+  /* 태블릿 촬영 분야 칩 모서리 */
+  .category {
+    border-radius: 8px;
+  }
+
+  /* 태블릿 닉네임 크기 */
+  .nickname {
+    font-size: 28px;
+    line-height: 36px;
+  }
+
+  /* 통계를 작가 정보 아래에 배치 */
   .statistics {
     grid-column: 1;
     grid-row: 3;
   }
 
-  /* 문의하기 버튼을 통계 아래 전체 너비로 배치 */
+  /* 통계 제목의 줄 높이 */
+  .statistic dt {
+    line-height: 20px;
+  }
+
+  /* 통계 숫자의 줄 높이 */
+  .statistic dd {
+    line-height: 26px;
+  }
+
+  /* 문의 버튼을 통계 아래에 배치 */
   .profileActions {
     grid-column: 1;
     grid-row: 4;
     margin-top: 16px;
   }
 
-  /* 태블릿 기준 상세 소개 영역의 상단 간격 조정 */
+  /* 프로필과 상세 소개 사이 간격 */
   .introduction {
-    margin-top: 64px;
-  }
-
-  /* 상세 소개 본문 크기와 줄 간격 조정 */
-  .introduction p {
-    font-size: 16px;
-    line-height: 1.5;
+    margin-top: 48px;
   }
 }
 
@@ -226,10 +253,10 @@
   /* 프로필 정보를 세로 1열로 배치 */
   .profile {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 20px;
+    row-gap: 24px;
   }
 
-  /* 프로필 이미지를 첫 번째 행에 160px 크기로 배치 */
+  /* 모바일 프로필 이미지 */
   .profileImage {
     grid-column: 1;
     grid-row: 1;
@@ -238,36 +265,40 @@
     margin-bottom: 16px;
   }
 
-  /* 촬영 분야, 닉네임, 경력 및 지역을 이미지 아래에 배치 */
+  /* 작가 정보를 이미지 아래에 배치 */
   .profileDetails {
     grid-column: 1;
     grid-row: 2;
   }
 
-  /* 모바일 촬영 분야 태그의 간격 조정 */
+  /* 촬영 분야 칩과 닉네임 사이 간격 */
   .categories {
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 14px;
+    margin-bottom: 14px;
   }
 
-  /* 모바일에서도 촬영 분야 태그의 기본 크기 유지 */
+  /* 모바일 촬영 분야 칩 */
   .category {
-    padding: 6px 12px;
+    padding: 6px 14px;
+    border-radius: 8px;
     font-size: 14px;
+    line-height: 22px;
   }
 
-  /* 모바일 닉네임 크기 조정 */
+  /* 모바일 닉네임 */
   .nickname {
     font-size: 24px;
+    line-height: 32px;
   }
 
-  /* 경력 및 활동 지역 글자 크기 조정 */
+  /* 경력 및 활동 지역 */
   .details {
-    margin-top: 8px;
-    font-size: 12px;
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 20px;
   }
 
-  /* 통계 항목을 왼쪽부터 일정한 간격으로 배치 */
+  /* 통계를 작가 정보 아래에 배치 */
   .statistics {
     grid-column: 1;
     grid-row: 3;
@@ -275,24 +306,34 @@
     gap: 32px;
   }
 
-  /* 문의하기 및 저장·공유 버튼을 통계 아래에 배치 */
+  /* 모바일 통계 제목 */
+  .statistic dt {
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  /* 모바일 통계 숫자 */
+  .statistic dd {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  /* 통계 아래 문의 및 아이콘 버튼 배치 */
   .profileActions {
     grid-column: 1;
     grid-row: 4;
+    margin-top: 16px;
   }
 
-  /* 모바일 통계 숫자 크기 조정 */
-  .statistic dd {
-    font-size: 16px;
-  }
-  /* 상세 소개 상단 여백 조정 */
+  /* 모바일 상세 소개 여백 */
   .introduction {
-    margin-top: 42px;
-    padding: 16px;
+    margin-top: 48px;
+    padding: 24px 20px;
   }
 
-  /* 모바일 상세 소개 제목 크기 조정 */
+  /* 모바일 상세 소개 제목 */
   .introduction h2 {
-    font-size: 16px;
+    font-size: 18px;
+    line-height: 24px;
   }
 }

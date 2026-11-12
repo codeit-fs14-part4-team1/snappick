@@ -1,0 +1,45 @@
+.surface {
+  --modal-padding: 56px 48px;
+  width: min(1200px, calc(100vw - 128px));
+}
+/* 상세 로딩·오류 안내 */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 64px 0;
+  text-align: center;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.message p {
+  margin: 0;
+}
+
+@media (max-width: 1199px) {
+  :global(dialog):has(> .surface) {
+    padding: 0;
+  }
+  .surface {
+    --modal-padding: 72px 32px 0 32px;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  .surface > button[aria-label='모달 닫기'] {
+    top: 16px;
+    right: 12px;
+    z-index: 1;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+  }
+}
+@media (max-width: 767px) {
+  .surface {
+    --modal-padding: 72px 16px 0 16px;
+  }
+}

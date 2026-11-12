@@ -53,3 +53,8 @@ export const sendInquirySchema = z.object({
 });
 
 export type InquiryPayload = z.infer<typeof sendInquirySchema>['payload'];
+export const markChatAsReadSchema = z.object({
+  lastReadMessageId: z.uuid({
+    error: '마지막으로 확인한 메시지 ID를 확인해 주세요.',
+  }),
+});

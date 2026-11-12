@@ -1,0 +1,249 @@
+/* 촬영 상품 전체 영역 */
+.products {
+  width: 100%;
+  margin-top: 48px;
+}
+
+/* 촬영 상품 제목 */
+.title {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 데스크톱 상품 목록을 3열로 배치 */
+.productList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 개별 촬영 상품 카드 */
+.productCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background-color: var(--color-bg-base);
+}
+
+/* 촬영 상품명 */
+.productName {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+/* 상품 가격 및 하단 구분선 */
+.price {
+  margin: 0 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 34px;
+}
+
+/* 상품 상세 정보 목록 */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+/* 상세 정보 항목과 값을 양쪽에 배치 */
+.detail {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 상세 정보 항목명 */
+.detail dt {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 상세 정보 값 */
+.detail dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: right;
+}
+
+/* 상품별 안내사항을 카드 하단에 배치 */
+.commonNotice {
+  margin: auto 0 0;
+  padding-top: 16px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* 상품 목록 하단 가격 안내 */
+.priceNotice {
+  margin: 20px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* 등록된 상품이 없는 경우 안내 */
+.emptyState {
+  padding: 48px 0;
+  color: var(--color-text-secondary, #777);
+  text-align: center;
+}
+
+/* 작가 본인 미설정 상태의 촬영 상품 빈 카드 */
+.emptyStateOwn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 146px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  background-color: #f5f5f5;
+  text-align: center;
+}
+
+/* 촬영 상품 미등록 안내 제목 */
+.emptyStateOwnTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 촬영 상품 등록 안내 문구 */
+.emptyStateOwnDescription {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 촬영 상품 제목과 등록 버튼 배치 */
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.heading .title {
+  margin: 0;
+}
+
+/* 상품 수정 버튼 */
+.editButton {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 상품 수정 버튼을 카드 하단에 배치 */
+.productEditAction {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+/* Figma 디자인에 맞춘 상품 수정 버튼 */
+.editButton {
+  display: flex;
+  width: 100%;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+/* 태블릿: 상품 카드를 2열로 배치 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .productList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* 태블릿 가격 크기 조정 */
+  .price {
+    font-size: 24px;
+    line-height: 32px;
+  }
+}
+
+/* 모바일: 상품 카드를 가로 스크롤로 표시 */
+@media (max-width: 767px) {
+  .productList {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  /* 모바일 스크롤바 숨김 */
+  .productList::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 모바일 카드 너비와 내부 여백 */
+  .productCard {
+    flex: 0 0 280px;
+    max-width: calc(100vw - 64px);
+    padding: 16px;
+    scroll-snap-align: start;
+  }
+
+  /* 모바일 가격 크기 조정 */
+  .price {
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  /* 모바일 상품 관리 버튼 배치 */
+  .heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .heading > button {
+    flex-shrink: 0;
+  }
+}

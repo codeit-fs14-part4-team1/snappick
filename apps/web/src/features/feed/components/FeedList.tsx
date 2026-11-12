@@ -16,6 +16,7 @@ type FeedListProps = {
   onRetry: () => void;
   onReset: () => void;
   pagination: InfiniteScrollTriggerProps;
+  onOpenPhoto: (id: string) => void;
 };
 
 //상태별 분기
@@ -25,6 +26,7 @@ export default function FeedList({
   onRetry,
   onReset,
   pagination,
+  onOpenPhoto,
 }: FeedListProps) {
   //첫 페이지
   if (status === 'pending') {
@@ -67,7 +69,7 @@ export default function FeedList({
         gap={{ desktop: 16, mobile: 8 }}
         ariaLabel="사진 목록"
         getKey={(photo) => photo.photoId}
-        renderItem={(photo) => <FeedCard photo={photo} />}
+        renderItem={(photo) => <FeedCard photo={photo} onOpen={onOpenPhoto} />}
       />
       <InfiniteScrollTrigger {...pagination} />
     </>

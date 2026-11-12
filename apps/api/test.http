@@ -54,6 +54,16 @@ Content-Type: application/json
   "password": "Password123"
 }
 
+### 200 다른 사용자 로그인
+POST http://localhost:4000/auth/login
+Content-Type: application/json
+
+{
+  "provider": "BASIC",
+  "providerEmail": "wed-1@example.com",
+  "password": "Snappick123!"
+}
+
 ### 201 로그인한 사용자로 채팅방 생성 / 재시도 시 200
 POST http://localhost:4000/chats
 Content-Type: application/json
@@ -74,7 +84,7 @@ Content-Type: application/json
 Authorization: Bearer 액세스토큰
 
 {
-  "content": "세 번째 테스트 메시지입니다."
+  "content": "읽음처리 테스트 메시지입니다2"
 }
 
 ### 메시지 내역 조회
@@ -97,6 +107,15 @@ Content-Type: application/json
     "category": "COUPLE"
   }
 }
+### 읽음 처리 전 목록 확인
+GET http://localhost:4000/chats
+Authorization: Bearer 메시지받은사람액세스토큰
+
+
+### 채팅방 읽음 처리
+PATCH http://localhost:4000/chats/01a18aab-8cad-76fc-816f-2653e88c6235/read
+Authorization: Bearer 메시지받은사람액세스토큰
+
 
 ### API 서버 상태 확인
 GET http://localhost:4000/health

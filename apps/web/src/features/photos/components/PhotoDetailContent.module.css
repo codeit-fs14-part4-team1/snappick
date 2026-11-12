@@ -1,0 +1,292 @@
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+  gap: 48px;
+  width: 100%;
+}
+.imageArea {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 160px);
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* 카테고리 배지 */
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.category {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.description {
+  color: var(--color-text-primary);
+  margin: 16px 0 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.33;
+  overflow-wrap: anywhere;
+}
+
+/* 스타일 · 키워드 */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.styleChip,
+.keywordChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.styleChip {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.keywordChip {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* 좋아요 · 공유 줄 */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* 좋아요: 가로로 긴 알약 (작가 계정은 같은 모양의 읽기 전용 span) */
+.like {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+button.like {
+  cursor: pointer;
+}
+
+button.like:hover {
+  background: var(--color-bg-subtle);
+}
+
+button.like:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* 인증 확인 중: 포커스는 가되 누를 수 없어 보이게 */
+.like[aria-disabled='true'] {
+  cursor: default;
+}
+
+.heart {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: auto;
+  color: var(--color-text-primary);
+}
+
+.like[aria-pressed='true'] .heart {
+  color: var(--color-accent);
+}
+.share {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.share:hover {
+  background: var(--color-bg-subtle);
+}
+
+.share:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* 작가 정보 */
+.photographer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.photographer:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.avatar,
+.avatarPlaceholder {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-border);
+  color: var(--color-text-tertiary);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.photographerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nickname {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rating {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.arrow {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: 22px;
+}
+
+.photographer:hover .nickname {
+  text-decoration: underline;
+}
+
+@media (max-width: 1199px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .info {
+    gap: 48px;
+  }
+  .summary {
+    gap: 16px;
+  }
+  .category {
+    padding: 6px 12px;
+  }
+  .description {
+    margin-top: 10px;
+  }
+  .section {
+    gap: 6px;
+  }
+  .styleChip {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .keywordChip {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .image {
+    width: min(100%, calc(70dvh * var(--photo-ratio)));
+    height: auto;
+    max-height: none;
+    object-fit: initial;
+  }
+}
