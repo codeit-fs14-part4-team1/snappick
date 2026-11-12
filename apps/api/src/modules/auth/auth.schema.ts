@@ -42,10 +42,13 @@ const passwordSchema = z
   .min(8, '비밀번호는 8자 이상이어야 합니다.')
   .max(16, '비밀번호는 16자 이하여야 합니다.');
 
-const SOCIAL_TOKEN_MESSAGE = '소셜 로그인이 정상적으로 수행되지 않았습니다.';
-const providerTokenSchema = z
-  .string({ error: SOCIAL_TOKEN_MESSAGE })
-  .min(1, SOCIAL_TOKEN_MESSAGE);
+const SOCIAL_AUTH_MESSAGE = '소셜 로그인이 정상적으로 수행되지 않았습니다.';
+// 소셜 로그인 콜백으로 받은 인가 코드
+const socialCodeSchema = z
+  .string({ error: SOCIAL_AUTH_MESSAGE })
+  .min(1, SOCIAL_AUTH_MESSAGE);
+// 인가 코드를 요청할 때 쓴 redirect URI (제공자가 토큰을 교환할 때 같은 값인지 확인한다)
+const redirectUriSchema = z.url({ error: SOCIAL_AUTH_MESSAGE });
 
 // provider별 입력 필드 (가입은 여기에 common을 더해서 사용)
 const basicFields = {
@@ -56,7 +59,8 @@ const basicFields = {
 
 const socialFields = {
   provider: z.enum(['GOOGLE', 'KAKAO', 'NAVER']),
-  providerToken: providerTokenSchema,
+  code: socialCodeSchema,
+  redirectUri: redirectUriSchema,
 };
 
 // 어느 분기도 고를 수 없을 때(provider 누락/오류, body 이상)의 문구
@@ -74,7 +78,8 @@ export const signupSchema = z.discriminatedUnion(
   'provider',
   [
     z.object({ ...common, ...basicFields }),
-    z.object({ ...common, ...socialFields }),
+    // 소셜 가입의 닉네임은 제공자 프로필에서 가져온다
+    z.object({ accountType: common.accountType, ...socialFields }),
   ],
   { error: providerError },
 );
