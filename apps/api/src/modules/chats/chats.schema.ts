@@ -40,7 +40,7 @@ export const sendInquirySchema = z.object({
       (payload) =>
         Boolean(
           payload.date ||
-          payload.timeSlot ||
+          (payload.timeSlot && payload.timeSlot !== 'UNDECIDED') ||
           payload.region ||
           payload.location ||
           payload.concept?.length ||
