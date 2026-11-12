@@ -25,7 +25,7 @@ export type PhotographerProfile = {
 // 사진작가 본인 프로필 수정 요청 타입 정의
 export type UpdatePhotographerProfileInput = {
   nickname?: string;
-  career?: number | null;
+  career?: number;
   regions?: Region[];
   categories?: Category[];
   introduction?: string | null;
