@@ -448,3 +448,55 @@ export async function checkChatRoomAccess(
     );
   }
 }
+
+export async function markChatAsRead(
+  accountId: string,
+  chatRoomId: string,
+  lastReadMessageId: string,
+) {
+  await checkChatRoomAccess(accountId, chatRoomId);
+
+  const lastReadMessage = await prisma.chat_messages.findFirst({
+    where: {
+      id: lastReadMessageId,
+      chat_room_id: chatRoomId,
+    },
+  });
+
+  if (!lastReadMessage) {
+    throw new HttpError(
+      404,
+      'MESSAGE_NOT_FOUND',
+      '해당 문의의 메시지를 찾을 수 없습니다.',
+    );
+  }
+
+  const readAt = new Date();
+
+  const updated = await prisma.chat_messages.updateMany({
+    where: {
+      chat_room_id: chatRoomId,
+      recipient_account_id: accountId,
+      read_at: null,
+      OR: [
+        {
+          created_at: { lt: lastReadMessage.created_at },
+        },
+        {
+          created_at: lastReadMessage.created_at,
+          id: { lte: lastReadMessage.id },
+        },
+      ],
+    },
+
+    data: {
+      read_at: readAt,
+    },
+  });
+
+  return {
+    lastReadMessageId,
+    updatedCount: updated.count,
+    readAt,
+  };
+}

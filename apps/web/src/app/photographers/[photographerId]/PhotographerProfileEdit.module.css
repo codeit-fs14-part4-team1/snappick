@@ -160,10 +160,6 @@
     width: 100%;
   }
 
-  .editAction > button {
-    width: 100%;
-  }
-
   .readinessList {
     gap: 8px;
   }

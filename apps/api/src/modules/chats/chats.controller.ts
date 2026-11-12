@@ -4,6 +4,7 @@ import {
   getChats,
   getMessages,
   sendMessage,
+  markChatAsRead,
 } from './chats.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
 import {
@@ -11,6 +12,7 @@ import {
   createChatSchema,
   getMessagesQuerySchema,
   sendMessageSchema,
+  markChatAsReadSchema,
 } from './chats.schema.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { Server } from 'socket.io';
@@ -147,4 +149,29 @@ export async function getMessagesHandler(req: Request, res: Response) {
   );
 
   res.status(200).json(result);
+}
+
+export async function markChatAsReadHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const params = chatRoomParamsSchema.parse(req.params);
+
+  const result = markChatAsReadSchema.safeParse(req.body);
+
+  if (!result.success) {
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST_BODY',
+      '마지막으로 확인한 메시지 ID를 확인해 주세요.',
+    );
+  }
+
+  const input = result.data;
+
+  const readResult = await markChatAsRead(
+    auth.accountId,
+    params.chatRoomId,
+    input.lastReadMessageId,
+  );
+
+  res.status(200).json(readResult);
 }

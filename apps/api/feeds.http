@@ -164,3 +164,15 @@ Content-Type: application/json
   "deletePhotoIds": [],
   "representativePhotoId": "{{photoId}}"
 }
+
+### 알림 목록
+GET {{host}}/me/notifications?limit=20
+Authorization: Bearer {{token}}
+
+### 안 읽은 알림 여부
+GET {{host}}/me/notifications/has-unread
+Authorization: Bearer {{token}}
+
+### 알림 읽음 처리 (notificationId는 목록 응답에서 복사)
+PATCH {{host}}/me/notifications/붙여넣기/read
+Authorization: Bearer {{token}}

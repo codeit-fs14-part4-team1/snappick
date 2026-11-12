@@ -294,6 +294,7 @@ export default function PhotographerBasicInfoModal({
                 min={0}
                 max={80}
                 step={1}
+                required
                 aria-describedby={`${formId}-career-unit`}
               />
 
