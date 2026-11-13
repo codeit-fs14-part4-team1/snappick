@@ -226,5 +226,13 @@ export async function markChatAsReadHandler(req: Request, res: Response) {
     input.lastReadMessageId,
   );
 
+  if (readResult.updatedCount > 0) {
+    const io: Server = req.app.get('io');
+    io.to(`chat:${params.chatRoomId}`).emit('chat:read', {
+      chatRoomId: params.chatRoomId,
+      readerAccountId: auth.accountId,
+      ...readResult,
+    });
+  }
   res.status(200).json(readResult);
 }

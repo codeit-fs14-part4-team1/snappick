@@ -34,6 +34,8 @@ export default function useChatSocket(
     });
     let active = true;
     let checkingAuth = false;
+    let authRetries = 0;
+    let authRetryTimer: ReturnType<typeof setTimeout> | undefined;
     const joinTimers = new Map<string, ReturnType<typeof setTimeout>>();
     const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
     const joinRetries = new Map<string, number>();
@@ -197,6 +199,20 @@ export default function useChatSocket(
       )
         refreshConversation(payload.chatRoomId === chatRoomId);
     });
+    socket.on(
+      'chat:read',
+      (payload: { chatRoomId?: string; readerAccountId?: string }) => {
+        if (
+          active &&
+          payload?.chatRoomId &&
+          subscribedRooms.has(payload.chatRoomId)
+        )
+          refreshConversation(
+            payload.chatRoomId === chatRoomId &&
+              payload.readerAccountId !== accountId,
+          );
+      },
+    );
     socket.on('disconnect', () => {
       clearJoinTimers();
       if (active) {
@@ -227,23 +243,48 @@ export default function useChatSocket(
         notifyFailure();
       },
     );
+    function recoverAuthentication() {
+      if (!active || checkingAuth) return;
+      checkingAuth = true;
+      clearTimeout(authRetryTimer);
+      clearJoinTimers();
+      setStatus('connecting');
+      waitForReconnect();
+      // HTTP 401 처리는 기존 인증 기능에 맡깁니다. Context의 토큰이 갱신되면
+      // 이 effect가 새 소켓을 만들고, 방 재입장 후 목록과 메시지를 다시 조회합니다.
+      void fetchWithAuth('/users/me', { cache: 'no-store' }).catch(() => {
+        if (!active) return;
+        checkingAuth = false;
+        if (authRetries < 3) {
+          authRetryTimer = setTimeout(
+            recoverAuthentication,
+            1000 * 2 ** authRetries++,
+          );
+        } else {
+          setStatus('error');
+          notifyFailure();
+        }
+      });
+    }
+
+    socket.on('auth:expired', (payload: { code?: string } | undefined) => {
+      if (payload?.code === 'ACCESS_TOKEN_EXPIRED') recoverAuthentication();
+    });
     socket.on('connect_error', (error: Error) => {
       if (!active) return;
       setStatus(socket.active ? 'connecting' : 'error');
       waitForReconnect();
-      if (error.message !== 'UNAUTHORIZED' || checkingAuth) return;
-      checkingAuth = true;
+      if (error.message !== 'UNAUTHORIZED') return;
       // 기존 인증 함수가 만료된 HTTP 토큰을 갱신하면 accessToken 변경으로
       // 이 연결을 정리하고 새 토큰으로 다시 접속합니다.
-      void fetchWithAuth('/users/me').catch(() => {
-        if (active) setStatus('error');
-      });
+      recoverAuthentication();
     });
     socket.connect();
 
     return () => {
       active = false;
       clearJoinTimers();
+      clearTimeout(authRetryTimer);
       clearTimeout(refreshTimer);
       clearTimeout(noticeTimer);
       socket.removeAllListeners();
