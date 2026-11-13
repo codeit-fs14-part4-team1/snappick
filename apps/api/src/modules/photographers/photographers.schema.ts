@@ -13,7 +13,7 @@ export const updateProfileSchema = z
       .trim()
       .min(2, '닉네임은 2자 이상이어야 합니다.')
       .max(20, '닉네임은 20자 이하여야 합니다.'),
-    career: z.number().int().min(0).max(80).nullable(),
+    career: z.number().int().min(0).max(80),
     regions: z.array(z.enum(Region)).max(20),
     categories: z.array(z.enum(Category)).max(20),
     introduction: z

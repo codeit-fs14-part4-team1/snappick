@@ -168,12 +168,12 @@ export default function PhotographerBasicInfoModal({
             return;
           }
 
-          // 경력 입력값을 숫자 또는 null로 변환함
-          const careerYears = career === '' ? null : Number(career);
+          // 경력이 입력되지 않았다면 PATCH 요청에서 제외하도록 처리함
+          const careerYears = career === '' ? undefined : Number(career);
 
           // 경력이 0~80 사이의 정수인지 확인함
           if (
-            careerYears !== null &&
+            careerYears !== undefined &&
             (!Number.isInteger(careerYears) ||
               careerYears < 0 ||
               careerYears > 80)
@@ -192,7 +192,8 @@ export default function PhotographerBasicInfoModal({
           updateProfileMutation.mutate(
             {
               nickname,
-              career: careerYears,
+              // 입력한 경력이 있을 때만 PATCH 요청에 포함함
+              ...(careerYears !== undefined ? { career: careerYears } : {}),
               introduction: introduction === '' ? null : introduction,
               regions: selectedRegions,
               categories: selectedCategories,
@@ -201,7 +202,7 @@ export default function PhotographerBasicInfoModal({
               // 프로필 수정 성공 시 안내를 표시하고 모달을 닫음
               onSuccess: () => {
                 showToast('프로필 정보를 수정했어요.');
-                handleClose();
+                onClose();
               },
 
               // 프로필 수정 실패 시 오류를 안내하고 입력값을 유지함
@@ -279,7 +280,7 @@ export default function PhotographerBasicInfoModal({
           {/* 경력 입력 */}
           <div className={styles.field}>
             <label htmlFor={`${formId}-career`} className={styles.label}>
-              경력 (선택)
+              경력 <span className={styles.requiredMark}>*</span>
             </label>
 
             {/* 경력 입력창 오른쪽에 년 단위를 표시함 */}
@@ -289,10 +290,11 @@ export default function PhotographerBasicInfoModal({
                 name="career"
                 type="number"
                 className={styles.input}
-                defaultValue={photographer.career ?? ''}
+                defaultValue={photographer.career ?? 0}
                 min={0}
                 max={80}
                 step={1}
+                required
                 aria-describedby={`${formId}-career-unit`}
               />
 

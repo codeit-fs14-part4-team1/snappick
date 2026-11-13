@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
+import type { InquiryPayload } from './chats.schema.js';
 
 //사용자 조회
 export async function createChat(accountId: string, photographerId: string) {
@@ -467,6 +468,101 @@ export async function checkChatRoomAccess(
       '해당 문의에 접근할 권한이 없습니다.',
     );
   }
+}
+
+// 초기 문의 채팅 관련
+export async function sendInquiry(
+  accountId: string,
+  chatRoomId: string,
+  payload: InquiryPayload,
+) {
+  const chatRoom = await prisma.chat_rooms.findUnique({
+    where: {
+      id: chatRoomId,
+    },
+    include: {
+      user: {
+        select: { auth_account_id: true },
+      },
+      photographer: {
+        select: { auth_account_id: true },
+      },
+    },
+  });
+
+  if (!chatRoom) {
+    throw new HttpError(
+      404,
+      'CHAT_ROOM_NOT_FOUND',
+      '존재하지 않는 문의입니다.',
+    );
+  }
+
+  const userAccountId = chatRoom.user?.auth_account_id;
+  const photographerAccountId = chatRoom.photographer?.auth_account_id;
+
+  if (accountId !== userAccountId) {
+    throw new HttpError(
+      403,
+      'CHAT_ROOM_ACCESS_DENIED',
+      '해당 문의의 사용자만 촬영 정보를 보낼 수 있습니다.',
+    );
+  }
+
+  if (!photographerAccountId) {
+    throw new HttpError(
+      422,
+      'PARTNER_WITHDRAWN',
+      '상대방이 탈퇴하여 메시지를 보낼 수 없습니다.',
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 같은 방에 대한 요청을 차례로 처리하도록 방 행을 잠금
+    await tx.$queryRaw`
+      SELECT id
+      FROM chat_rooms
+      WHERE id = ${chatRoomId}::uuid
+      FOR UPDATE
+    `;
+
+    const existingInquiry = await tx.chat_messages.findFirst({
+      where: {
+        chat_room_id: chatRoomId,
+        message_type: 'INITIAL_REQUEST',
+      },
+    });
+
+    if (existingInquiry) {
+      throw new HttpError(
+        409,
+        'INITIAL_REQUEST_ALREADY_SENT',
+        '이미 촬영 정보를 전송한 문의입니다.',
+      );
+    }
+
+    const savedMessage = await tx.chat_messages.create({
+      data: {
+        chat_room_id: chatRoomId,
+        recipient_account_id: photographerAccountId,
+        message_type: 'INITIAL_REQUEST',
+        content: '촬영 문의가 도착했습니다.',
+        payload,
+      },
+    });
+
+    await tx.chat_rooms.updateMany({
+      where: {
+        id: chatRoomId,
+        last_message_at: { lt: savedMessage.created_at },
+      },
+      data: {
+        last_message_at: savedMessage.created_at,
+      },
+    });
+
+    return savedMessage;
+  });
 }
 
 export async function markChatAsRead(

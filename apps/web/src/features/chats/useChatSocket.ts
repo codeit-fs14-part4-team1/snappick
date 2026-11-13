@@ -34,7 +34,11 @@ export default function useChatSocket(
     });
     let active = true;
     let checkingAuth = false;
-    let joinTimer: ReturnType<typeof setTimeout> | undefined;
+    const joinTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    const joinRetries = new Map<string, number>();
+    const rejectedRooms = new Set<string>();
+    const exhaustedRooms = new Set<string>();
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     let noticeTimer: ReturnType<typeof setTimeout> | undefined;
     let needsMessageRefresh = false;
@@ -58,6 +62,65 @@ export default function useChatSocket(
       noticeTimer = undefined;
       noticeShown.current = false;
       setStatus('connected');
+    }
+
+    function clearRoomTimers(id: string) {
+      clearTimeout(joinTimers.get(id));
+      clearTimeout(retryTimers.get(id));
+      joinTimers.delete(id);
+      retryTimers.delete(id);
+    }
+
+    function clearJoinTimers() {
+      for (const id of subscribedRooms) clearRoomTimers(id);
+    }
+
+    function updateJoinStatus() {
+      if (rejectedRooms.size > 0 || exhaustedRooms.size > 0) {
+        setStatus('error');
+      } else if (pendingRooms.size === 0) {
+        markConnected();
+      } else {
+        setStatus('connecting');
+      }
+    }
+
+    function joinRoom(id: string) {
+      if (!active || !socket.connected || !pendingRooms.has(id)) return;
+      clearRoomTimers(id);
+      joinTimers.set(
+        id,
+        setTimeout(() => retryJoin(id), 10_000),
+      );
+      socket.emit('chat:join', { chatRoomId: id });
+    }
+
+    function retryJoin(id: string) {
+      if (!active || !socket.connected || !pendingRooms.has(id)) return;
+      clearTimeout(joinTimers.get(id));
+      joinTimers.delete(id);
+      if (retryTimers.has(id)) return;
+      const retries = joinRetries.get(id) ?? 0;
+      if (retries >= 3) {
+        // 늦은 성공 응답으로 복구할 수 있도록 pending 상태는 유지합니다.
+        exhaustedRooms.add(id);
+        updateJoinStatus();
+        notifyFailure();
+        return;
+      }
+      updateJoinStatus();
+      waitForReconnect();
+      joinRetries.set(id, retries + 1);
+      retryTimers.set(
+        id,
+        setTimeout(
+          () => {
+            retryTimers.delete(id);
+            joinRoom(id);
+          },
+          1000 * 2 ** retries,
+        ),
+      );
     }
 
     function refreshConversation(includeMessages = true) {
@@ -97,37 +160,34 @@ export default function useChatSocket(
     socket.on('connect', () => {
       if (!active) return;
       setStatus('connecting');
+      clearJoinTimers();
+      joinRetries.clear();
+      rejectedRooms.clear();
+      exhaustedRooms.clear();
       pendingRooms.clear();
       for (const id of subscribedRooms) {
         pendingRooms.add(id);
-        socket.emit('chat:join', { chatRoomId: id });
       }
       if (pendingRooms.size === 0) {
         markConnected();
         refreshConversation();
         return;
       }
-      clearTimeout(joinTimer);
-      joinTimer = setTimeout(() => {
-        if (!active) return;
-        socket.disconnect();
-        setStatus('error');
-        notifyFailure();
-      }, 10_000);
+      for (const id of pendingRooms) joinRoom(id);
     });
     socket.on('chat:joined', (payload: { chatRoomId?: string }) => {
       if (
         !active ||
         !payload?.chatRoomId ||
-        !subscribedRooms.has(payload.chatRoomId)
+        !pendingRooms.has(payload.chatRoomId)
       )
         return;
       pendingRooms.delete(payload.chatRoomId);
-      if (pendingRooms.size > 0) return;
-      clearTimeout(joinTimer);
-      markConnected();
+      clearRoomTimers(payload.chatRoomId);
+      exhaustedRooms.delete(payload.chatRoomId);
+      updateJoinStatus();
       // 최초 입장과 재연결 모두 연결이 끊겨 있던 동안의 메시지를 보완합니다.
-      refreshConversation();
+      refreshConversation(payload.chatRoomId === chatRoomId);
     });
     socket.on('message:new', (payload: { chatRoomId?: string }) => {
       if (
@@ -138,19 +198,35 @@ export default function useChatSocket(
         refreshConversation(payload.chatRoomId === chatRoomId);
     });
     socket.on('disconnect', () => {
-      clearTimeout(joinTimer);
+      clearJoinTimers();
       if (active) {
         setStatus('connecting');
         waitForReconnect();
       }
     });
-    socket.on('chat:error', () => {
-      if (!active) return;
-      clearTimeout(joinTimer);
-      socket.disconnect();
-      setStatus('error');
-      notifyFailure();
-    });
+    socket.on(
+      'chat:error',
+      (payload: { code?: string; chatRoomId?: string } | undefined) => {
+        if (!active) return;
+        const id = payload?.chatRoomId;
+        // 방 ID가 없는 오류는 다른 방의 입장·재시도를 중단시키지 않습니다.
+        if (!id || !pendingRooms.has(id)) {
+          if (!id) notifyFailure();
+          return;
+        }
+        if (payload?.code === 'INTERNAL_ERROR') {
+          retryJoin(id);
+          return;
+        }
+        // 권한·검증 오류는 재시도하지 않되 다른 방의 연결은 유지합니다.
+        rejectedRooms.add(id);
+        pendingRooms.delete(id);
+        exhaustedRooms.delete(id);
+        clearRoomTimers(id);
+        updateJoinStatus();
+        notifyFailure();
+      },
+    );
     socket.on('connect_error', (error: Error) => {
       if (!active) return;
       setStatus(socket.active ? 'connecting' : 'error');
@@ -167,7 +243,7 @@ export default function useChatSocket(
 
     return () => {
       active = false;
-      clearTimeout(joinTimer);
+      clearJoinTimers();
       clearTimeout(refreshTimer);
       clearTimeout(noticeTimer);
       socket.removeAllListeners();

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/ToastProvider';
 
 import PhotographerProductModal from './PhotographerProductModal';
 
@@ -24,6 +25,9 @@ type PhotographerProductsProps = {
   isSelf?: boolean;
   isReady?: boolean;
   isEditing?: boolean;
+
+  // 프로필 기본 정보 5개 완료 여부를 전달받음
+  isBasicInfoComplete: boolean;
 };
 
 // 촬영 시간을 시간과 분으로 변환함
@@ -42,7 +46,10 @@ export default function PhotographerProducts({
   isSelf = false,
   isReady = true,
   isEditing = false,
+  isBasicInfoComplete,
 }: PhotographerProductsProps) {
+  // 상품 등록 제한 및 처리 결과를 안내하는 Toast를 사용함
+  const { showToast } = useToast();
   // 상품 등록·수정 모달 상태를 관리함
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
@@ -50,8 +57,18 @@ export default function PhotographerProducts({
   const [editingProduct, setEditingProduct] =
     useState<PhotographerProduct | null>(null);
 
-  // 상품 등록 모달을 표시함
+  // 기본 정보 완료 여부를 확인한 뒤 상품 등록 모달을 표시함
   const handleCreateProduct = () => {
+    // 필수 기본 정보가 미완료라면 상품 등록을 차단함
+    if (!isBasicInfoComplete) {
+      showToast(
+        '촬영 상품을 등록하려면 먼저 프로필 기본 정보 설정을 완료해 주세요.',
+        'error',
+      );
+      return;
+    }
+
+    // 기본 정보가 완료된 경우 상품 등록 모달을 표시함
     setEditingProduct(null);
     setIsProductModalOpen(true);
   };
@@ -68,17 +85,32 @@ export default function PhotographerProducts({
       aria-labelledby="products-title"
       className={styles.products}
     >
-      {/* 촬영 상품 제목과 등록 버튼을 표시함 */}
+      {/* 촬영 상품 제목과 상품 관리 영역을 표시함 */}
       <div className={styles.heading}>
         <h2 id="products-title" className={styles.title}>
           촬영 상품
         </h2>
 
-        {/* 작가 편집 모드에서 최대 3개까지 상품 등록을 허용함 */}
-        {isSelf && isEditing && products.length < 3 && (
-          <Button variant="outline" size="lg" onClick={handleCreateProduct}>
-            + 상품 추가
-          </Button>
+        {/* 작가 본인의 편집 모드에서 상품 등록 안내와 추가 버튼을 표시함 */}
+        {isSelf && isEditing && (
+          <div className={styles.headingActions}>
+            <p className={styles.productLimitNotice}>
+              상품은 최대 3개까지 등록할 수 있어요
+            </p>
+
+            {/* 상품이 3개 미만일 때만 추가 버튼을 표시함 */}
+            {products.length < 3 && (
+              <div className={styles.addProductButton}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCreateProduct}
+                >
+                  + 상품 추가
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
