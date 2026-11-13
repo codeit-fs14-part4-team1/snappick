@@ -364,6 +364,7 @@ model chat_rooms {
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   chatMessage  chat_messages[]
   quote        quotes[]
+  shootingCases shooting_cases[]
 
   @@unique([user_id, photographer_id])
   @@index([user_id])
@@ -398,10 +399,23 @@ model chat_messages {
   @@index([chat_room_id, created_at])
 }
 
+// shooting_cases: 촬영 건
+model shooting_cases {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  chat_room_id String?  @db.Uuid
+  created_at   DateTime @default(now())
+
+  chat_room chat_rooms? @relation(fields: [chat_room_id], references: [id], onDelete: SetNull)
+  quotes    quotes[]
+
+  @@index([chat_room_id])
+}
+
 // quotes
 model quotes {
   id                String   @id @default(uuid(7)) @db.Uuid
   chat_room_id      String?  @db.Uuid
+  shooting_case_id  String @db.Uuid
   photographer_id   String?  @db.Uuid
   product_name      String
   version           Int
@@ -410,19 +424,20 @@ model quotes {
   duration_minutes  Int
   price             Int
   extra_fee         Int?
-  photo_count       Int
+  photo_count       Int?
   includes_original Boolean
   additional_notice String?
   common_notice     String?
   created_at        DateTime @default(now())
 
   chat_room    chat_rooms?     @relation(fields: [chat_room_id], references: [id], onDelete: SetNull)
+  shooting_case shooting_cases @relation(fields: [shooting_case_id], references: [id], onDelete: Restrict)
   photographer photographers?  @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   chatMessage  chat_messages[]
   reservation  reservations?
   payment      payments[]
 
-  @@unique([chat_room_id, version])
+  @@unique([shooting_case_id, version])
 }
 
 // payments
