@@ -2,8 +2,8 @@ import type { Request, Response } from 'express';
 import type { Server } from 'socket.io';
 
 import { getAuth } from '../../middlewares/authenticate.js';
-import { createQuoteSchema } from './quotes.schema.js';
-import { createQuote } from './quotes.service.js';
+import { createQuoteSchema, quoteIdParamsSchema } from './quotes.schema.js';
+import { createQuote, getQuote } from './quotes.service.js';
 
 export async function createQuoteHandler(req: Request, res: Response) {
   const auth = getAuth(req);
@@ -51,4 +51,28 @@ export async function createQuoteHandler(req: Request, res: Response) {
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
 
   res.status(201).json(quoteData);
+}
+
+export async function getQuoteHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const params = quoteIdParamsSchema.parse(req.params);
+
+  const quote = await getQuote(auth.accountId, params.quoteId);
+
+  res.status(200).json({
+    id: quote.id,
+    chatRoomId: quote.chat_room_id,
+    shootingCaseId: quote.shooting_case_id,
+    version: quote.version,
+    productName: quote.product_name,
+    shootAt: quote.shoot_at,
+    location: quote.location,
+    durationMinutes: quote.duration_minutes,
+    price: quote.price,
+    photoCount: quote.photo_count,
+    includesOriginal: quote.includes_original,
+    additionalNotice: quote.additional_notice,
+    commonNotice: quote.common_notice,
+    createdAt: quote.created_at,
+  });
 }

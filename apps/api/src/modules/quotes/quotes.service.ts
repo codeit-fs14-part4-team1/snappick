@@ -190,3 +190,40 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
     };
   });
 }
+
+export async function getQuote(accountId: string, quoteId: string) {
+  const quote = await prisma.quotes.findUnique({
+    where: {
+      id: quoteId,
+    },
+    include: {
+      chat_room: {
+        include: {
+          user: {
+            select: { auth_account_id: true },
+          },
+          photographer: {
+            select: { auth_account_id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!quote) {
+    throw new HttpError(404, 'QUOTE_NOT_FOUND', '견적을 찾을 수 없습니다.');
+  }
+
+  const userAccountId = quote.chat_room?.user?.auth_account_id;
+  const photographerAccountId = quote.chat_room?.photographer?.auth_account_id;
+
+  if (accountId !== userAccountId && accountId !== photographerAccountId) {
+    throw new HttpError(
+      403,
+      'CHAT_ROOM_ACCESS_DENIED',
+      '해당 문의에 접근할 권한이 없습니다.',
+    );
+  }
+
+  return quote;
+}
