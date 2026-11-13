@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button';
 import type { ChatRoomSummary, ChatViewerRole } from '../types';
 import { getChatGreeting, getPartnerName } from '../utils';
 import useChatMessages from '../useChatMessages';
+import useReadChatMessages from '../useReadChatMessages';
 import ChatMessageList from './ChatMessageList';
 import ChatMessageComposer from './ChatMessageComposer';
 import useSendChatMessage from '../useSendChatMessage';
@@ -20,6 +21,7 @@ export default function ConnectedChatMessages({
   now: string;
 }) {
   const query = useChatMessages(room.id);
+  const markVisibleMessageRead = useReadChatMessages(room.id);
   const { sendMessage, isSending, sentMessageId } = useSendChatMessage(room.id);
   const { isRealtimeConnected } = useConnectedChatRooms();
   if (query.isPending)
@@ -62,6 +64,7 @@ export default function ConnectedChatMessages({
           </div>
         )}
       <ChatMessageList
+        onVisibleMessage={markVisibleMessageRead}
         scrollToMessageId={sentMessageId}
         messages={query.messages}
         partnerName={getPartnerName(room.partner)}

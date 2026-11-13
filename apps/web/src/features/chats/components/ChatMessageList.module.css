@@ -88,6 +88,18 @@
   font-size: 12px;
   line-height: 18px;
 }
+.messageMeta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.unread {
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  line-height: 18px;
+}
 .system {
   display: flex;
   justify-content: center;

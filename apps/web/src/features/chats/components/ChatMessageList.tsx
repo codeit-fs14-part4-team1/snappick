@@ -23,6 +23,7 @@ type Props = {
   isPreviousError: boolean;
   onLoadPrevious: () => void;
   scrollToMessageId?: string;
+  onVisibleMessage?: (message: ChatMessageItem) => void;
 };
 
 export default function ChatMessageList({
@@ -36,12 +37,54 @@ export default function ChatMessageList({
   isPreviousError,
   onLoadPrevious,
   scrollToMessageId,
+  onVisibleMessage,
 }: Props) {
   const scrollRef = useRef<HTMLElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadPendingRef = useRef(false);
   const prependRef = useRef<{ height: number; top: number } | null>(null);
   const revealedMessageRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root || !onVisibleMessage) return;
+    const visible = new Set<string>();
+    function reportVisible() {
+      if (document.visibilityState !== 'visible' || !document.hasFocus())
+        return;
+      const target = [...messages]
+        .reverse()
+        .find(
+          (message) =>
+            !message.isMine &&
+            !message.readAt &&
+            message.recipientAccountId &&
+            visible.has(message.id),
+        );
+      if (target) onVisibleMessage?.(target);
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.messageId;
+          if (!id) continue;
+          if (entry.isIntersecting) visible.add(id);
+          else visible.delete(id);
+        }
+        reportVisible();
+      },
+      { root },
+    );
+    root
+      .querySelectorAll('[data-message-id]')
+      .forEach((element) => observer.observe(element));
+    window.addEventListener('focus', reportVisible);
+    document.addEventListener('visibilitychange', reportVisible);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('focus', reportVisible);
+      document.removeEventListener('visibilitychange', reportVisible);
+    };
+  }, [messages, onVisibleMessage]);
   const loadPrevious = useCallback(() => {
     const element = scrollRef.current;
     if (
@@ -210,9 +253,22 @@ export default function ChatMessageList({
                     {message.content}
                   </div>
                   {!system && (
-                    <time className={styles.time} dateTime={message.createdAt}>
-                      {formatChatTime(message.createdAt)}
-                    </time>
+                    <div className={styles.messageMeta}>
+                      {message.isMine && !message.readAt && (
+                        <span
+                          className={styles.unread}
+                          aria-label="상대방이 아직 읽지 않음"
+                        >
+                          안읽음
+                        </span>
+                      )}
+                      <time
+                        className={styles.time}
+                        dateTime={message.createdAt}
+                      >
+                        {formatChatTime(message.createdAt)}
+                      </time>
+                    </div>
                   )}
                 </li>
               </Fragment>

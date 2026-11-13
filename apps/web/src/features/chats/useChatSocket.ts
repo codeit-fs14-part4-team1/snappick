@@ -197,6 +197,20 @@ export default function useChatSocket(
       )
         refreshConversation(payload.chatRoomId === chatRoomId);
     });
+    socket.on(
+      'chat:read',
+      (payload: { chatRoomId?: string; readerAccountId?: string }) => {
+        if (
+          active &&
+          payload?.chatRoomId &&
+          subscribedRooms.has(payload.chatRoomId)
+        )
+          refreshConversation(
+            payload.chatRoomId === chatRoomId &&
+              payload.readerAccountId !== accountId,
+          );
+      },
+    );
     socket.on('disconnect', () => {
       clearJoinTimers();
       if (active) {
