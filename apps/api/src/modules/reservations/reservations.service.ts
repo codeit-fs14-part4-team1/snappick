@@ -36,6 +36,8 @@ const GET_RESERVATION_ENUM: Record<
 };
 
 const DELIVERY_DUE_DAYS = 14;
+// 결과물 전달(DELIVERED) 후 구매 확정까지
+const PURCHASE_CONFIRM_DAYS = 8;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -44,6 +46,57 @@ function toDeliveryDueDate(shootAt: Date): string {
     shootAt.getTime() + KST_OFFSET_MS + DELIVERY_DUE_DAYS * DAY_MS,
   );
   return due.toISOString().slice(0, 10);
+}
+
+/**
+ * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
+ * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
+ * - SHOOT_COMPLETED → DELIVERED: 촬영 시각 + 14일이 지나면 (응답의 deliveryDueDate와 같은 기준)
+ *   처리 대기 중인 취소 요청이 있으면 넘기지 않는다
+ *   (DELIVERED는 취소 불가 상태라, 넘기면 작가가 그 요청을 수락할 수 없게 된다)
+ * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
+ *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
+ *   예약 행은 상태가 바뀔 때만 수정되므로 가능한 방식이다
+ *   DELIVERED 이후 예약 행을 수정하는 기능이 생기면 구매 확정이 그만큼 밀리니 delivered_at 컬럼을 따로 둘 것
+ *
+ * 오래 밀린 건은 같은 실행에서 SHOOT_COMPLETED를 거쳐 DELIVERED까지 넘어가고,
+ * 구매 확정은 실제로 DELIVERED가 된 때부터 8일을 다시 센다
+ *
+ * 조건에 맞는 행을 한 번에 바꾸므로 여러 번 실행해도 결과가 같고, 밀린 건도 다음 실행에 처리된다
+ * now를 인자로 받는 이유: 시각을 정해 두고 테스트할 수 있게
+ */
+export async function advanceReservationStatuses(now: Date) {
+  const shootCompleted = await prisma.reservations.updateMany({
+    where: { status: 'CONFIRMED', shoot_at: { lte: now } },
+    data: { status: 'SHOOT_COMPLETED' },
+  });
+
+  const delivered = await prisma.reservations.updateMany({
+    where: {
+      status: 'SHOOT_COMPLETED',
+      shoot_at: {
+        lte: new Date(now.getTime() - DELIVERY_DUE_DAYS * DAY_MS),
+      },
+      reservation_cancel_request: { none: { status: 'PENDING' } },
+    },
+    data: { status: 'DELIVERED' },
+  });
+
+  const purchaseConfirmed = await prisma.reservations.updateMany({
+    where: {
+      status: 'DELIVERED',
+      updated_at: {
+        lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+      },
+    },
+    data: { status: 'PURCHASE_CONFIRMED' },
+  });
+
+  return {
+    shootCompleted: shootCompleted.count,
+    delivered: delivered.count,
+    purchaseConfirmed: purchaseConfirmed.count,
+  };
 }
 
 // POST /me/reservations

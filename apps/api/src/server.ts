@@ -6,6 +6,10 @@ import { verifySocketAccessToken } from './utils/tokens.js';
 import { chatRoomParamsSchema } from './modules/chats/chats.schema.js';
 import { checkChatRoomAccess } from './modules/chats/chats.service.js';
 import { HttpError } from './utils/http-error.js';
+import { startIntervalJob } from './utils/interval-job.js';
+import { advanceReservationStatuses } from './modules/reservations/reservations.service.js';
+
+const RESERVATION_STATUS_JOB_INTERVAL_MS = 10 * 60 * 1000;
 
 const httpServer = createServer(app);
 
@@ -120,4 +124,16 @@ io.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
+
+  // 예약 상태 자동 전환 (촬영 완료, 결과물 전달)
+  startIntervalJob(
+    'reservation-status',
+    RESERVATION_STATUS_JOB_INTERVAL_MS,
+    async () => {
+      const result = await advanceReservationStatuses(new Date());
+      if (Object.values(result).some((count) => count > 0)) {
+        console.log('[job:reservation-status]', result);
+      }
+    },
+  );
 });
