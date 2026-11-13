@@ -68,6 +68,7 @@ export default function ConnectedChatMessages({
         scrollToMessageId={sentMessageId}
         messages={query.messages}
         partnerName={getPartnerName(room.partner)}
+        partnerImageUrl={room.partner.profileImageUrl}
         now={now}
         greeting={
           viewerRole === 'user' &&
