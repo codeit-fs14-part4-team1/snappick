@@ -11,17 +11,21 @@ import {
   registerPhotosBodySchema,
   uploadUrlsBodySchema,
 } from './uploads.schema.js';
-import { createUploadUrls, registerPhotos } from './uploads.service.js';
+import {
+  assertReadyForUpload,
+  createUploadUrls,
+  registerPhotos,
+} from './uploads.service.js';
 
 export async function createUploadUrlsHandler(req: Request, res: Response) {
   const body = uploadUrlsBodySchema.parse(req.body);
+  const auth = getAuth(req);
+  // 프로필 필수 정보(readiness)를 채운 작가만 사진을 올릴 수 있다
+  // 등록(POST /me/photos)은 여기서 받은 업로드 키가 있어야 하므로 발급 단계에서만 막는다
+  await assertReadyForUpload(auth);
   const apiOrigin = `${req.protocol}://${req.get('host')}`;
   res.json(
-    await createUploadUrls(
-      await requirePhotographerId(getAuth(req)),
-      body,
-      apiOrigin,
-    ),
+    await createUploadUrls(await requirePhotographerId(auth), body, apiOrigin),
   );
 }
 
