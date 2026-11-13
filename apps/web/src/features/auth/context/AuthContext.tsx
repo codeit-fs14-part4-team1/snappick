@@ -44,6 +44,9 @@ type AuthContextValue = {
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchWithAuth: FetchWithAuth;
+
+  // 현재 로그인한 사용자의 최신 정보를 다시 조회함
+  refreshUser: () => Promise<void>;
 };
 
 // 인증 정보를 공유할 Context 생성
@@ -214,6 +217,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [setAccessToken, clearAuth],
   );
 
+  // 현재 로그인한 사용자의 최신 정보를 다시 조회함
+  const refreshUser = useCallback(async () => {
+    // 요청 시작 시점의 로그인 세션을 저장함
+    const requestSessionVersion = sessionVersionRef.current;
+
+    // 기존 인증 요청 함수를 사용해 사용자 정보를 조회함
+    const updatedUser = await fetchWithAuth<AuthUser>('/users/me', {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (!updatedUser) {
+      throw new Error('사용자 정보를 다시 불러오지 못했어요.');
+    }
+
+    // 요청 중 로그아웃하거나 계정이 변경되면 이전 응답을 무시함
+    if (sessionVersionRef.current !== requestSessionVersion) {
+      return;
+    }
+
+    // 최신 사용자 정보를 Context에 반영함
+    setUser(updatedUser);
+  }, [fetchWithAuth]);
+
   // 토큰 저장과 사용자 정보 조회를 공통으로 처리함
   const login = useCallback(
     async (token: string) => {
@@ -304,8 +331,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       fetchWithAuth,
+      refreshUser,
     }),
-    [accessToken, user, authStatus, clearAuth, login, logout, fetchWithAuth],
+    [
+      accessToken,
+      user,
+      authStatus,
+      clearAuth,
+      login,
+      logout,
+      fetchWithAuth,
+      refreshUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
