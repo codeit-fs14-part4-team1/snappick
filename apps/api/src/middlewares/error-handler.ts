@@ -16,9 +16,11 @@ export function errorHandler(
     });
   }
   if (err instanceof HttpError) {
-    return res
-      .status(err.status)
-      .json({ code: err.code, message: err.message });
+    return res.status(err.status).json({
+      code: err.code,
+      message: err.message,
+      ...(err.details && { details: err.details }),
+    });
   }
   // express.json()이 깨진 JSON을 만났을 때 (지금은 500으로 빠질 수 있는 경우)
   if (

@@ -30,6 +30,7 @@ import {
   photographerReviewsRouter,
   myReviewsRouter,
 } from './modules/reviews/reviews.routes.js';
+import { myReservationsRouter } from './modules/reservations/reservations.routes.js';
 
 export const app: Express = express();
 
@@ -76,6 +77,7 @@ app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
 app.use('/photographers', photographerReviewsRouter);
 app.use('/me', myReviewsRouter);
+app.use('/me', myReservationsRouter);
 app.use('/me/photos', myPhotoUploadsRouter);
 if (storageDriver === 'local') {
   app.use(LOCAL_UPLOAD_PATH, localUploadRouter);

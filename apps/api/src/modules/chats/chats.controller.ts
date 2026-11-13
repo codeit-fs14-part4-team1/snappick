@@ -4,6 +4,7 @@ import {
   getChats,
   getMessages,
   sendMessage,
+  sendInquiry,
   markChatAsRead,
 } from './chats.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
@@ -12,6 +13,7 @@ import {
   createChatSchema,
   getMessagesQuerySchema,
   sendMessageSchema,
+  sendInquirySchema,
   markChatAsReadSchema,
 } from './chats.schema.js';
 import { HttpError } from '../../utils/http-error.js';
@@ -48,6 +50,9 @@ export async function getChatsHandler(req: Request, res: Response) {
 }
 
 export async function sendMessageHandler(req: Request, res: Response) {
+  if (req.body?.messageType === 'INITIAL_REQUEST') {
+    return sendInquiryHandler(req, res);
+  }
   const auth = getAuth(req);
   const params = chatRoomParamsSchema.parse(req.params);
   const result = sendMessageSchema.safeParse(req.body);
@@ -149,6 +154,54 @@ export async function getMessagesHandler(req: Request, res: Response) {
   );
 
   res.status(200).json(result);
+}
+
+// 초기 문의 정보 관련
+async function sendInquiryHandler(req: Request, res: Response) {
+  const auth = getAuth(req);
+  const params = chatRoomParamsSchema.parse(req.params);
+  const result = sendInquirySchema.safeParse(req.body);
+
+  if (!result.success) {
+    const isEmptyInquiry = result.error.issues.some(
+      (issue) => issue.code === 'custom' && issue.path[0] === 'payload',
+    );
+
+    if (isEmptyInquiry) {
+      throw new HttpError(
+        400,
+        'EMPTY_INITIAL_REQUEST',
+        '촬영 정보를 하나 이상 입력해 주세요.',
+      );
+    }
+
+    throw new HttpError(400, 'INVALID_REQUEST', '잘못된 요청입니다.');
+  }
+
+  const message = await sendInquiry(
+    auth.accountId,
+    params.chatRoomId,
+    result.data.payload,
+  );
+
+  const io: Server = req.app.get('io');
+
+  const messageData = {
+    id: message.id,
+    chatRoomId: message.chat_room_id,
+    recipientAccountId: message.recipient_account_id,
+    messageType: message.message_type,
+    content: message.content,
+    payload: message.payload,
+    quote: null,
+    reservation: null,
+    readAt: message.read_at,
+    createdAt: message.created_at,
+  };
+
+  io.to(`chat:${params.chatRoomId}`).emit('message:new', messageData);
+
+  res.status(201).json(messageData);
 }
 
 export async function markChatAsReadHandler(req: Request, res: Response) {

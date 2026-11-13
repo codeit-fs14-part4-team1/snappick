@@ -3,6 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { removeFiles, storage } from '../../lib/storage/index.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
+import type { AccessTokenPayload } from '../../utils/tokens.js';
+import { getMyReadiness } from '../photographers/photographers.service.js';
 import {
   oneAtATime,
   toStoredWebp,
@@ -27,6 +29,22 @@ const uploadNotFound = () =>
 
 const invalidFile = (message: string) =>
   new HttpError(400, 'INVALID_FILE', message);
+
+/**
+ * 업로드 전 프로필 준비 확인 (POST /me/photos/upload-urls)
+ * 작가 프로필 readiness와 같은 기준을 쓴다. 빠진 항목은 missing으로 알려 준다
+ */
+export async function assertReadyForUpload(auth: AccessTokenPayload) {
+  const readiness = await getMyReadiness(auth);
+  if (!readiness.isReady) {
+    throw new HttpError(
+      403,
+      'PHOTOGRAPHER_NOT_READY',
+      '프로필 필수 정보를 먼저 입력해 주세요.',
+      { missing: readiness.missing },
+    );
+  }
+}
 
 /**
  * 업로드 URL 발급 (POST /me/photos/upload-urls)
