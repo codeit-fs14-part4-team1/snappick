@@ -1,4 +1,5 @@
 import type { Prisma } from '../../generated/prisma/client.js';
+import type { Provider } from '../../generated/prisma/enums.js';
 import { env } from '../../config/env.js';
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
@@ -23,9 +24,11 @@ const invalidRefreshToken = () =>
     '유효하지 않은 refresh token입니다.',
   );
 
+// provider: 이 로그인 세션을 시작한 로그인 방식. 회전할 때는 이전 행의 값을 그대로 넘긴다
 export async function issueTokens(
   db: Db,
   account: { id: string; account_type: string },
+  provider: Provider,
   familyId?: string,
 ) {
   const refreshToken = generateRefreshToken();
@@ -34,13 +37,14 @@ export async function issueTokens(
     data: {
       auth_account_id: account.id,
       token_hash: hashToken(refreshToken),
+      provider,
       ...(familyId ? { family_id: familyId } : {}),
     },
     select: { id: true },
   });
 
   return {
-    accessToken: signAccessToken(account.id, account.account_type),
+    accessToken: signAccessToken(account.id, account.account_type, provider),
     refreshToken,
     refreshTokenId: row.id,
   };
@@ -50,6 +54,31 @@ export async function issueTokens(
 export async function revokeFamily(familyId: string) {
   await prisma.auth_refresh_tokens.updateMany({
     where: { family_id: familyId, revoked_at: null },
+    data: { revoked_at: new Date() },
+  });
+}
+
+// 계정의 다른 로그인 세션을 모두 폐기 (비밀번호 변경에서 사용)
+// currentRawToken의 세션은 남긴다. 다른 계정의 토큰이거나 없으면 모든 세션을 폐기한다
+export async function revokeOtherSessions(
+  accountId: string,
+  currentRawToken: string | undefined,
+) {
+  const current = currentRawToken
+    ? await prisma.auth_refresh_tokens.findUnique({
+        where: { token_hash: hashToken(currentRawToken) },
+        select: { family_id: true, auth_account_id: true },
+      })
+    : null;
+  const keepFamilyId =
+    current?.auth_account_id === accountId ? current.family_id : undefined;
+
+  await prisma.auth_refresh_tokens.updateMany({
+    where: {
+      auth_account_id: accountId,
+      revoked_at: null,
+      ...(keepFamilyId ? { family_id: { not: keepFamilyId } } : {}),
+    },
     data: { revoked_at: new Date() },
   });
 }
@@ -76,6 +105,7 @@ export async function rotateRefreshToken(
     select: {
       id: true,
       family_id: true,
+      provider: true,
       revoked_at: true,
       replaced_by_id: true,
       created_at: true,
@@ -110,6 +140,7 @@ export async function rotateRefreshToken(
     const issued = await issueTokens(
       tx,
       current.auth_account,
+      current.provider,
       current.family_id,
     );
     await tx.auth_refresh_tokens.update({
@@ -144,6 +175,7 @@ async function handleRevoked(
   revoked: { revokedAt: Date; replacedById: string | null },
   current: {
     family_id: string;
+    provider: Provider;
     auth_account: { id: string; account_type: string };
   },
 ): Promise<RotateResult> {
@@ -161,6 +193,7 @@ async function handleRevoked(
         accessToken: signAccessToken(
           current.auth_account.id,
           current.auth_account.account_type,
+          current.provider,
         ),
         refreshToken: null,
       };
