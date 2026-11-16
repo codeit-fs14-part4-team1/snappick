@@ -4,8 +4,13 @@ import {
   readRefreshCookie,
   setRefreshCookie,
 } from './auth.cookies.js';
-import { loginSchema, signupSchema } from './auth.schema.js';
-import { signup, login } from './auth.service.js';
+import {
+  changePasswordSchema,
+  loginSchema,
+  signupSchema,
+} from './auth.schema.js';
+import { changePassword, getAccount, signup, login } from './auth.service.js';
+import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
 import { revokeSession, rotateRefreshToken } from './token.service.js';
 
@@ -51,5 +56,17 @@ export async function logoutHandler(req: Request, res: Response) {
   if (rawToken) await revokeSession(rawToken);
 
   clearRefreshCookie(res);
+  res.status(204).end();
+}
+
+export async function getAccountHandler(req: Request, res: Response) {
+  res.set('Cache-Control', 'no-store'); // 이메일이 들어 있는 응답
+  res.json(await getAccount(getAuth(req)));
+}
+
+export async function changePasswordHandler(req: Request, res: Response) {
+  const input = changePasswordSchema.parse(req.body);
+  // 지금 세션은 유지하기 위해 refresh token 쿠키를 함께 넘긴다 (쿠키 path가 /auth라 이 요청에 붙어 온다)
+  await changePassword(getAuth(req), input, readRefreshCookie(req));
   res.status(204).end();
 }

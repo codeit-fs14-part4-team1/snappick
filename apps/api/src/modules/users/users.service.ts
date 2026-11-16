@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
+import type { UpdateUserNicknameInput } from './users.schema.js';
 
 export async function getMe(accountId: string) {
   const account = await prisma.auth_accounts.findUnique({
@@ -31,4 +32,23 @@ export async function getMe(accountId: string) {
     nickname: profile.nickname,
     profileImageUrl: profile.profile_image_url,
   };
+}
+
+export async function updateUserNickname(
+  accountId: string,
+  input: UpdateUserNicknameInput,
+) {
+  const result = await prisma.users.updateMany({
+    where: { auth_account_id: accountId },
+    data: {
+      nickname: input.nickname,
+    },
+  });
+
+  if (result.count === 0) {
+    throw new HttpError(404, 'PROFILE_NOT_FOUND', '프로필을 찾지 못했습니다.');
+  }
+
+  // GET /users/me와 같은 형태로 돌려준다 (FE가 응답으로 user 상태를 바로 갱신)
+  return getMe(accountId);
 }

@@ -19,7 +19,9 @@ type MockData = {
 
 type ProfileMockData = {
   products: (Prisma.productsCreateManyInput & { id: string })[];
-  quotes: (Prisma.quotesCreateManyInput & { id: string })[];
+  quotes: (Omit<Prisma.quotesCreateManyInput, 'shooting_case_id'> & {
+    id: string;
+  })[];
   reservations: (Prisma.reservationsCreateManyInput & { id: string })[];
   deliverables: (Prisma.deliverablesCreateManyInput & { id: string })[];
   reviews: (Prisma.reviewsCreateManyInput & { id: string })[];
@@ -134,11 +136,20 @@ async function main() {
         update: content,
       }),
     ),
+    // 프로필 목 견적은 모두 별도 촬영 건이므로 견적 ID를 촬영 건 ID로 재사용한다.
+    // 고정 ID를 사용해 시드를 다시 실행해도 같은 촬영 건을 참조한다.
+    ...profileData.quotes.map(({ id, chat_room_id }) =>
+      prisma.shooting_cases.upsert({
+        where: { id },
+        create: { id, chat_room_id: chat_room_id ?? null },
+        update: {},
+      }),
+    ),
     ...profileData.quotes.map(({ id, ...content }) =>
       prisma.quotes.upsert({
         where: { id },
-        create: { id, ...content },
-        update: content,
+        create: { id, ...content, shooting_case_id: id },
+        update: { ...content, shooting_case_id: id },
       }),
     ),
     ...profileData.reservations.map(({ id, ...content }) =>

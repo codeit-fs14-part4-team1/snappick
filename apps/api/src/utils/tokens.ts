@@ -2,18 +2,22 @@ import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AccountType } from '@snappick/shared';
+import { Provider } from '../generated/prisma/enums.js';
 
 export type AccessTokenPayload = {
   accountId: string;
   accountType: AccountType;
+  // 이번 로그인 세션을 시작한 로그인 방식 (BASIC, KAKAO 등)
+  provider: Provider;
 };
 
 export function signAccessToken(
   accountId: string,
   accountType: string,
+  provider: Provider,
 ): string {
   return jwt.sign(
-    { sub: accountId, accountType }, // 토큰 안에 담을 내용
+    { sub: accountId, accountType, provider }, // 토큰 안에 담을 내용
     env.jwtAccessSecret, // 서명에 쓰는 비밀 키
     {
       expiresIn: env.accessTokenTtl, // 만료 시간
@@ -29,7 +33,9 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   if (
     typeof payload === 'string' ||
     typeof payload.sub !== 'string' ||
-    !Object.values(AccountType).includes(payload.accountType)
+    !Object.values(AccountType).includes(payload.accountType) ||
+    // provider가 없는 예전 토큰도 거부한다 (401 → FE가 refresh로 새 토큰을 받는다)
+    !Object.values(Provider).includes(payload.provider)
   ) {
     throw new Error('Invalid access token payload');
   }
@@ -37,6 +43,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   return {
     accountId: payload.sub,
     accountType: payload.accountType as AccountType,
+    provider: payload.provider as Provider,
   };
 }
 
