@@ -125,7 +125,7 @@ io.on('connection', (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
 
-  // 예약 상태 자동 전환 (촬영 완료, 결과물 전달)
+  // 예약 상태 자동 전환 (촬영 완료, 구매 확정)
   startIntervalJob(
     'reservation-status',
     RESERVATION_STATUS_JOB_INTERVAL_MS,
