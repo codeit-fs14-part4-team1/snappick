@@ -8,17 +8,19 @@ export default function ChatMessageComposer({
   viewerRole,
   isWithdrawn,
   isSending,
+  isBlocked = false,
   onSend,
 }: {
   viewerRole: ChatViewerRole;
   isWithdrawn: boolean;
   isSending: boolean;
+  isBlocked?: boolean;
   onSend: (content: string) => Promise<unknown>;
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
-  const disabled = isSending || isWithdrawn;
+  const disabled = isSending || isWithdrawn || isBlocked;
   const content = text.trim();
   const tooLong = content.length > 1000;
 
@@ -63,7 +65,9 @@ export default function ChatMessageComposer({
         placeholder={
           isWithdrawn
             ? '상대방에게 메시지를 보낼 수 없어요'
-            : '메시지를 입력하세요'
+            : isBlocked
+              ? '촬영 정보를 보내거나 건너뛰면 대화를 시작할 수 있어요'
+              : '메시지를 입력하세요'
         }
         disabled={disabled}
         value={text}

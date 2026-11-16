@@ -112,6 +112,11 @@
 .message[data-mine='true'] {
   flex-direction: row-reverse;
 }
+.requestContainer {
+  width: 340px;
+  max-width: calc(100% - 76px);
+  min-width: 0;
+}
 .bubble {
   max-width: 75%;
   min-width: 0;

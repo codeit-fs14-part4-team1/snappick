@@ -1,4 +1,17 @@
-import type { MessageType } from '@snappick/shared';
+import type { Category, MessageType, Region, Style } from '@snappick/shared';
+
+/** POST /chats/:chatRoomId/messages의 INITIAL_REQUEST payload. 빈 필드는 생략합니다. */
+export type InquiryPayload = {
+  date?: string;
+  timeSlot?: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'UNDECIDED';
+  region?: Region;
+  location?: string;
+  concept?: Style[];
+  category?: Category;
+};
+
+export type SendChatMessageInput =
+  string | { messageType: 'INITIAL_REQUEST'; payload: InquiryPayload };
 
 /** GET /chats 응답 중 채팅방 목록 표시에 사용하는 필드 */
 export type ChatRoomSummary = {

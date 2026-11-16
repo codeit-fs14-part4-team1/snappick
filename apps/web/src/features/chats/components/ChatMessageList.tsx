@@ -7,10 +7,12 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import Button from '@/components/ui/Button';
 import ScrollToEdgeButton from '@/components/ui/ScrollToEdgeButton';
 import ChatAvatar from './ChatAvatar';
+import InquiryCard from './InquiryCard';
 import type { ChatMessageItem } from '../types';
 import { formatChatDate, formatChatTime } from '../utils';
 import styles from './ChatMessageList.module.css';
@@ -28,6 +30,8 @@ type Props = {
   onLoadPrevious: () => void;
   scrollToMessageId?: string;
   onVisibleMessage?: (message: ChatMessageItem) => void;
+  endContent?: ReactNode;
+  startAtTop?: boolean;
 };
 
 type ScrollAnchor = { id: string; offset: number };
@@ -78,7 +82,10 @@ export default function ChatMessageList({
   onLoadPrevious,
   scrollToMessageId,
   onVisibleMessage,
+  endContent,
+  startAtTop = false,
 }: Props) {
+  const initialStartAtTop = useRef(startAtTop);
   const scrollRef = useRef<HTMLElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadPendingRef = useRef(false);
@@ -183,7 +190,8 @@ export default function ChatMessageList({
   }, [hasPrevious, isFetching, isFetchingPrevious, onLoadPrevious]);
   useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (element) element.scrollTop = element.scrollHeight;
+    if (element)
+      element.scrollTop = initialStartAtTop.current ? 0 : element.scrollHeight;
   }, []);
 
   useLayoutEffect(() => {
@@ -313,7 +321,7 @@ export default function ChatMessageList({
             </span>
           </div>
         )}
-        {messages.length === 0 && !greeting ? (
+        {messages.length === 0 && !greeting && !endContent ? (
           <p className={styles.empty}>아직 대화 내역이 없습니다.</p>
         ) : (
           <ol className={styles.list}>
@@ -348,9 +356,22 @@ export default function ChatMessageList({
                       {system ? '시스템' : message.isMine ? '나' : partnerName}:
                     </span>
                     <div
-                      className={system ? styles.systemContent : styles.bubble}
+                      className={
+                        system
+                          ? styles.systemContent
+                          : message.messageType === 'INITIAL_REQUEST'
+                            ? styles.requestContainer
+                            : styles.bubble
+                      }
                     >
-                      {message.content}
+                      {message.messageType === 'INITIAL_REQUEST' ? (
+                        <InquiryCard
+                          payload={message.payload}
+                          isMine={message.isMine}
+                        />
+                      ) : (
+                        message.content
+                      )}
                     </div>
                     {!system && (
                       <div className={styles.messageMeta}>
@@ -374,6 +395,7 @@ export default function ChatMessageList({
                 </Fragment>
               );
             })}
+            {endContent && <li>{endContent}</li>}
           </ol>
         )}
       </section>
