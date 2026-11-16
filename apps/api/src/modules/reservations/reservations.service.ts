@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
+import type { chat_messages } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
@@ -279,7 +280,24 @@ export async function createCancelReservation(
       select: {
         user_id: true,
         photographer_id: true,
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         status: true,
+        // 예약에 연결된 견적에서 채팅방 ID를 가져옴
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        // 취소 요청을 받을 작가의 계정 ID를 가져옴
+        photographer: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { status: 'PENDING' },
           take: 1,
@@ -350,12 +368,51 @@ export async function createCancelReservation(
       });
     }
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+
+    // 취소한 사람의 상대방을 수신자로 지정
+    const recipientAccountId = isPhotographer
+      ? reservation.user?.auth_account_id
+      : reservation.photographer?.auth_account_id;
+
+    // 취소한 사람에 따라 메시지 내용을 구분
+    const content = isPhotographer
+      ? '작가가 예약을 취소했습니다.'
+      : '사용자가 예약 취소를 요청했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: cancelRequest.id,
       status: cancelRequest.status,
       reason: cancelRequest.reason,
       requestedAt: cancelRequest.created_at,
       processedAt: cancelRequest.processed_at,
+      systemMessage,
     };
   });
 }
@@ -375,6 +432,16 @@ export async function patchCancelReservation(
       select: {
         photographer_id: true,
         status: true,
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { id: cancelRequestId },
           select: { id: true, status: true },
@@ -431,11 +498,45 @@ export async function patchCancelReservation(
         })
       : { status: reservation.status };
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+    const recipientAccountId = reservation.user?.auth_account_id;
+
+    const content = accepted
+      ? '작가가 예약 취소 요청을 수락했습니다.'
+      : '작가가 예약 취소 요청을 반려했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: processed.id,
       status: processed.status,
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
+      systemMessage,
     };
   });
 }
