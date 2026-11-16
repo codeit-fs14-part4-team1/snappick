@@ -8,6 +8,11 @@ import type {
   PatchCancelReservationInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
+import {
+  createNotification,
+  notificationMessages,
+  scheduleShootReminders,
+} from '../notifications/notifications.create.js';
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
 // 프론트는 details.reservationId로 기존 예약에 연결한다
@@ -57,7 +62,10 @@ export async function createReservation(
       user_id: true,
       status: true,
       pg_provider: true,
-      photographer: { select: { id: true, nickname: true } },
+      user: { select: { auth_account_id: true } },
+      photographer: {
+        select: { id: true, nickname: true, auth_account_id: true },
+      },
       reservation: { select: { id: true } },
       quote: {
         select: {
@@ -109,30 +117,63 @@ export async function createReservation(
     );
   }
 
+  const { quote, photographer } = payment;
+  // 예약 확정·촬영일 알림을 받을 유저와 작가의 계정
+  const accountIds = [
+    payment.user?.auth_account_id,
+    photographer.auth_account_id,
+  ].filter((id): id is string => !!id);
+
   try {
-    const reservation = await prisma.reservations.create({
-      data: {
-        payment_id: input.paymentId,
-        quote_id: payment.quote.id,
-        user_id: userId,
-        photographer_id: payment.photographer.id,
-        status: 'CONFIRMED',
-        shoot_at: payment.quote.shoot_at,
-        location: payment.quote.location,
-        total_amount: payment.quote.price,
-      },
-      select: {
-        id: true,
-        shoot_at: true,
-        location: true,
-        total_amount: true,
-      },
+    // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
+    const reservation = await prisma.$transaction(async (tx) => {
+      const created = await tx.reservations.create({
+        data: {
+          payment_id: input.paymentId,
+          quote_id: quote.id,
+          user_id: userId,
+          photographer_id: photographer.id,
+          status: 'CONFIRMED',
+          shoot_at: quote.shoot_at,
+          location: quote.location,
+          total_amount: quote.price,
+        },
+        select: {
+          id: true,
+          shoot_at: true,
+          location: true,
+          total_amount: true,
+        },
+      });
+
+      for (const accountId of accountIds) {
+        await createNotification(
+          {
+            accountId,
+            type: 'RESERVATION_CONFIRMED',
+            targetId: created.id,
+            message: notificationMessages.reservationConfirmed(),
+          },
+          tx,
+        );
+      }
+
+      await scheduleShootReminders(
+        {
+          reservationId: created.id,
+          shootAt: created.shoot_at,
+          accountIds,
+        },
+        tx,
+      );
+
+      return created;
     });
 
     return {
       reservationId: reservation.id,
-      photographerNickname: payment.photographer.nickname,
-      productName: payment.quote.product_name,
+      photographerNickname: photographer.nickname,
+      productName: quote.product_name,
       shootAt: reservation.shoot_at,
       location: reservation.location,
       totalAmount: reservation.total_amount,
@@ -146,7 +187,7 @@ export async function createReservation(
     ) {
       const existing = await prisma.reservations.findFirst({
         where: {
-          OR: [{ payment_id: input.paymentId }, { quote_id: payment.quote.id }],
+          OR: [{ payment_id: input.paymentId }, { quote_id: quote.id }],
         },
         select: { id: true },
       });
