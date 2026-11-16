@@ -31,6 +31,7 @@ import {
   myReviewsRouter,
 } from './modules/reviews/reviews.routes.js';
 import { myReservationsRouter } from './modules/reservations/reservations.routes.js';
+import { reviewSummariesRouter } from './modules/review-summaries/review-summaries.routes.js';
 
 export const app: Express = express();
 
@@ -76,6 +77,7 @@ app.use('/photographers', photographerSavesRouter);
 app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
 app.use('/photographers', photographerReviewsRouter);
+app.use('/photographers', reviewSummariesRouter);
 app.use('/me', myReviewsRouter);
 app.use('/me', myReservationsRouter);
 app.use('/me/photos', myPhotoUploadsRouter);
