@@ -1,3 +1,56 @@
+.messageArea {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.messageArea .scrollButton {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+}
+.newMessage,
+.bubble {
+  display: flex;
+  padding: 11px 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+.newMessage {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  width: max-content;
+  max-width: min(480px, calc(100% - 40px));
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  text-align: left;
+  cursor: pointer;
+}
+.newMessageContent {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.newMessageName {
+  max-width: 120px;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .scroll {
   display: flex;
   min-width: 0;
@@ -60,19 +113,11 @@
   flex-direction: row-reverse;
 }
 .bubble {
-  display: flex;
   max-width: 75%;
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  padding: 11px 16px;
-  border: 1px solid var(--color-border);
   border-radius: 18px 18px 18px 4px;
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 22px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -85,6 +130,18 @@
 .time {
   flex-shrink: 0;
   color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.messageMeta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.unread {
+  color: var(--color-accent-strong);
   font-size: 12px;
   line-height: 18px;
 }
@@ -109,6 +166,12 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+@media (max-width: 1199px) {
+  .newMessage {
+    max-width: min(480px, calc(100% - 64px));
+  }
+}
+
 @media (max-width: 767px) {
   .scroll {
     padding: 20px;
