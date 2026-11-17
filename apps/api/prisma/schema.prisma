@@ -425,7 +425,6 @@ model quotes {
   location          String
   duration_minutes  Int
   price             Int
-  extra_fee         Int?
   photo_count       Int?
   includes_original Boolean
   additional_notice String?
