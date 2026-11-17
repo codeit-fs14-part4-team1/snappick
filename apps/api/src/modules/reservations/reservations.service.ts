@@ -1,11 +1,14 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
+import type { chat_messages } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
+  CreateDeliverableInput,
   CreateReservationInput,
   GetReservationInput,
   PatchCancelReservationInput,
+  PatchDeliverableInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import {
@@ -41,6 +44,8 @@ const GET_RESERVATION_ENUM: Record<
 };
 
 const DELIVERY_DUE_DAYS = 14;
+// 결과물 전달(DELIVERED) 후 구매 확정까지
+const PURCHASE_CONFIRM_DAYS = 8;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,6 +54,40 @@ function toDeliveryDueDate(shootAt: Date): string {
     shootAt.getTime() + KST_OFFSET_MS + DELIVERY_DUE_DAYS * DAY_MS,
   );
   return due.toISOString().slice(0, 10);
+}
+
+/**
+ * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
+ * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
+ * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
+ *   DELIVERED는 작가가 결과물을 전달할 때만 바뀐다 (시간 경과로 자동 전환하지 않는다)
+ *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
+ *   예약 행은 상태가 바뀔 때만 수정되므로 가능한 방식이다
+ *   DELIVERED 이후 예약 행을 수정하는 기능이 생기면 구매 확정이 그만큼 밀리니 delivered_at 컬럼을 따로 둘 것
+ *
+ * 조건에 맞는 행을 한 번에 바꾸므로 여러 번 실행해도 결과가 같고, 밀린 건도 다음 실행에 처리된다
+ * now를 인자로 받는 이유: 시각을 정해 두고 테스트할 수 있게
+ */
+export async function advanceReservationStatuses(now: Date) {
+  const shootCompleted = await prisma.reservations.updateMany({
+    where: { status: 'CONFIRMED', shoot_at: { lte: now } },
+    data: { status: 'SHOOT_COMPLETED' },
+  });
+
+  const purchaseConfirmed = await prisma.reservations.updateMany({
+    where: {
+      status: 'DELIVERED',
+      updated_at: {
+        lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+      },
+    },
+    data: { status: 'PURCHASE_CONFIRMED' },
+  });
+
+  return {
+    shootCompleted: shootCompleted.count,
+    purchaseConfirmed: purchaseConfirmed.count,
+  };
 }
 
 // POST /me/reservations
@@ -320,7 +359,24 @@ export async function createCancelReservation(
       select: {
         user_id: true,
         photographer_id: true,
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         status: true,
+        // 예약에 연결된 견적에서 채팅방 ID를 가져옴
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        // 취소 요청을 받을 작가의 계정 ID를 가져옴
+        photographer: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { status: 'PENDING' },
           take: 1,
@@ -391,12 +447,51 @@ export async function createCancelReservation(
       });
     }
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+
+    // 취소한 사람의 상대방을 수신자로 지정
+    const recipientAccountId = isPhotographer
+      ? reservation.user?.auth_account_id
+      : reservation.photographer?.auth_account_id;
+
+    // 취소한 사람에 따라 메시지 내용을 구분
+    const content = isPhotographer
+      ? '작가가 예약을 취소했습니다.'
+      : '사용자가 예약 취소를 요청했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: cancelRequest.id,
       status: cancelRequest.status,
       reason: cancelRequest.reason,
       requestedAt: cancelRequest.created_at,
       processedAt: cancelRequest.processed_at,
+      systemMessage,
     };
   });
 }
@@ -416,6 +511,16 @@ export async function patchCancelReservation(
       select: {
         photographer_id: true,
         status: true,
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { id: cancelRequestId },
           select: { id: true, status: true },
@@ -472,11 +577,45 @@ export async function patchCancelReservation(
         })
       : { status: reservation.status };
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+    const recipientAccountId = reservation.user?.auth_account_id;
+
+    const content = accepted
+      ? '작가가 예약 취소 요청을 수락했습니다.'
+      : '작가가 예약 취소 요청을 반려했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: processed.id,
       status: processed.status,
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
+      systemMessage,
     };
   });
 }
@@ -554,4 +693,212 @@ export async function getReservation(
     totalCount,
     totalPages: Math.ceil(totalCount / query.pageSize),
   };
+}
+
+const reservationNotFound = () =>
+  new HttpError(404, 'RESERVATION_NOT_FOUND', '예약을 찾을 수 없어요.');
+
+const deliverableNotFound = () =>
+  new HttpError(404, 'DELIVERABLE_NOT_FOUND', '결과물을 찾을 수 없어요.');
+
+const DELIVERABLE_SELECT = {
+  id: true,
+  reservation_id: true,
+  link: true,
+  expiration_period: true,
+  notice: true,
+  created_at: true,
+  updated_at: true,
+} as const;
+
+// 링크 유효 기간은 받을 때와 같은 YYYY.MM.DD(한국 날짜)로 내려준다
+function toKstDotDate(date: Date): string {
+  return new Date(date.getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10)
+    .replaceAll('-', '.');
+}
+
+function toDeliverableResponse(deliverable: {
+  id: string;
+  reservation_id: string;
+  link: string;
+  expiration_period: Date;
+  notice: string | null;
+  created_at: Date;
+  updated_at: Date;
+}) {
+  return {
+    deliverableId: deliverable.id,
+    reservationId: deliverable.reservation_id,
+    link: deliverable.link,
+    expirationPeriod: toKstDotDate(deliverable.expiration_period),
+    notice: deliverable.notice,
+    createdAt: deliverable.created_at,
+    updatedAt: deliverable.updated_at,
+  };
+}
+
+// GET /me/reservations/:reservationId/deliverable
+// 예약의 유저·작가만 볼 수 있다
+export async function getDeliverable(
+  viewer: { userId: string | null; photographerId: string | null },
+  reservationId: string,
+) {
+  const reservation = await prisma.reservations.findUnique({
+    where: { id: reservationId },
+    select: {
+      user_id: true,
+      photographer_id: true,
+      deliverable: { select: DELIVERABLE_SELECT },
+    },
+  });
+
+  const isParticipant =
+    !!reservation &&
+    ((viewer.userId !== null && reservation.user_id === viewer.userId) ||
+      (viewer.photographerId !== null &&
+        reservation.photographer_id === viewer.photographerId));
+
+  if (!reservation || !isParticipant) {
+    throw reservationNotFound();
+  }
+  if (!reservation.deliverable) {
+    throw deliverableNotFound();
+  }
+
+  return toDeliverableResponse(reservation.deliverable);
+}
+
+// POST /me/reservations/:reservationId/deliverable
+// 작가가 결과물을 처음 등록하면 예약을 DELIVERED로 바꾸고 유저에게 알린다
+export async function createDeliverable(
+  photographerId: string,
+  reservationId: string,
+  input: CreateDeliverableInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: {
+        photographer_id: true,
+        status: true,
+        user: { select: { auth_account_id: true } },
+        photographer: { select: { nickname: true } },
+        deliverable: { select: { id: true } },
+        reservation_cancel_request: {
+          where: { status: 'PENDING' },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!reservation || reservation.photographer_id !== photographerId) {
+      throw reservationNotFound();
+    }
+
+    if (reservation.deliverable) {
+      throw new HttpError(
+        409,
+        'DELIVERABLE_ALREADY_EXISTS',
+        '이미 결과물을 등록했어요.',
+        { deliverableId: reservation.deliverable.id },
+      );
+    }
+
+    if (reservation.status !== 'SHOOT_COMPLETED') {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_DELIVERABLE',
+        '촬영이 완료된 예약만 결과물을 등록할 수 있어요.',
+      );
+    }
+
+    // DELIVERED는 취소할 수 없는 상태라, 대기 중인 취소 요청을 먼저 처리해야 한다
+    const pending = reservation.reservation_cancel_request[0];
+    if (pending) {
+      throw new HttpError(
+        409,
+        'CANCEL_REQUEST_PENDING',
+        '처리 대기 중인 취소 요청을 먼저 처리해 주세요.',
+        { cancelRequestId: pending.id },
+      );
+    }
+
+    const deliverable = await tx.deliverables.create({
+      data: {
+        reservation_id: reservationId,
+        link: input.link,
+        expiration_period: input.expirationPeriod,
+        notice: input.notice ?? null,
+      },
+      select: DELIVERABLE_SELECT,
+    });
+
+    // 구매 확정 스케줄러는 DELIVERED가 된 시각을 updated_at으로 판단한다
+    await tx.reservations.update({
+      where: { id: reservationId },
+      data: { status: 'DELIVERED' },
+    });
+
+    const userAccountId = reservation.user?.auth_account_id;
+    if (userAccountId) {
+      await createNotification(
+        {
+          accountId: userAccountId,
+          type: 'DELIVERY_COMPLETED',
+          targetId: reservationId,
+          message: notificationMessages.deliveryCompleted(
+            reservation.photographer?.nickname ?? '작가',
+          ),
+        },
+        tx,
+      );
+    }
+
+    return {
+      ...toDeliverableResponse(deliverable),
+      reservationStatus: 'DELIVERED' as const,
+    };
+  });
+}
+
+// PATCH /me/reservations/:reservationId/deliverable
+// 결과물만 수정한다. 예약 행을 수정하면 updated_at이 바뀌어 구매 확정이 밀리므로 건드리지 않는다
+export async function patchDeliverable(
+  photographerId: string,
+  reservationId: string,
+  input: PatchDeliverableInput,
+) {
+  const reservation = await prisma.reservations.findUnique({
+    where: { id: reservationId },
+    select: {
+      photographer_id: true,
+      deliverable: { select: { id: true } },
+    },
+  });
+
+  if (!reservation || reservation.photographer_id !== photographerId) {
+    throw reservationNotFound();
+  }
+  if (!reservation.deliverable) {
+    throw deliverableNotFound();
+  }
+
+  const deliverable = await prisma.deliverables.update({
+    where: { id: reservation.deliverable.id },
+    data: {
+      ...(input.link !== undefined && { link: input.link }),
+      ...(input.expirationPeriod !== undefined && {
+        expiration_period: input.expirationPeriod,
+      }),
+      ...(input.notice !== undefined && { notice: input.notice }),
+    },
+    select: DELIVERABLE_SELECT,
+  });
+
+  return toDeliverableResponse(deliverable);
 }
