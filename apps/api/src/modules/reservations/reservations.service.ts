@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
+import type { chat_messages } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
@@ -8,6 +9,11 @@ import type {
   PatchCancelReservationInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
+import {
+  createNotification,
+  notificationMessages,
+  scheduleShootReminders,
+} from '../notifications/notifications.create.js';
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
 // 프론트는 details.reservationId로 기존 예약에 연결한다
@@ -36,6 +42,8 @@ const GET_RESERVATION_ENUM: Record<
 };
 
 const DELIVERY_DUE_DAYS = 14;
+// 결과물 전달(DELIVERED) 후 구매 확정까지
+const PURCHASE_CONFIRM_DAYS = 8;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -44,6 +52,40 @@ function toDeliveryDueDate(shootAt: Date): string {
     shootAt.getTime() + KST_OFFSET_MS + DELIVERY_DUE_DAYS * DAY_MS,
   );
   return due.toISOString().slice(0, 10);
+}
+
+/**
+ * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
+ * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
+ * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
+ *   DELIVERED는 작가가 결과물을 전달할 때만 바뀐다 (시간 경과로 자동 전환하지 않는다)
+ *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
+ *   예약 행은 상태가 바뀔 때만 수정되므로 가능한 방식이다
+ *   DELIVERED 이후 예약 행을 수정하는 기능이 생기면 구매 확정이 그만큼 밀리니 delivered_at 컬럼을 따로 둘 것
+ *
+ * 조건에 맞는 행을 한 번에 바꾸므로 여러 번 실행해도 결과가 같고, 밀린 건도 다음 실행에 처리된다
+ * now를 인자로 받는 이유: 시각을 정해 두고 테스트할 수 있게
+ */
+export async function advanceReservationStatuses(now: Date) {
+  const shootCompleted = await prisma.reservations.updateMany({
+    where: { status: 'CONFIRMED', shoot_at: { lte: now } },
+    data: { status: 'SHOOT_COMPLETED' },
+  });
+
+  const purchaseConfirmed = await prisma.reservations.updateMany({
+    where: {
+      status: 'DELIVERED',
+      updated_at: {
+        lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+      },
+    },
+    data: { status: 'PURCHASE_CONFIRMED' },
+  });
+
+  return {
+    shootCompleted: shootCompleted.count,
+    purchaseConfirmed: purchaseConfirmed.count,
+  };
 }
 
 // POST /me/reservations
@@ -57,7 +99,10 @@ export async function createReservation(
       user_id: true,
       status: true,
       pg_provider: true,
-      photographer: { select: { id: true, nickname: true } },
+      user: { select: { auth_account_id: true } },
+      photographer: {
+        select: { id: true, nickname: true, auth_account_id: true },
+      },
       reservation: { select: { id: true } },
       quote: {
         select: {
@@ -109,30 +154,63 @@ export async function createReservation(
     );
   }
 
+  const { quote, photographer } = payment;
+  // 예약 확정·촬영일 알림을 받을 유저와 작가의 계정
+  const accountIds = [
+    payment.user?.auth_account_id,
+    photographer.auth_account_id,
+  ].filter((id): id is string => !!id);
+
   try {
-    const reservation = await prisma.reservations.create({
-      data: {
-        payment_id: input.paymentId,
-        quote_id: payment.quote.id,
-        user_id: userId,
-        photographer_id: payment.photographer.id,
-        status: 'CONFIRMED',
-        shoot_at: payment.quote.shoot_at,
-        location: payment.quote.location,
-        total_amount: payment.quote.price,
-      },
-      select: {
-        id: true,
-        shoot_at: true,
-        location: true,
-        total_amount: true,
-      },
+    // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
+    const reservation = await prisma.$transaction(async (tx) => {
+      const created = await tx.reservations.create({
+        data: {
+          payment_id: input.paymentId,
+          quote_id: quote.id,
+          user_id: userId,
+          photographer_id: photographer.id,
+          status: 'CONFIRMED',
+          shoot_at: quote.shoot_at,
+          location: quote.location,
+          total_amount: quote.price,
+        },
+        select: {
+          id: true,
+          shoot_at: true,
+          location: true,
+          total_amount: true,
+        },
+      });
+
+      for (const accountId of accountIds) {
+        await createNotification(
+          {
+            accountId,
+            type: 'RESERVATION_CONFIRMED',
+            targetId: created.id,
+            message: notificationMessages.reservationConfirmed(),
+          },
+          tx,
+        );
+      }
+
+      await scheduleShootReminders(
+        {
+          reservationId: created.id,
+          shootAt: created.shoot_at,
+          accountIds,
+        },
+        tx,
+      );
+
+      return created;
     });
 
     return {
       reservationId: reservation.id,
-      photographerNickname: payment.photographer.nickname,
-      productName: payment.quote.product_name,
+      photographerNickname: photographer.nickname,
+      productName: quote.product_name,
       shootAt: reservation.shoot_at,
       location: reservation.location,
       totalAmount: reservation.total_amount,
@@ -146,7 +224,7 @@ export async function createReservation(
     ) {
       const existing = await prisma.reservations.findFirst({
         where: {
-          OR: [{ payment_id: input.paymentId }, { quote_id: payment.quote.id }],
+          OR: [{ payment_id: input.paymentId }, { quote_id: quote.id }],
         },
         select: { id: true },
       });
@@ -279,7 +357,24 @@ export async function createCancelReservation(
       select: {
         user_id: true,
         photographer_id: true,
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         status: true,
+        // 예약에 연결된 견적에서 채팅방 ID를 가져옴
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        // 취소 요청을 받을 작가의 계정 ID를 가져옴
+        photographer: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { status: 'PENDING' },
           take: 1,
@@ -350,12 +445,51 @@ export async function createCancelReservation(
       });
     }
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+
+    // 취소한 사람의 상대방을 수신자로 지정
+    const recipientAccountId = isPhotographer
+      ? reservation.user?.auth_account_id
+      : reservation.photographer?.auth_account_id;
+
+    // 취소한 사람에 따라 메시지 내용을 구분
+    const content = isPhotographer
+      ? '작가가 예약을 취소했습니다.'
+      : '사용자가 예약 취소를 요청했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: cancelRequest.id,
       status: cancelRequest.status,
       reason: cancelRequest.reason,
       requestedAt: cancelRequest.created_at,
       processedAt: cancelRequest.processed_at,
+      systemMessage,
     };
   });
 }
@@ -375,6 +509,16 @@ export async function patchCancelReservation(
       select: {
         photographer_id: true,
         status: true,
+        quote: {
+          select: {
+            chat_room_id: true,
+          },
+        },
+        user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { id: cancelRequestId },
           select: { id: true, status: true },
@@ -431,11 +575,45 @@ export async function patchCancelReservation(
         })
       : { status: reservation.status };
 
+    let systemMessage: chat_messages | null = null;
+
+    const chatRoomId = reservation.quote?.chat_room_id;
+    const recipientAccountId = reservation.user?.auth_account_id;
+
+    const content = accepted
+      ? '작가가 예약 취소 요청을 수락했습니다.'
+      : '작가가 예약 취소 요청을 반려했습니다.';
+
+    if (chatRoomId) {
+      systemMessage = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: recipientAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content,
+        },
+      });
+
+      await tx.chat_rooms.updateMany({
+        where: {
+          id: chatRoomId,
+          last_message_at: {
+            lt: systemMessage.created_at,
+          },
+        },
+        data: {
+          last_message_at: systemMessage.created_at,
+        },
+      });
+    }
+
     return {
       cancelRequestId: processed.id,
       status: processed.status,
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
+      systemMessage,
     };
   });
 }

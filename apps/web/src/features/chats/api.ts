@@ -11,6 +11,27 @@ import type { useAuth } from '@/features/auth/context/AuthContext';
 type ChatAuth = Parameters<typeof authFetch>[2];
 type FetchWithAuth = ReturnType<typeof useAuth>['fetchWithAuth'];
 
+export async function markChatMessagesRead(
+  chatRoomId: string,
+  lastReadMessageId: string,
+  fetchWithAuth: FetchWithAuth,
+  signal?: AbortSignal,
+) {
+  const result = await fetchWithAuth<{
+    lastReadMessageId: string;
+    updatedCount: number;
+    readAt: string;
+  }>(`/chats/${encodeURIComponent(chatRoomId)}/read`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lastReadMessageId }),
+    signal,
+  });
+  if (!result || result.lastReadMessageId !== lastReadMessageId)
+    throw new Error('읽음 처리 응답이 올바르지 않습니다.');
+  return result;
+}
+
 export async function sendChatMessage(
   chatRoomId: string,
   content: string,

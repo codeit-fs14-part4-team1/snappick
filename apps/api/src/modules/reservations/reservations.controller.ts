@@ -1,3 +1,4 @@
+import type { Server } from 'socket.io';
 import type { Request, Response } from 'express';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
@@ -54,15 +55,30 @@ export async function createCancelReservationHandler(
   if (!requester.userId && !requester.photographerId) {
     throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
   }
-  res
-    .status(201)
-    .json(
-      await createCancelReservation(
-        { ...requester, accountId: auth.accountId },
-        reservationId,
-        reason,
-      ),
-    );
+  const { systemMessage, ...result } = await createCancelReservation(
+    { ...requester, accountId: auth.accountId },
+    reservationId,
+    reason,
+  );
+
+  if (systemMessage) {
+    const io: Server = req.app.get('io');
+
+    io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
+      id: systemMessage.id,
+      chatRoomId: systemMessage.chat_room_id,
+      recipientAccountId: systemMessage.recipient_account_id,
+      messageType: systemMessage.message_type,
+      content: systemMessage.content,
+      payload: systemMessage.payload,
+      quote: null,
+      reservation: null,
+      readAt: systemMessage.read_at,
+      createdAt: systemMessage.created_at,
+    });
+  }
+
+  res.status(201).json(result);
 }
 
 export async function patchCancelReservationHandler(
@@ -74,14 +90,31 @@ export async function patchCancelReservationHandler(
   );
   const input = patchCancelReservationSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  res.json(
-    await patchCancelReservation(
-      photographerId,
-      reservationId,
-      cancelRequestId,
-      input,
-    ),
+  const { systemMessage, ...result } = await patchCancelReservation(
+    photographerId,
+    reservationId,
+    cancelRequestId,
+    input,
   );
+
+  if (systemMessage) {
+    const io: Server = req.app.get('io');
+
+    io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
+      id: systemMessage.id,
+      chatRoomId: systemMessage.chat_room_id,
+      recipientAccountId: systemMessage.recipient_account_id,
+      messageType: systemMessage.message_type,
+      content: systemMessage.content,
+      payload: systemMessage.payload,
+      quote: null,
+      reservation: null,
+      readAt: systemMessage.read_at,
+      createdAt: systemMessage.created_at,
+    });
+  }
+
+  res.json(result);
 }
 
 export async function getReservationHandler(req: Request, res: Response) {
