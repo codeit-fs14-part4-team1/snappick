@@ -1,0 +1,81 @@
+/* 시안: 제목·단계·본문 사이 24px */
+.surface {
+  --modal-gap: 24px;
+}
+
+.step1 {
+  width: 720px;
+}
+
+.step2 {
+  width: 1200px;
+}
+
+.confirm {
+  width: 400px;
+}
+.confirm footer {
+  margin-top: 32px;
+}
+
+/* 단계 표시 */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  padding-bottom: 24px;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.stepNum {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.stepItem[data-state='current'] {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.stepItem[data-state='current'] .stepNum {
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+}
+
+.stepItem[data-state='done'] .stepNum {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: 20px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

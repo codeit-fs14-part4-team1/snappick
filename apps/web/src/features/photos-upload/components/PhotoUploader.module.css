@@ -1,0 +1,126 @@
+.uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 공개 정책 동의 */
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+}
+
+.policyList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.policyList li::before {
+  content: '· ';
+}
+
+.agree {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+/* 실제 체크박스는 숨기고 키보드·화면 낭독기용으로만 남긴다 */
+.checkboxInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.checkbox {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-base);
+  color: transparent;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.checkboxInput:checked + .checkbox {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+}
+
+.checkboxInput:focus-visible + .checkbox {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 사진 선택 + 안내 */
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selectRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.policyError {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* 동의 안내가 떠 있으면 체크박스도 빨간 테두리 */
+.checkboxInput[aria-invalid='true']:not(:checked) + .checkbox {
+  border-color: var(--color-danger);
+}
+
+.reject {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

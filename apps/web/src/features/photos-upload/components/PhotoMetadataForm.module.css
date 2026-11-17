@@ -1,0 +1,172 @@
+.form {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.descriptionField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.required,
+.meta {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.required {
+  color: var(--color-danger);
+}
+
+.meta {
+  color: var(--color-text-tertiary);
+}
+
+/* 칩 (카테고리·스타일) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--color-text-primary);
+  color: var(--color-bg-base);
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chip:focus-visible,
+.keywordRemove:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 자유 키워드 입력 */
+.keywordBox {
+  display: flex;
+  min-height: 48px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+}
+
+.keywordBox:focus-within {
+  border-color: var(--color-text-primary);
+}
+
+.keywordBox[data-error] {
+  border-color: var(--color-danger);
+}
+
+.keyword {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 12px;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.keywordRemove {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.keywordInput {
+  min-width: 80px;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+/* 한 줄 설명 */
+.textInput {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.textInput:focus {
+  border-color: var(--color-text-primary);
+  outline: none;
+}
+
+.keywordInput::placeholder,
+.textInput::placeholder {
+  color: var(--color-text-tertiary);
+}
