@@ -15,6 +15,7 @@ import {
   localUploadRouter,
   myPhotoUploadsRouter,
 } from './modules/uploads/uploads.routes.js';
+import { myProfileImageRouter } from './modules/uploads/profile-image.routes.js';
 import { storageDriver } from './lib/storage/index.js';
 import { LOCAL_UPLOAD_PATH } from './lib/storage/local-storage.js';
 import { myPhotosRouter } from './modules/my-photos/my-photos.routes.js';
@@ -80,6 +81,7 @@ app.use('/photographers', photographerReviewsRouter);
 app.use('/me', myReviewsRouter);
 app.use('/me', myReservationsRouter);
 app.use('/me/photos', myPhotoUploadsRouter);
+app.use('/me/profile-image', myProfileImageRouter);
 if (storageDriver === 'local') {
   app.use(LOCAL_UPLOAD_PATH, localUploadRouter);
 }
