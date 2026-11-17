@@ -9,6 +9,9 @@ import {
   createCancelReservationHandler,
   patchCancelReservationHandler,
   getReservationHandler,
+  getDeliverableHandler,
+  createDeliverableHandler,
+  patchDeliverableHandler,
 } from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
@@ -40,3 +43,23 @@ myReservationsRouter.patch(
 );
 
 myReservationsRouter.get('/reservations', authenticate, getReservationHandler);
+
+myReservationsRouter.get(
+  '/reservations/:reservationId/deliverable',
+  authenticate,
+  getDeliverableHandler,
+);
+
+myReservationsRouter.post(
+  '/reservations/:reservationId/deliverable',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  createDeliverableHandler,
+);
+
+myReservationsRouter.patch(
+  '/reservations/:reservationId/deliverable',
+  authenticate,
+  requireAccountType('PHOTOGRAPHER'),
+  patchDeliverableHandler,
+);
