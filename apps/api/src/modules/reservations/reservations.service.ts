@@ -107,7 +107,7 @@ export async function createReservation(
       quote: {
         select: {
           id: true,
-          product_name: true,
+          quote_name: true,
           shoot_at: true,
           location: true,
           price: true,
@@ -210,7 +210,7 @@ export async function createReservation(
     return {
       reservationId: reservation.id,
       photographerNickname: photographer.nickname,
-      productName: quote.product_name,
+      productName: quote.quote_name,
       shootAt: reservation.shoot_at,
       location: reservation.location,
       totalAmount: reservation.total_amount,
@@ -644,7 +644,7 @@ export async function getReservation(
         id: true,
         quote: {
           select: {
-            product_name: true,
+            quote_name: true,
           },
         },
         user: {
@@ -674,7 +674,7 @@ export async function getReservation(
       const other = viewer.userId ? reservation.photographer : reservation.user;
       return {
         reservationId: reservation.id,
-        name: reservation.quote?.product_name ?? null,
+        name: reservation.quote?.quote_name ?? null,
         counterpart: other && {
           nickname: other.nickname,
           profileImageUrl: toImageUrl(other.profile_image_url),
