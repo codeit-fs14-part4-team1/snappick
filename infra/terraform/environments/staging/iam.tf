@@ -196,3 +196,14 @@ resource "aws_iam_user_policy" "github_deploy" {
   user   = aws_iam_user.github_deploy.name
   policy = data.aws_iam_policy_document.github_deploy.json
 }
+
+# 로컬 개발에서 S3 업로드를 시험하는 사용자. 권한은 API 서버(api_s3)와 같다
+# 액세스 키는 state에 남지 않게 콘솔에서 발급한다
+resource "aws_iam_user" "local_dev" {
+  name = "snappick-staging-local-dev"
+}
+
+resource "aws_iam_user_policy_attachment" "local_dev_s3" {
+  user       = aws_iam_user.local_dev.name
+  policy_arn = aws_iam_policy.api_s3.arn
+}
