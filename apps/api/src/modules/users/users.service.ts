@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { UpdateUserNicknameInput } from './users.schema.js';
 
@@ -30,7 +31,8 @@ export async function getMe(accountId: string) {
     id: account.id,
     accountType: account.account_type,
     nickname: profile.nickname,
-    profileImageUrl: profile.profile_image_url,
+    // DB에는 저장 경로만 있으므로 응답용 전체 주소로 바꾼다
+    profileImageUrl: toImageUrl(profile.profile_image_url),
   };
 }
 
