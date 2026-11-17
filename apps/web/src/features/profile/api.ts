@@ -220,3 +220,62 @@ export async function deletePhotographerProduct(
     method: 'DELETE',
   });
 }
+
+// 사진작가 리뷰 답글 작성 및 수정 요청 타입을 정의함
+export type PhotographerReplyInput = {
+  comment: string;
+};
+
+// 사진작가가 본인 프로필의 리뷰에 답글을 작성함
+export async function createPhotographerReviewReply(
+  reviewId: string,
+  input: PhotographerReplyInput,
+  fetchWithAuth: FetchWithAuth,
+): Promise<void> {
+  const response = await fetchWithAuth<unknown>(
+    `/photographers/me/reviews/${reviewId}/reply`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (response == null) {
+    throw new Error('리뷰 답글을 작성하지 못했어요.');
+  }
+}
+
+// 사진작가가 기존 리뷰 답글을 수정함
+export async function updatePhotographerReviewReply(
+  reviewId: string,
+  input: PhotographerReplyInput,
+  fetchWithAuth: FetchWithAuth,
+): Promise<void> {
+  const response = await fetchWithAuth<unknown>(
+    `/photographers/me/reviews/${reviewId}/reply`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (response == null) {
+    throw new Error('리뷰 답글을 수정하지 못했어요.');
+  }
+}
+
+// 사진작가가 기존 리뷰 답글을 삭제함
+export async function deletePhotographerReviewReply(
+  reviewId: string,
+  fetchWithAuth: FetchWithAuth,
+): Promise<void> {
+  await fetchWithAuth<void>(`/photographers/me/reviews/${reviewId}/reply`, {
+    method: 'DELETE',
+  });
+}

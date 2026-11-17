@@ -181,7 +181,7 @@ export default function PhotographerProfileInfo({
               src={profileImageUrl}
               alt={`${nickname} 프로필 사진`}
               fill
-              sizes="(max-width: 767px) 96px, 160px"
+              sizes="160px"
               unoptimized
             />
           ) : (

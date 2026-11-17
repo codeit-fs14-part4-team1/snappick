@@ -11,7 +11,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
 }
 
 /* 리뷰 제목 */
@@ -37,19 +37,21 @@
   line-height: 22px;
 }
 
-/* 리뷰 목록을 세로로 배치 */
+/* 리뷰 목록을 세로로 배치함 */
 .reviewList {
   display: flex;
   flex-direction: column;
-  gap: 56px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* 개별 리뷰 영역 */
+/* 리뷰 항목 사이에 구분선을 표시함 */
 .reviewItem {
   min-width: 0;
+  padding: 24px 0;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 /* 리뷰 작성자와 작성일 배치 */
@@ -109,6 +111,58 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+  justify-content: space-between;
+}
+
+/* 답글 제목과 작성일을 왼쪽에 배치함 */
+.replyMetaInfo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 답글 수정 및 삭제 버튼을 오른쪽 상단에 배치함 */
+.replyHeaderActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* Figma 디자인에 맞게 테두리 없는 텍스트 버튼을 표시함 */
+.replyTextButton {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 수정 및 삭제 버튼에 마우스를 올렸을 때 강조함 */
+.replyTextButton:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+/* 키보드 접근 시 버튼을 강조함 */
+.replyTextButton:focus-visible {
+  outline: none;
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+/* 저장 중에는 수정 및 삭제 버튼을 비활성화함 */
+.replyTextButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 작가 답글 제목 */
@@ -166,7 +220,154 @@
 
 /* 리뷰 목록과 페이지네이션 사이 간격 */
 .pagination {
-  margin-top: 56px;
+  margin-top: 32px;
+}
+
+/* 리뷰 답글 작성 및 관리 버튼을 배치함 */
+.replyActionArea {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* 답글 작성 버튼 */
+.replyWriteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: #fff;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 답글 작성 버튼 마우스 호버 */
+.replyWriteButton:hover {
+  background-color: #f5f5f5;
+}
+
+/* 답글 작성 및 수정 입력 영역 표시 */
+.replyEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+/* 답글 작성 영역에서는 부모의 상단 여백만 사용함 */
+.replyActionArea .replyEditor {
+  margin-top: 0;
+}
+
+/* 입력창 활성 상태에서는 연두색 테두리를 표시함 */
+.replyEditor:focus-within {
+  border-color: var(--color-accent);
+}
+
+/* 답글 입력창을 바깥 테두리 안에 자연스럽게 배치함 */
+.replyTextarea {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  overflow-y: auto;
+}
+
+/* textarea 자체의 테두리는 표시하지 않음 */
+.replyTextarea:focus {
+  border: none;
+  outline: none;
+}
+
+/* 답글 입력창 오른쪽 하단에 버튼을 배치함 */
+.replyEditorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* 답글 취소 및 등록 버튼을 나란히 배치함 */
+.replyEditorButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 답글 작성 및 수정 취소 버튼 */
+.replyCancelButton {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: #fff;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 답글 등록 및 수정 완료 버튼 */
+.replySubmitButton {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-text-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 저장 중 비활성화된 버튼 */
+.replyWriteButton:disabled,
+.replyCancelButton:disabled,
+.replySubmitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 모바일 답글 작성 영역 */
+@media (max-width: 767px) {
+  .replyEditor {
+    padding: 16px;
+  }
+
+  .replyEditorFooter {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .replyEditorButtons {
+    width: 100%;
+  }
+
+  .replyCancelButton,
+  .replySubmitButton {
+    flex: 1;
+  }
 }
 
 /* 태블릿과 모바일의 리뷰 제목 줄 높이 */

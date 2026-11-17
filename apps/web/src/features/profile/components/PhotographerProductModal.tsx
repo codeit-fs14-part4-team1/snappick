@@ -6,8 +6,6 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
 
-import { useManagePhotographerProducts } from '../hooks/useManagePhotographerProducts';
-
 import type {
   PhotographerProduct,
   CreatePhotographerProductInput,
@@ -20,6 +18,12 @@ type PhotographerProductModalProps = {
   open: boolean;
   product: PhotographerProduct | null;
   onClose: () => void;
+  // 상위 컴포넌트의 임시 상품 목록만 변경함
+  onApply: (
+    productId: string | null,
+    input: CreatePhotographerProductInput,
+  ) => void;
+  onDelete: (productId: string) => void;
 };
 
 // 가격을 천 단위 구분 형식으로 변환함
@@ -33,12 +37,12 @@ export default function PhotographerProductModal({
   open,
   product,
   onClose,
+  onApply,
+  onDelete,
 }: PhotographerProductModalProps) {
   const formId = useId();
 
   const { showToast } = useToast();
-
-  const { saveMutation, deleteMutation } = useManagePhotographerProducts();
 
   // 기존 상품이 있으면 수정 모드로 사용함
   const isEditing = product !== null;
@@ -67,20 +71,14 @@ export default function PhotographerProductModal({
   // 상품 삭제 확인 화면의 표시 여부를 관리함
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const isBusy = saveMutation.isPending || deleteMutation.isPending;
-
-  // API 요청 중에는 모달을 닫지 않도록 처리함
+  // 서버 요청이 없으므로 모달을 닫으면 입력 중인 값만 취소됨
   const handleClose = () => {
-    if (isBusy) return;
-
     onClose();
   };
 
-  // 상품 입력값 검증 후 등록 또는 수정을 요청함
+  // 상품 입력값을 검증한 뒤 임시 상품 목록에 적용함
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (isBusy) return;
 
     const trimmedName = name.trim();
     const priceValue = Number(price.replaceAll(',', ''));
@@ -146,47 +144,14 @@ export default function PhotographerProductModal({
       commonNotice: trimmedNotice || null,
     };
 
-    // 상품 등록 또는 수정을 요청함
-    saveMutation.mutate(
-      {
-        productId: product?.productId,
-        input,
-      },
-      {
-        onSuccess: () => {
-          showToast(
-            isEditing ? '촬영 상품을 수정했어요.' : '촬영 상품을 등록했어요.',
-          );
-
-          onClose();
-        },
-
-        onError: () => {
-          showToast(
-            isEditing
-              ? '촬영 상품을 수정하지 못했어요.'
-              : '촬영 상품을 등록하지 못했어요.',
-            'error',
-          );
-        },
-      },
-    );
+    // 실제 API는 상단의 수정 완료 버튼을 누를 때만 호출함
+    onApply(product?.productId ?? null, input);
   };
 
-  // 상품 삭제를 요청함
+  // 삭제를 확정해도 서버에서 삭제하지 않고 임시 목록에서만 제거함
   const handleDelete = () => {
-    if (!product || isBusy) return;
-
-    deleteMutation.mutate(product.productId, {
-      onSuccess: () => {
-        showToast('촬영 상품을 삭제했어요.');
-        onClose();
-      },
-
-      onError: () => {
-        showToast('촬영 상품을 삭제하지 못했어요.', 'error');
-      },
-    });
+    if (!product) return;
+    onDelete(product.productId);
   };
 
   return (
@@ -207,7 +172,6 @@ export default function PhotographerProductModal({
             <Button
               variant="outline"
               size="lg"
-              disabled={isBusy}
               onClick={() => setIsDeleteConfirmOpen(false)}
             >
               취소
@@ -216,10 +180,9 @@ export default function PhotographerProductModal({
             <button
               type="button"
               className={styles.dangerButton}
-              disabled={isBusy}
               onClick={handleDelete}
             >
-              {deleteMutation.isPending ? '삭제 중...' : '삭제'}
+              삭제
             </button>
           </div>
         ) : (
@@ -229,7 +192,6 @@ export default function PhotographerProductModal({
               <button
                 type="button"
                 className={styles.deleteTrigger}
-                disabled={isBusy}
                 onClick={() => setIsDeleteConfirmOpen(true)}
               >
                 상품 삭제
@@ -239,23 +201,12 @@ export default function PhotographerProductModal({
             )}
 
             <div className={styles.footerRight}>
-              <Button
-                variant="outline"
-                size="lg"
-                disabled={isBusy}
-                onClick={handleClose}
-              >
+              <Button variant="outline" size="lg" onClick={handleClose}>
                 취소
               </Button>
 
-              <Button
-                type="submit"
-                form={formId}
-                variant="primary"
-                size="lg"
-                disabled={isBusy}
-              >
-                {saveMutation.isPending ? '저장 중...' : '저장하기'}
+              <Button type="submit" form={formId} variant="primary" size="lg">
+                적용
               </Button>
             </div>
           </div>
@@ -268,16 +219,11 @@ export default function PhotographerProductModal({
           <p className={styles.deleteConfirmTitle}>이 상품을 삭제할까요?</p>
 
           <p className={styles.deleteConfirmDescription}>
-            삭제하면 상품이 없어서 촬영 문의를 받을 수 없어요.
+            삭제는 임시 적용되며, 최종 삭제는 수정 완료를 눌렀을 때 반영돼요.
           </p>
         </div>
       ) : (
-        <form
-          id={formId}
-          className={styles.form}
-          onSubmit={handleSubmit}
-          aria-busy={isBusy}
-        >
+        <form id={formId} className={styles.form} onSubmit={handleSubmit}>
           {/* 상품명 입력 */}
           <div className={styles.field}>
             <label htmlFor={`${formId}-name`} className={styles.label}>
