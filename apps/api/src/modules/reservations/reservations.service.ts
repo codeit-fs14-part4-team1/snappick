@@ -4,9 +4,11 @@ import type { chat_messages } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
+  CreateDeliverableInput,
   CreateReservationInput,
   GetReservationInput,
   PatchCancelReservationInput,
+  PatchDeliverableInput,
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import {
@@ -691,4 +693,212 @@ export async function getReservation(
     totalCount,
     totalPages: Math.ceil(totalCount / query.pageSize),
   };
+}
+
+const reservationNotFound = () =>
+  new HttpError(404, 'RESERVATION_NOT_FOUND', '예약을 찾을 수 없어요.');
+
+const deliverableNotFound = () =>
+  new HttpError(404, 'DELIVERABLE_NOT_FOUND', '결과물을 찾을 수 없어요.');
+
+const DELIVERABLE_SELECT = {
+  id: true,
+  reservation_id: true,
+  link: true,
+  expiration_period: true,
+  notice: true,
+  created_at: true,
+  updated_at: true,
+} as const;
+
+// 링크 유효 기간은 받을 때와 같은 YYYY.MM.DD(한국 날짜)로 내려준다
+function toKstDotDate(date: Date): string {
+  return new Date(date.getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10)
+    .replaceAll('-', '.');
+}
+
+function toDeliverableResponse(deliverable: {
+  id: string;
+  reservation_id: string;
+  link: string;
+  expiration_period: Date;
+  notice: string | null;
+  created_at: Date;
+  updated_at: Date;
+}) {
+  return {
+    deliverableId: deliverable.id,
+    reservationId: deliverable.reservation_id,
+    link: deliverable.link,
+    expirationPeriod: toKstDotDate(deliverable.expiration_period),
+    notice: deliverable.notice,
+    createdAt: deliverable.created_at,
+    updatedAt: deliverable.updated_at,
+  };
+}
+
+// GET /me/reservations/:reservationId/deliverable
+// 예약의 유저·작가만 볼 수 있다
+export async function getDeliverable(
+  viewer: { userId: string | null; photographerId: string | null },
+  reservationId: string,
+) {
+  const reservation = await prisma.reservations.findUnique({
+    where: { id: reservationId },
+    select: {
+      user_id: true,
+      photographer_id: true,
+      deliverable: { select: DELIVERABLE_SELECT },
+    },
+  });
+
+  const isParticipant =
+    !!reservation &&
+    ((viewer.userId !== null && reservation.user_id === viewer.userId) ||
+      (viewer.photographerId !== null &&
+        reservation.photographer_id === viewer.photographerId));
+
+  if (!reservation || !isParticipant) {
+    throw reservationNotFound();
+  }
+  if (!reservation.deliverable) {
+    throw deliverableNotFound();
+  }
+
+  return toDeliverableResponse(reservation.deliverable);
+}
+
+// POST /me/reservations/:reservationId/deliverable
+// 작가가 결과물을 처음 등록하면 예약을 DELIVERED로 바꾸고 유저에게 알린다
+export async function createDeliverable(
+  photographerId: string,
+  reservationId: string,
+  input: CreateDeliverableInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: {
+        photographer_id: true,
+        status: true,
+        user: { select: { auth_account_id: true } },
+        photographer: { select: { nickname: true } },
+        deliverable: { select: { id: true } },
+        reservation_cancel_request: {
+          where: { status: 'PENDING' },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!reservation || reservation.photographer_id !== photographerId) {
+      throw reservationNotFound();
+    }
+
+    if (reservation.deliverable) {
+      throw new HttpError(
+        409,
+        'DELIVERABLE_ALREADY_EXISTS',
+        '이미 결과물을 등록했어요.',
+        { deliverableId: reservation.deliverable.id },
+      );
+    }
+
+    if (reservation.status !== 'SHOOT_COMPLETED') {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_DELIVERABLE',
+        '촬영이 완료된 예약만 결과물을 등록할 수 있어요.',
+      );
+    }
+
+    // DELIVERED는 취소할 수 없는 상태라, 대기 중인 취소 요청을 먼저 처리해야 한다
+    const pending = reservation.reservation_cancel_request[0];
+    if (pending) {
+      throw new HttpError(
+        409,
+        'CANCEL_REQUEST_PENDING',
+        '처리 대기 중인 취소 요청을 먼저 처리해 주세요.',
+        { cancelRequestId: pending.id },
+      );
+    }
+
+    const deliverable = await tx.deliverables.create({
+      data: {
+        reservation_id: reservationId,
+        link: input.link,
+        expiration_period: input.expirationPeriod,
+        notice: input.notice ?? null,
+      },
+      select: DELIVERABLE_SELECT,
+    });
+
+    // 구매 확정 스케줄러는 DELIVERED가 된 시각을 updated_at으로 판단한다
+    await tx.reservations.update({
+      where: { id: reservationId },
+      data: { status: 'DELIVERED' },
+    });
+
+    const userAccountId = reservation.user?.auth_account_id;
+    if (userAccountId) {
+      await createNotification(
+        {
+          accountId: userAccountId,
+          type: 'DELIVERY_COMPLETED',
+          targetId: reservationId,
+          message: notificationMessages.deliveryCompleted(
+            reservation.photographer?.nickname ?? '작가',
+          ),
+        },
+        tx,
+      );
+    }
+
+    return {
+      ...toDeliverableResponse(deliverable),
+      reservationStatus: 'DELIVERED' as const,
+    };
+  });
+}
+
+// PATCH /me/reservations/:reservationId/deliverable
+// 결과물만 수정한다. 예약 행을 수정하면 updated_at이 바뀌어 구매 확정이 밀리므로 건드리지 않는다
+export async function patchDeliverable(
+  photographerId: string,
+  reservationId: string,
+  input: PatchDeliverableInput,
+) {
+  const reservation = await prisma.reservations.findUnique({
+    where: { id: reservationId },
+    select: {
+      photographer_id: true,
+      deliverable: { select: { id: true } },
+    },
+  });
+
+  if (!reservation || reservation.photographer_id !== photographerId) {
+    throw reservationNotFound();
+  }
+  if (!reservation.deliverable) {
+    throw deliverableNotFound();
+  }
+
+  const deliverable = await prisma.deliverables.update({
+    where: { id: reservation.deliverable.id },
+    data: {
+      ...(input.link !== undefined && { link: input.link }),
+      ...(input.expirationPeriod !== undefined && {
+        expiration_period: input.expirationPeriod,
+      }),
+      ...(input.notice !== undefined && { notice: input.notice }),
+    },
+    select: DELIVERABLE_SELECT,
+  });
+
+  return toDeliverableResponse(deliverable);
 }
