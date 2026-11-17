@@ -5,7 +5,7 @@ export const createQuoteSchema = z
     chatRoomId: z.uuid(),
     shootingCaseId: z.uuid().optional(),
     productId: z.uuid().optional(),
-    quoteName: z.string().trim().min(1).max(100),
+    quoteName: z.string().trim().min(1).max(30),
     shootAt: z.iso.datetime({ offset: true }),
     location: z.string().trim().min(1),
     durationMinutes: z.number().int().positive(),
