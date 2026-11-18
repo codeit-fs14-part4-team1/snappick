@@ -256,16 +256,21 @@ export default function PhotographerReviews({
         </span>
       </div>
 
-      {/* 리뷰가 없는 경우 본인 미설정 상태와 공개 상태를 구분함 */}
+      {/* 실제 리뷰가 0개이면 프로필 준비 상태와 관계없이 빈 상태 박스를 표시함 */}
       {currentReviews.length === 0 ? (
-        isSelf && !isReady && reviewCount === 0 ? (
-          // 작가 본인 미설정 상태의 리뷰 안내
+        reviewCount === 0 ? (
           <div className={styles.emptyStateOwn}>
-            <p className={styles.emptyStateOwnTitle}>아직 받은 리뷰가 없어요</p>
+            <p className={styles.emptyStateOwnTitle}>
+              {isSelf
+                ? '아직 받은 리뷰가 없어요'
+                : '아직 작성된 리뷰가 없습니다.'}
+            </p>
           </div>
         ) : (
-          // 공개 프로필에서는 기존 빈 상태 안내를 유지함
-          <p className={styles.emptyState}>아직 작성된 리뷰가 없습니다.</p>
+          // 리뷰는 있지만 현재 페이지에 표시할 항목이 없는 경우를 처리함
+          <p className={styles.emptyState}>
+            현재 페이지에 표시할 리뷰가 없습니다.
+          </p>
         )
       ) : (
         // 리뷰 목록 표시

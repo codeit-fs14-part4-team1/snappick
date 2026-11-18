@@ -16,6 +16,9 @@ import type {
 
 import styles from './PhotographerBasicInfoModal.module.css';
 
+// 서버에서 허용하는 프로필 이미지 최대 크기를 5MB로 정의함
+const PROFILE_IMAGE_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 // 기본 정보 수정 모달에서 사용할 Props 정의
 type PhotographerBasicInfoModalProps = {
   open: boolean;
@@ -107,6 +110,20 @@ export default function PhotographerBasicInfoModal({
       resetSelectedImage();
 
       showToast('JPG, PNG, WebP 이미지 파일만 선택할 수 있어요.', 'error');
+      return;
+    }
+
+    // 빈 이미지 파일은 선택할 수 없도록 처리함
+    if (file.size === 0) {
+      resetSelectedImage();
+      showToast('빈 이미지 파일은 선택할 수 없어요.', 'error');
+      return;
+    }
+
+    // 서버의 업로드 제한과 동일하게 5MB 초과 파일을 차단함
+    if (file.size > PROFILE_IMAGE_MAX_FILE_SIZE) {
+      resetSelectedImage();
+      showToast('프로필 이미지는 5MB 이하만 업로드할 수 있어요.', 'error');
       return;
     }
 

@@ -85,9 +85,10 @@
   font-weight: 600;
 }
 
-.readinessBadge[data-ready='true'] {
+/* 기본 정보 미완료 상태일 때 연두색 배지를 표시함 */
+.readinessBadge[data-ready='false'] {
   background: #f0f5dc;
-  color: var(--color-accent-strong);
+  color: var(--color-accent);
 }
 
 .readinessMessage {

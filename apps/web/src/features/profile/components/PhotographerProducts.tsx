@@ -139,21 +139,20 @@ export default function PhotographerProducts({
           </div>
         )}
       </div>
-
-      {/* 상품이 없는 경우 본인 미설정 상태와 공개 상태를 구분함 */}
+      {/* 상품이 없는 경우 준비 상태와 관계없이 빈 상태 박스를 표시함 */}
       {products.length === 0 ? (
-        isSelf && !isReady ? (
-          <div className={styles.emptyStateOwn}>
-            <p className={styles.emptyStateOwnTitle}>
-              아직 등록한 상품이 없어요
-            </p>
+        <div className={styles.emptyStateOwn}>
+          <p className={styles.emptyStateOwnTitle}>
+            {isSelf ? '아직 등록한 상품이 없어요' : '아직 등록된 상품이 없어요'}
+          </p>
+
+          {/* 본인 프로필이 준비되지 않은 경우 상품 등록 제한을 안내함 */}
+          {isSelf && !isReady && (
             <p className={styles.emptyStateOwnDescription}>
               상품은 최대 3개까지 등록할 수 있어요.
             </p>
-          </div>
-        ) : (
-          <p className={styles.emptyState}>아직 등록된 촬영 상품이 없습니다.</p>
-        )
+          )}
+        </div>
       ) : (
         <ul className={styles.productList}>
           {products.map((product) => (
@@ -205,12 +204,10 @@ export default function PhotographerProducts({
         </ul>
       )}
 
-      {/* 상품이 있거나 본인 미설정 상태일 때 가격 안내 표시 */}
-      {(products.length > 0 || (isSelf && !isReady)) && (
-        <p className={styles.priceNotice}>
-          표시된 가격은 참고용이에요. 촬영 조건에 따라 달라질 수 있어요.
-        </p>
-      )}
+      {/* 상품 등록 여부와 관계없이 가격 안내 문구를 표시함 */}
+      <p className={styles.priceNotice}>
+        표시된 가격은 참고용이에요. 촬영 조건에 따라 달라질 수 있어요.
+      </p>
 
       {/* 상품 등록·수정·삭제를 임시 상태에만 반영함 */}
       {isSelf && isEditing && isProductModalOpen && (

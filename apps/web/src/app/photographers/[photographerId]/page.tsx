@@ -10,11 +10,13 @@ import PhotographerBasicInfoModal from '@/features/profile/components/Photograph
 
 import { CategoryLabel, RegionLabel } from '@/constants/enum-labels';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { savePhotographerProfileImage } from '@/features/profile/api';
 
 import { usePhotographerProfile } from '@/features/profile/hooks/usePhotographerProfile';
 import { usePhotographerPhotos } from '@/features/photos/hooks/usePhotographerPhotos';
 import { usePhotographerProducts } from '@/features/profile/hooks/usePhotographerProducts';
 import { usePhotographerReviews } from '@/features/profile/hooks/usePhotographerReviews';
+import { usePhotographerReviewSummary } from '@/features/profile/hooks/usePhotographerReviewSummary';
 import { usePhotographerReadiness } from '@/features/profile/hooks/usePhotographerReadiness';
 import { useUpdatePhotographerProfile } from '@/features/profile/hooks/useUpdatePhotographerProfile';
 import { useManagePhotographerProducts } from '@/features/profile/hooks/useManagePhotographerProducts';
@@ -136,8 +138,8 @@ function sameProduct(a: PhotographerProduct, b: PhotographerProduct) {
 export default function PhotographerProfilePage() {
   const router = useRouter();
 
-  // 현재 로그인한 사용자 정보를 가져옴
-  const { user } = useAuth();
+  // 현재 로그인한 사용자 정보와 인증 API 및 갱신 함수를 가져옴
+  const { user, fetchWithAuth, refreshUser } = useAuth();
 
   // 프로필 수정 완료 및 필수 항목 누락 안내에 사용함
   const { showToast } = useToast();
@@ -205,6 +207,16 @@ export default function PhotographerProfilePage() {
   // 조회가 허용된 경우 API 응답의 실제 작가 ID를 사용함
   const contentPhotographerId = canFetchContent ? photographer?.id : undefined;
 
+  // 준비 완료된 프로필의 조회 화면에서만 AI 리뷰 요약을 표시함
+  const shouldShowReviewSummary =
+    photographer?.isReady === true &&
+    !(isEditingProfile && photographer?.isSelf === true);
+
+  // AI 리뷰 요약을 표시하는 경우에만 실제 API를 조회함
+  const reviewSummaryQuery = usePhotographerReviewSummary(
+    shouldShowReviewSummary ? photographer?.id : undefined,
+  );
+
   // 실제 작가 ID로 포트폴리오를 조회함
   const photosQuery = usePhotographerPhotos(contentPhotographerId);
 
@@ -262,10 +274,12 @@ export default function PhotographerProfilePage() {
   const reviewCount =
     reviewsQuery.data?.totalCount ?? photographer?.reviewCount ?? 0;
 
-  // 편집 중에는 서버가 아닌 임시 입력값으로 필수 항목 현황을 표시함
+  // 편집 중에는 서버 데이터와 임시 변경 사항으로 필수 항목 현황을 표시
   const localChecks = {
-    // 이미지 업로드 API가 연결되기 전에는 서버에 저장된 이미지만 완료로 판단함
-    profileImage: Boolean(photographer?.profileImageUrl?.trim()),
+    // 기존 서버 이미지 또는 새로 선택한 이미지가 있는지 확인
+    profileImage: Boolean(
+      photographer?.profileImageUrl?.trim() || editDraft?.profileImageFile,
+    ),
     regions: (displayedPhotographer?.regions?.length ?? 0) > 0,
     categories: (displayedPhotographer?.categories?.length ?? 0) > 0,
     career:
@@ -273,10 +287,6 @@ export default function PhotographerProfilePage() {
       displayedPhotographer?.career !== undefined,
     introduction: Boolean(displayedPhotographer?.introduction?.trim()),
   };
-
-  const completedReadinessCount = REQUIRED_PROFILE_CHECKS.filter(
-    ({ key }) => localChecks[key],
-  ).length;
 
   const missingReadinessLabels = REQUIRED_PROFILE_CHECKS.filter(
     ({ key }) => !localChecks[key],
@@ -391,15 +401,6 @@ export default function PhotographerProfilePage() {
   const handleCompleteProfileEdit = async () => {
     if (!editDraft || isSavingEdit) return;
 
-    // 이미지 저장 API 연결 전에는 이미지 변경 사항의 최종 저장을 차단함
-    if (editDraft.profileImageFile) {
-      showToast(
-        '프로필 이미지 저장 기능이 아직 연결되지 않았어요. 이미지 변경 사항은 현재 저장할 수 없어요.',
-        'error',
-      );
-      return;
-    }
-
     // 기존 필수 항목 5개 정책은 최종 저장 전에 유지함
     if (!isProfileReady) {
       showToast(
@@ -437,6 +438,20 @@ export default function PhotographerProfilePage() {
     let requestedServerChange = false;
 
     try {
+      // 새 프로필 이미지가 있다면 기본 정보와 상품보다 먼저 서버에 저장함
+      if (editDraft.profileImageFile) {
+        await savePhotographerProfileImage(
+          editDraft.profileImageFile,
+          fetchWithAuth,
+        );
+
+        // 이미지 서버 저장 성공을 기록함
+        requestedServerChange = true;
+
+        // Header에도 변경된 프로필 이미지가 반영되도록 사용자 정보를 갱신함
+        await refreshUser();
+      }
+
       // 신규 상품 등록이 서버의 기본 정보 완료 검사를 통과하도록 먼저 저장함
       if (isBasicInfoChanged) {
         requestedServerChange = true;
@@ -473,6 +488,9 @@ export default function PhotographerProfilePage() {
       // 실제 서버 저장을 마친 후 최신 프로필 readiness를 확인함
       const readinessResult = await readinessQuery.refetch();
 
+      // readiness 결과와 관계없이 저장된 최신 프로필 정보를 다시 조회함
+      await refetchPhotographer();
+
       if (readinessResult.isError || !readinessResult.data) {
         // 이미 저장한 변경 사항을 다시 취소할 수는 없으므로 편집을 종료함
         setIsEditingProfile(false);
@@ -495,8 +513,7 @@ export default function PhotographerProfilePage() {
         return;
       }
 
-      // 최신 서버 응답으로 공개 프로필 화면도 다시 확인함
-      await refetchPhotographer();
+      // 서버 저장과 준비 상태 확인이 완료되면 편집 모드를 종료함
       setIsEditingProfile(false);
       setEditDraft(null);
       showToast('프로필 수정을 완료했어요.');
@@ -518,8 +535,11 @@ export default function PhotographerProfilePage() {
           'error',
         );
       } else {
+        // 서버 변경이 확인되지 않은 경우 오류 내용을 안내하고 편집 상태를 유지함
         showToast(
-          '프로필 상태를 확인하지 못했어요. 다시 시도해 주세요.',
+          error instanceof Error
+            ? error.message
+            : '프로필을 저장하지 못했어요. 다시 시도해 주세요.',
           'error',
         );
       }
@@ -558,9 +578,11 @@ export default function PhotographerProfilePage() {
   // 프로필 조회가 완료된 이후에는 항상 유효한 프로필 값을 사용함
   const activeProfile = displayedPhotographer ?? photographer;
 
-  // 상품 등록 가능 여부는 서버에 저장된 프로필 이미지 기준으로 확인함
+  // 임시 변경 사항까지 포함하여 상품 등록에 필요한 기본 정보 완료 여부를 확인함
   const isBasicInfoComplete =
-    Boolean(photographer.profileImageUrl?.trim()) &&
+    Boolean(
+      photographer.profileImageUrl?.trim() || editDraft?.profileImageFile,
+    ) &&
     activeProfile.regions.length > 0 &&
     activeProfile.categories.length > 0 &&
     activeProfile.career !== null &&
@@ -621,13 +643,12 @@ export default function PhotographerProfilePage() {
               {/* 프로필 수정 제목과 기본 정보 완료 상태를 표시함 */}
               <div className={styles.editTitleRow}>
                 <h2 className={styles.editTitle}>프로필 수정 중</h2>
+                {/* 기본 정보 완료 여부에 따라 상태 배지 문구를 표시함 */}
                 <span
                   className={styles.readinessBadge}
                   data-ready={isProfileReady}
                 >
-                  {isProfileReady
-                    ? '기본 정보 ✓'
-                    : `기본 정보 ${completedReadinessCount}/${REQUIRED_PROFILE_CHECKS.length}`}
+                  {isProfileReady ? '기본 정보 ✓' : '기본 정보 미등록'}
                 </span>
               </div>
 
@@ -671,9 +692,13 @@ export default function PhotographerProfilePage() {
       {/* 실제 API로 조회한 작가 기본 정보 표시 */}
       <PhotographerProfileInfo {...profileInfo} />
 
-      {/* 준비 완료된 프로필의 조회 화면에 AI 리뷰 요약 예시를 표시함 */}
-      {photographer.isReady && !(isEditingProfile && photographer.isSelf) && (
-        <PhotographerReviewSummary />
+      {/* 준비 완료된 프로필의 조회 화면에 실제 AI 리뷰 요약을 표시함 */}
+      {shouldShowReviewSummary && (
+        <PhotographerReviewSummary
+          data={reviewSummaryQuery.data}
+          isPending={reviewSummaryQuery.isPending}
+          isError={reviewSummaryQuery.isError}
+        />
       )}
 
       {/* 작가 본인이 모달을 열었을 때만 기본 정보 수정 모달을 렌더링함 */}
