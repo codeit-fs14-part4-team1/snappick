@@ -4,6 +4,7 @@ import type {
   CreateChatResponse,
   ChatMessagesPage,
   ChatMessage,
+  SendChatMessageInput,
 } from './types';
 import { authFetch } from '@/features/auth/authFetch';
 import type { useAuth } from '@/features/auth/context/AuthContext';
@@ -34,7 +35,7 @@ export async function markChatMessagesRead(
 
 export async function sendChatMessage(
   chatRoomId: string,
-  content: string,
+  input: SendChatMessageInput,
   fetchWithAuth: FetchWithAuth,
 ): Promise<ChatMessage> {
   const message = await fetchWithAuth<ChatMessage>(
@@ -42,7 +43,11 @@ export async function sendChatMessage(
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageType: 'TEXT', content }),
+      body: JSON.stringify(
+        typeof input === 'string'
+          ? { messageType: 'TEXT', content: input }
+          : input,
+      ),
     },
   );
   if (!message?.id || message.chatRoomId !== chatRoomId)

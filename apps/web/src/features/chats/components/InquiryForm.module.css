@@ -1,0 +1,261 @@
+.card {
+  width: 460px;
+  max-width: 100%;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.resume {
+  display: flex;
+  width: 340px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-bg-base);
+  color: var(--color-text-secondary);
+  text-align: left;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.resumeTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.resumeDescription {
+  margin: 6px 0 0;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+.card header p {
+  margin: 6px 0 20px;
+  color: var(--color-text-tertiary);
+}
+.fields,
+.choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.field label,
+.fieldLabel,
+.choices legend {
+  font-weight: 700;
+}
+.choices legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+.schedule {
+  position: relative;
+}
+.field input,
+.scheduleTrigger {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+  color: inherit;
+}
+.scheduleTrigger {
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scheduleTrigger[data-empty='true'] {
+  color: var(--color-text-tertiary);
+}
+.field input::placeholder {
+  color: var(--color-text-tertiary);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chips button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.chips button[aria-pressed='true'] {
+  background: var(--color-text-primary);
+  color: var(--color-bg-base);
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.actions button {
+  min-height: 52px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+  color: inherit;
+  cursor: pointer;
+  font-weight: 700;
+}
+.actions button[type='submit'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+}
+.card button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.card :focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+.error {
+  margin: 12px 0 0;
+  color: var(--color-danger);
+}
+
+.calendar {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  left: 0;
+  box-sizing: border-box;
+  width: 340px;
+  max-width: 100%;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+  box-shadow: 0 6px 20px #0000001a;
+}
+.month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.locationPopup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.locationPopup .selectSchedule {
+  margin-top: 0;
+}
+.month button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 20px;
+}
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 16px;
+}
+.days > span {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+.days button {
+  width: 32px;
+  height: 32px;
+  max-width: 100%;
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+}
+.days button[aria-pressed='true'],
+.timeSlots button[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+  font-weight: 700;
+}
+.timeSlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.timeSlots button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.selectSchedule {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .card {
+    padding: 16px;
+  }
+  .actions button {
+    font-size: 13px;
+  }
+}
