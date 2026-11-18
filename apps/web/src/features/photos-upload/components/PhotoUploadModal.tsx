@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { createUploadUrls, putFileToUploadUrl, registerPhotos } from '../api';
 import { resizeImage } from '../resize';
-import { validateFile } from '../validation';
+import { MAX_PHOTOS, validateFile, toSourceKey } from '../validation';
 import type {
   ContentType,
   IssueResult,
@@ -23,6 +23,8 @@ import type {
 import PhotoUploader from './PhotoUploader';
 import PhotoEditor from './PhotoEditor';
 import styles from './PhotoUploadModal.module.css';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 
 type UploadModalStep = 1 | 2;
 
@@ -55,19 +57,17 @@ const isUnauthorized = (error: unknown) =>
   (error.message === 'API 요청 실패: 401' ||
     error.message === '로그인이 필요한 요청입니다.');
 
-// 사진 올리기 모달 (최상위): 단계·업로드 상태를 관리하고 1단계 PhotoUploader / 2단계 PhotoEditor를 그린다
-//TODO(Phase 2)
-// - 중복 파일: name+size+lastModified로 판단, 건너뛰기/그래도 추가를 한 번에 묻기 (정책 확정 필요)
-// - 전부 재시도 버튼: handleRetry(photos.filter(failed))
-// - 재시도 중 ① 실패는 안내 없이 failed로만 돌아간다
-// - URL 만료(10분) 시 ①부터 다시
-// - 빼기·그만두기 때 진행 중인 업로드 중단(abort): 지금은 끝까지 올라가고 임시 파일은 수명 주기 규칙이 정리
+//사진 올리기 모달: 단계·업로드 상태 관리, 1단계 PhotoUploader / 2단계 PhotoEditor
+//TODO(백엔드): 등록 취소 API 요청 — staging 등록 시간 재보고 판단
+//TODO(공용 Modal): ESC 연타하면 강제로 닫힘 — 팀원 수정 후 잠금 prop으로
+//TODO: 미리보기 교체 때 깜빡임 — img.decode() 후 교체
 export default function PhotoUploadModal({
   open,
   onClose,
 }: PhotoUploadModalProps) {
   const { fetchWithAuth } = useAuth();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState<UploadModalStep>(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -76,24 +76,34 @@ export default function PhotoUploadModal({
   const [rejectMessages, setRejectMessages] = useState<string[]>([]);
   const [result, setResult] = useState<RegisterResult | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
-  //2단계에서 오른쪽 폼으로 편집 중인 사진 (없으면 첫 장)
+  //2단계에서 편집 중인 사진 (없으면 첫 장)
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [representativeId, setRepresentativeId] = useState<string | null>(null);
   const [policyError, setPolicyError] = useState(false);
+  //2단계 마지막 사진 빼기 확인 중인 사진 (null이면 모달 닫힘)
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  //중복 확인 모달이 떠 있는 동안 맡아 둔 선택 (null이면 모달 닫힘)
+  const [pendingFiles, setPendingFiles] = useState<{
+    files: File[];
+    duplicates: File[];
+    messages: string[];
+  } | null>(null);
   const photosRef = useRef(photos);
-
+  //업로드 중단용, 그만두기 때 abort 후 새 것으로 교체
+  const abortRef = useRef(new AbortController());
   useEffect(() => {
     photosRef.current = photos;
   }, [photos]);
 
-  //quit 없이 앱 안에서 페이지를 떠날 때 미리보기 URL 정리 (닫기는 quit, 문서 이동은 브라우저가 해제)
+  //quit 없이 앱 안에서 페이지를 떠날 때: 미리보기 URL 해제 + 업로드 중단
   useEffect(() => {
     return () => {
       photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      abortRef.current.abort();
     };
   }, []);
 
-  //진행 중인 사진이 있거나, 등록할(완료된) 사진이 없으면 다음을 막는다
+  //다음 막기: 처리 중인 사진이 있거나 완료된 사진이 없을 때 (0장 포함)
   const disabled =
     photos.some(
       (p) =>
@@ -102,8 +112,8 @@ export default function PhotoUploadModal({
         p.status === 'uploading',
     ) || photos.every((p) => !(p.status === 'uploaded'));
 
-  //localId가 ids에 있는 사진만 patch로 덮어쓴다 (사진 갱신은 모두 여기로)
-  //이전 값에 따라 달라지는 갱신은 여기서 못 한다 → 필요하면 setPhotos(prev => …) 직접
+  //ids에 있는 사진만 patch로 덮어씀 (사진 갱신은 모두 여기로)
+  //이전 값에 따라 달라지는 갱신은 못 함 → setPhotos(prev => …) 직접
   const patchPhotos = (ids: string[], patch: Partial<SelectedPhoto>) => {
     setPhotos((prev) =>
       prev.map((p) => (ids.includes(p.localId) ? { ...p, ...patch } : p)),
@@ -111,7 +121,7 @@ export default function PhotoUploadModal({
   };
 
   // ── 1단계: 선택 → 전처리 → ① URL 발급 → ② 업로드 ──
-
+  //파일 선택: 형식 검증 → 중복 확인 → 업로드 시작
   async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const files = Array.from(input.files ?? []);
@@ -120,18 +130,47 @@ export default function PhotoUploadModal({
     if (files.length === 0) return;
 
     const validFiles: File[] = [];
-    const message: string[] = [];
+    const messages: string[] = [];
     for (const file of files) {
       const fileCheck = validateFile(file);
-      if (fileCheck) message.push(`${file.name}: ${fileCheck}`);
+      if (fileCheck) messages.push(`${file.name}: ${fileCheck}`);
       else validFiles.push(file);
     }
-    setRejectMessages(message);
-    if (validFiles.length === 0) return;
 
-    //검증 통과: 목록에 '준비 중'으로 먼저 띄운다
-    const newPhotos: SelectedPhoto[] = validFiles.map((file) => ({
+    //목록에 같은 원본이 있으면 모달로 묻고 멈춤, 없으면 바로 업로드
+    const sourceKeys = new Set(photos.map((p) => p.sourceKey));
+    const duplicates = validFiles.filter((file) =>
+      sourceKeys.has(toSourceKey(file)),
+    );
+    if (duplicates.length > 0) {
+      setPendingFiles({ files: validFiles, duplicates, messages });
+      return;
+    }
+    await startUpload(validFiles, messages);
+  }
+
+  //업로드 시작: 20장 자르기 → 목록 추가 → 리사이즈 → ① → ②
+  //messages: 형식 검증 안내, 덮어쓰지 않게 받아서 이어 붙임
+  async function startUpload(validFiles: File[], messages: string[] = []) {
+    //이번 업로드의 중단 신호 (시작 시점 것을 끝까지 씀)
+    const signal = abortRef.current.signal;
+    const message = [...messages];
+
+    //남은 자리만큼만 받음 (모달 전체 MAX_PHOTOS장, 상태 무관)
+    const leftInput = MAX_PHOTOS - photos.length;
+    const acceptedFiles = validFiles.slice(0, leftInput);
+    const droppedCount = validFiles.length - acceptedFiles.length;
+    if (droppedCount > 0) {
+      message.push(
+        `사진은 최대 ${MAX_PHOTOS}장까지 올릴 수 있어요. ${droppedCount}장은 올리지 않았어요.`,
+      );
+    }
+    setRejectMessages(message);
+    if (acceptedFiles.length === 0) return;
+    //목록에 '준비 중'으로 먼저 띄움 (미리보기는 원본으로 바로)
+    const newPhotos: SelectedPhoto[] = acceptedFiles.map((file) => ({
       file,
+      sourceKey: toSourceKey(file),
       previewUrl: URL.createObjectURL(file),
       localId: crypto.randomUUID(),
       status: 'preparing',
@@ -142,69 +181,58 @@ export default function PhotoUploadModal({
       description: '',
     }));
     setPhotos((prev) => [...prev, ...newPhotos]);
-    //한 장씩 리사이즈 → '대기 중' (①에는 state가 아니라 prepared 배열을 넘긴다)
+    //한 장씩 리사이즈 → '대기 중' (①에는 state 말고 prepared를 넘김)
     const prepared: SelectedPhoto[] = [];
     for (const photo of newPhotos) {
       const file = await resizeImage(photo.file).catch(() => photo.file);
-      const ready: SelectedPhoto = { ...photo, file, status: 'waiting' };
-      prepared.push(ready);
-      patchPhotos([photo.localId], { file, status: 'waiting' });
-    }
-    const issued = await createUrl(prepared);
-    //① 실패(일반·로그인 만료): 이번에 고른 사진만 빼고 안내
-    if (issued !== 'ok') {
-      removePhotos(newPhotos);
-      if (issued === 'unauthorized') {
-        showToast(SESSION_EXPIRED_MESSAGE, 'error');
+      if (signal.aborted) {
         return;
       }
-      setRejectMessages(['사진을 다시 선택해 주세요.']);
+
+      //리사이즈됐으면 미리보기도 교체 (원본 디코딩 부담 줄이기)
+      const previewUrl =
+        file !== photo.file ? URL.createObjectURL(file) : photo.previewUrl;
+
+      const ready: SelectedPhoto = {
+        ...photo,
+        file,
+        previewUrl,
+        status: 'waiting',
+      };
+      prepared.push(ready);
+      patchPhotos([photo.localId], { file, previewUrl, status: 'waiting' });
+      //교체했으면 원본 URL 해제
+      if (previewUrl !== photo.previewUrl)
+        URL.revokeObjectURL(photo.previewUrl);
+    }
+    const issued = await createUrl(prepared, signal);
+    if (signal.aborted) return;
+
+    //401: 재시도해도 소용없음 → 이번 사진 빼고 토스트
+    if (issued === 'unauthorized') {
+      removePhotos(newPhotos);
+      showToast(SESSION_EXPIRED_MESSAGE, 'error');
+      return;
+    }
+    //네트워크·서버: failed로 남기고 재시도
+    if (issued === 'failed') {
+      patchPhotos(
+        prepared.map(({ localId }) => localId),
+        { status: 'failed' },
+      );
     }
   }
 
-  //① URL 발급 → ② 한 장씩 PUT
-  //반환값: 'ok' | 'failed' | 'unauthorized'(로그인 만료) — ①의 결과, 처리는 호출한 쪽이 정한다
-  //②의 개별 실패는 사진별 failed로 표시하고 나머지는 계속 진행
-  async function createUrl(newPhotos: SelectedPhoto[]): Promise<IssueResult> {
-    let items: UploadUrlItem[];
-    const body: UploadUrlsRequest = {
-      files: toFileInfos(newPhotos.map(({ file }) => file)),
-      //재시도에는 true로 두고 다음버튼을 통해서만 정책동의 여부 체크
-      policyAgreed: true,
-    };
-    try {
-      ({ items } = await createUploadUrls(body, fetchWithAuth));
-    } catch (error) {
-      return isUnauthorized(error) ? 'unauthorized' : 'failed';
-    }
-    //items[i]와 newPhotos[i]는 이번 요청 안에서만 순서로 짝이 맞는다 (서버가 순서 보장)
-    for (const [i, item] of items.entries()) {
-      const { localId, file } = newPhotos[i];
-      patchPhotos([localId], { status: 'uploading' });
-      try {
-        await putFileToUploadUrl(item.uploadUrl, file, (progress) =>
-          patchPhotos([localId], { progress }),
-        );
-        //PUT이 끝난 뒤에만 성공 처리
-        patchPhotos([localId], {
-          uploadKey: item.uploadKey,
-          status: 'uploaded',
-        });
-      } catch {
-        //이 사진만 실패, 나머지는 계속 진행
-        patchPhotos([localId], { status: 'failed' });
-      }
-    }
-    return 'ok';
-  }
-
-  //재시도: 한 장이면 [photo], 다시 올리기면 남은 사진 전부
-  //바로 waiting으로 바꿔 연타를 막고, ①부터 다시 한다 (새 URL이라 만료 걱정 없음)
+  //재시도: 한 장 / 실패 전부 / 다시 올리기 — 항상 ①부터 (새 URL이라 만료 걱정 없음)
+  //바로 waiting으로 바꿔 연타 막기
   async function handleRetry(targets: SelectedPhoto[]) {
+    const signal = abortRef.current.signal;
+
     const ids = targets.map((p) => p.localId);
     patchPhotos(ids, { status: 'waiting', progress: 0 });
-    const issued = await createUrl(targets);
-    //① 실패: 목록에서 빼지 않고 failed로 되돌린다 (로그인 만료면 안내도)
+    const issued = await createUrl(targets, signal);
+    if (signal.aborted) return;
+    //① 실패: failed로 되돌림 (401이면 토스트도)
     if (issued !== 'ok') {
       patchPhotos(ids, { status: 'failed' });
       if (issued === 'unauthorized')
@@ -212,8 +240,50 @@ export default function PhotoUploadModal({
     }
   }
 
-  //목록에서 빼고 미리보기 URL을 푼다 (localId 기준)
-  //한 장이면 [photo], ① 실패면 newPhotos, 등록 성공이면 성공한 사진, 그만두기면 photos 전부
+  //① URL 발급 → ② 한 장씩 PUT
+  //반환값은 ①의 결과 ('ok' | 'failed' | 'unauthorized'), 처리는 부른 쪽에서
+  async function createUrl(
+    newPhotos: SelectedPhoto[],
+    signal: AbortSignal,
+  ): Promise<IssueResult> {
+    let items: UploadUrlItem[];
+    const body: UploadUrlsRequest = {
+      files: toFileInfos(newPhotos.map(({ file }) => file)),
+      //선택은 동의 후에만 열리고 등록은 다음을 거쳐야 해서 항상 true (재시도 포함)
+      policyAgreed: true,
+    };
+    try {
+      ({ items } = await createUploadUrls(body, fetchWithAuth));
+    } catch (error) {
+      return isUnauthorized(error) ? 'unauthorized' : 'failed';
+    }
+    //items[i]와 newPhotos[i]는 순서로 짝 (서버가 순서 보장)
+    for (const [i, item] of items.entries()) {
+      const { localId, file } = newPhotos[i];
+      patchPhotos([localId], { status: 'uploading' });
+      try {
+        await putFileToUploadUrl(
+          item.uploadUrl,
+          file,
+          (progress) => patchPhotos([localId], { progress }),
+          signal,
+        );
+        //PUT이 끝난 뒤에만 성공 처리
+        patchPhotos([localId], {
+          uploadKey: item.uploadKey,
+          status: 'uploaded',
+        });
+      } catch {
+        //그만두기면 남은 사진도 멈춤 (실패 표시 안 함)
+        if (signal?.aborted) break;
+        //이 사진만 실패, 나머지는 계속
+        patchPhotos([localId], { status: 'failed' });
+      }
+    }
+    return 'ok';
+  }
+
+  //목록에서 빼고 미리보기 URL 해제 (한 장·401·등록 성공·그만두기)
   function removePhotos(targets: SelectedPhoto[]) {
     const ids = targets.map((t) => t.localId);
     setPhotos((prev) => prev.filter((p) => !ids.includes(p.localId)));
@@ -221,7 +291,7 @@ export default function PhotoUploadModal({
   }
 
   // ── 2단계: 정보 입력 ──
-  //2단계에는 업로드 완료된 사진만 넘어온다
+  //2단계에는 완료된 사진만
   const editablePhotos = photos.filter((p) => p.status === 'uploaded');
   const selectedPhoto =
     editablePhotos.find((p) => p.localId === selectedId) ?? editablePhotos[0];
@@ -232,9 +302,9 @@ export default function PhotoUploadModal({
     patchPhotos([selectedPhoto.localId], patch);
   }
 
-  //③ 등록: 업로드 완료(uploaded)된 사진만 보낸다
-  //전체 실패(catch, 서버·네트워크): 아무것도 등록되지 않음 → 같은 사진으로 다시 등록(③만)
-  //파일 실패(failed[], 201 응답 안): 성공한 사진만 목록에서 빼고 결과 모달 → 다시 올리기(①부터)
+  //③ 등록: 완료된 사진만 보냄
+  //전체 실패(서버·네트워크): 등록 안 됨 → 같은 사진으로 다시 등록
+  //일부 실패(201 안 failed[]): 성공한 것만 빼고 결과 모달 → 다시 올리기(①부터)
   async function handleRegister() {
     setIsRegistering(true);
     const body: RegisterPhotosRequest = {
@@ -243,21 +313,31 @@ export default function PhotoUploadModal({
         categories: p.categories,
         styles: p.styles,
         keywords: p.keywords,
-        description: p.description || null, //입력 안 하면 '' → 서버는 null
+        description: p.description || null, //'' → null
       })),
-      //대표를 안 켰거나 그 사진을 뺐으면 undefined → 요청에서 빠진다
+      //대표 안 켰거나 그 사진을 뺐으면 undefined → 요청에서 빠짐
       representativeUploadKey: editablePhotos.find(
         (p) => p.localId === representativeId,
       )?.uploadKey,
     };
     try {
       const { items, failed } = await registerPhotos(body, fetchWithAuth);
+
+      //1장이라도 등록되면 포트폴리오·피드 다시 불러오기
+      if (items.length > 0) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.photos.portfolioAll(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.photos.feedAll(),
+        });
+      }
       const succeeded = photos.filter((p) =>
         items.some((item) => item.uploadKey === p.uploadKey),
       );
       removePhotos(succeeded);
 
-      //목록에는 실패한 사진만 남는다 (다시 올리기 → 1단계에서 ①부터)
+      //목록에는 실패한 사진만 남음
       setResult({ kind: 'done', succeededCount: succeeded.length, failed });
     } catch (error) {
       if (isUnauthorized(error)) {
@@ -272,14 +352,16 @@ export default function PhotoUploadModal({
 
   // ── 닫기 ──
 
-  //✕·Esc·배경 클릭·취소: 사진이 있으면 확인창, 없으면 바로 닫기
+  //✕·Esc·배경·취소: 사진 있으면 확인창, 없으면 바로 닫기
   const requestClose = () => {
     if (photos.length > 0) setConfirmOpen(true);
     else quit();
   };
 
-  //그만두기: 상태를 처음으로 되돌리고 닫는다
+  //그만두기: 업로드 중단 → 상태 초기화 → 닫기
   const quit = () => {
+    abortRef.current.abort();
+    abortRef.current = new AbortController();
     removePhotos(photos);
     setRejectMessages([]);
     setResult(null);
@@ -289,10 +371,11 @@ export default function PhotoUploadModal({
     setSelectedId(null);
     setRepresentativeId(null);
     setPolicyError(false);
+    setPendingFiles(null);
     onClose();
   };
 
-  //등록 결과 문구: 전부 성공 / 일부 실패 / 전부 실패(파일 문제), 설명은 있는 문장만 이어 붙인다
+  //등록 결과 문구: 전부 성공 / 일부 실패 / 전부 실패, 있는 문장만 이어 붙임
   let resultTitle = '';
   let resultDescription = '';
   if (result?.kind === 'done') {
@@ -311,7 +394,15 @@ export default function PhotoUploadModal({
     <>
       <Modal
         open={open && !registerDone}
-        onClose={requestClose}
+        closeOnEscape={!isRegistering}
+        closeOnBackdrop={!isRegistering}
+        onClose={() => {
+          //등록 중엔 닫기 무시 (서버 처리는 못 멈춤)
+          if (isRegistering) {
+            return;
+          }
+          requestClose();
+        }}
         title="포트폴리오 사진 올리기"
         className={`${styles.surface} ${step === 1 ? styles.step1 : styles.step2}`}
       >
@@ -361,6 +452,9 @@ export default function PhotoUploadModal({
             onRetry={(id) =>
               handleRetry(photos.filter((p) => p.localId === id))
             }
+            onRetryAll={() => {
+              handleRetry(photos.filter((p) => p.status === 'failed'));
+            }}
             onCancel={requestClose}
             onNext={() => {
               if (!policyAgreed) {
@@ -369,7 +463,7 @@ export default function PhotoUploadModal({
               }
               setStep(2);
             }}
-            nextDisabled={photos.length === 0 || disabled}
+            nextDisabled={disabled}
           />
         ) : (
           <PhotoEditor
@@ -377,14 +471,19 @@ export default function PhotoUploadModal({
               localId: p.localId,
               previewUrl: p.previewUrl,
               fileName: p.file.name,
-              //필수(카테고리)가 비면 썸네일에 빨간 점
+              //카테고리 비면 썸네일에 빨간 점
               missingRequired: p.categories.length === 0,
             }))}
             selectedId={selectedPhoto?.localId ?? null}
             onSelect={setSelectedId}
-            onRemove={(id) =>
-              removePhotos(photos.filter((p) => p.localId === id))
-            }
+            onRemove={(id) => {
+              //마지막 한 장이면 확인 모달 (빼면 1단계로)
+              if (editablePhotos.length === 1) {
+                setPendingRemoveId(id);
+              } else {
+                removePhotos(photos.filter((p) => p.localId === id));
+              }
+            }}
             current={
               selectedPhoto
                 ? {
@@ -409,16 +508,17 @@ export default function PhotoUploadModal({
             onChange={updateSelected}
             onPrev={() => setStep(1)}
             onSubmit={handleRegister}
-            //카테고리가 빈 사진이 하나라도 있으면 등록을 막는다
-            submitDisabled={editablePhotos.some(
-              (p) => p.categories.length === 0,
-            )}
+            //0장이거나 카테고리 빈 사진이 있으면 등록 막기
+            submitDisabled={
+              editablePhotos.length === 0 ||
+              editablePhotos.some((p) => p.categories.length === 0)
+            }
             isSubmitting={isRegistering}
           />
         )}
       </Modal>
 
-      {/* 아래 모달들은 위 모달과 형제로 두어야 Esc·Tab이 그 모달 안에서만 처리된다 */}
+      {/* 아래 모달들은 형제로 둬야 Esc·Tab이 그 모달 안에서만 처리됨 */}
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -442,7 +542,90 @@ export default function PhotoUploadModal({
         }
       />
 
-      {/* 등록 전체 실패(서버·네트워크): 닫으면 2단계에 남아 다시 등록 */}
+      {/* 중복 사진: 건너뛰기 / 그래도 추가, 닫기는 이번 선택 취소 */}
+      <Modal
+        open={pendingFiles !== null}
+        onClose={() => setPendingFiles(null)}
+        title="이미 추가한 사진이 있어요"
+        description={`선택한 사진 중 ${pendingFiles?.duplicates.length ?? 0}장이 목록에 있는 사진과 같아요.`}
+        variant="confirm"
+        className={styles.confirm}
+        footer={
+          <>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => {
+                if (!pendingFiles) return;
+                startUpload(pendingFiles?.files, pendingFiles.messages);
+                setPendingFiles(null);
+              }}
+            >
+              그래도 추가
+            </Button>
+            <Button
+              size="md"
+              onClick={() => {
+                if (pendingFiles === null) return;
+                const { files, duplicates } = pendingFiles;
+                startUpload(
+                  files.filter((f) => !duplicates.includes(f)),
+                  pendingFiles.messages,
+                );
+                setPendingFiles(null);
+              }}
+            >
+              건너뛰기
+            </Button>
+          </>
+        }
+      >
+        <ul className={styles.duplicateList}>
+          {pendingFiles?.duplicates.map((file) => (
+            <li key={toSourceKey(file)}>{file.name}</li>
+          ))}
+        </ul>
+      </Modal>
+
+      {/* 2단계 마지막 사진 빼기: 확인하면 빼고 1단계로 */}
+      <Modal
+        open={pendingRemoveId !== null}
+        onClose={() => {
+          setPendingRemoveId(null);
+        }}
+        title="마지막 사진을 지울까요?"
+        description="사진이 없으면 이전 단계로 돌아가요."
+        variant="confirm"
+        className={styles.confirm}
+        footer={
+          <>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => {
+                setPendingRemoveId(null);
+              }}
+            >
+              취소
+            </Button>
+            <Button
+              size="md"
+              onClick={() => {
+                removePhotos(
+                  photos.filter((p) => p.localId === pendingRemoveId),
+                );
+                setStep(1);
+                setSelectedId(null);
+                setPendingRemoveId(null);
+              }}
+            >
+              빼고 돌아가기
+            </Button>
+          </>
+        }
+      />
+
+      {/* 등록 전체 실패: 닫으면 2단계에 남아 다시 등록 */}
       {result?.kind === 'error' && (
         <Modal
           open
@@ -459,7 +642,7 @@ export default function PhotoUploadModal({
         />
       )}
 
-      {/* 등록 결과: 전부 성공이면 확인(닫기), 파일 실패가 있으면 그만두기/다시 올리기 */}
+      {/* 등록 결과: 전부 성공이면 확인, 실패 있으면 그만두기 / 다시 올리기 */}
       {result?.kind === 'done' && (
         <Modal
           open
@@ -474,7 +657,6 @@ export default function PhotoUploadModal({
                 <Button variant="outline" size="md" onClick={quit}>
                   그만두기
                 </Button>
-                {/* 남은 photos는 실패한 사진뿐 → 1단계에서 ①부터 다시 */}
                 <Button
                   size="md"
                   onClick={() => {

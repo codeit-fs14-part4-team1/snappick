@@ -21,6 +21,8 @@ export type SelectedPhoto = {
   file: File;
   previewUrl: string;
   localId: string; //선택 시 부여, 모든 상태 업데이트의 기준
+  //중복 확인용 원본 키 (리사이즈로 file이 바뀌어도 그대로)
+  sourceKey: string;
   uploadKey?: string;
   status: UploadStatus;
   progress: number;

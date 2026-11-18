@@ -49,7 +49,8 @@ function toggle<T>(list: T[], value: T): T[] {
     : [...list, value];
 }
 
-// 2단계 정보 입력 (업로드·관리 모달 공통): 사진 목록 | 미리보기 | 정보 폼 + 이전/등록하기
+//2단계 정보 입력 (업로드·관리 모달 공통): 사진 목록 | 미리보기 | 정보 폼 + 이전/등록하기
+//태블릿·모바일은 세로로 쌓임, 등록 중엔 inert + 오버레이로 전부 막음
 export default function PhotoEditor({
   photos,
   selectedId,
@@ -99,7 +100,7 @@ export default function PhotoEditor({
 
   return (
     <div className={styles.editor}>
-      <div className={styles.body}>
+      <div className={styles.body} inert={isSubmitting}>
         <PhotoList
           photos={photos}
           selectedId={selectedId}
@@ -143,7 +144,7 @@ export default function PhotoEditor({
         )}
       </div>
 
-      <div className={styles.footer}>
+      <div className={styles.footer} inert={isSubmitting}>
         <Button variant="outline" size="md" onClick={onPrev}>
           이전
         </Button>
@@ -155,6 +156,13 @@ export default function PhotoEditor({
           {isSubmitting ? '등록 중…' : `${photos.length}장 등록하기`}
         </Button>
       </div>
+
+      {isSubmitting && (
+        <div className={styles.overlay} role="status">
+          <span className={styles.spinner} aria-hidden="true" />
+          등록중입니다...
+        </div>
+      )}
     </div>
   );
 }

@@ -27,28 +27,35 @@ export async function createUploadUrls(
 }
 
 //② PUT {uploadUrl}
-//uploadUrl은 완성된 주소라 fetchWithAuth가 아니라 그냥 fetch로 보낸다 (인증은 URL 서명이 대신함)
-//Content-Type은 ①에서 보낸 contentType과 같아야 한다 (형식·크기가 서명에 들어 있음)
+//진행률 받으려고 fetch 대신 xhr
+//Content-Type은 ①의 contentType과 같아야 함 (형식·크기가 서명에 들어 있음)
 //성공 200 본문 없음 / 실패 403(만료·서명), 400(형식·크기 불일치)
-//로컬 개발은 로컬 저장소, 배포는 S3로 간다
+//저장소는 STORAGE_DRIVER로 결정 (local: apps/web/public, s3: 버킷)
 export async function putFileToUploadUrl(
   uploadUrl: string,
   file: File,
   onProgress: (progress: number) => void,
+  signal?: AbortSignal, //중단신호
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    //객체생성
+    //이미 중단됐으면 시작 안 함
+    if (signal?.aborted) {
+      reject(new DOMException('업로드 중단', 'AbortError'));
+      return;
+    }
     const xhr = new XMLHttpRequest();
-    //initial설정
+    //중단 신호 오면 xhr 끊기, 끊기면 실패와 구분되는 AbortError (fetch와 같은 모양)
+    const abortXhr = () => xhr.abort();
+    signal?.addEventListener('abort', abortXhr);
+    xhr.onabort = () => reject(new DOMException('업로드 중단', 'AbortError'));
+
     xhr.open('PUT', uploadUrl);
     xhr.setRequestHeader('Content-Type', file.type);
-    //진행률 받아오기
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
       const progress = Math.round((event.loaded / event.total) * 100);
       onProgress(progress);
     };
-    //http요청 종료
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
@@ -61,17 +68,18 @@ export async function putFileToUploadUrl(
       reject(new Error('네트워크 오류'));
     };
 
+    //성공·실패·중단 모두 끝나면 리스너 정리 (컨트롤러를 여러 PUT이 같이 씀)
+    xhr.onloadend = () => signal?.removeEventListener('abort', abortXhr);
     xhr.send(file);
   });
 }
 
 //③ POST /me/photos
-//서버가 올린 파일을 확인하고 WebP로 변환해 사진 정보와 함께 등록한다
-//201이어도 일부 사진은 failed에만 있을 수 있다 (파일 없음·이미지 아님)
-//대표사진: 대표가 없을 때만 representativeUploadKey를 보내고, 이미 있으면 보내지 않는다 (변경은 관리 모달 PATCH)
-//representativePhotoId는 이번 요청 결과가 아니라 등록 후 작가의 현재 대표사진이라 null 여부로 판단하지 않는다
-//판단: 대표로 보낸 uploadKey의 items 속 photoId === representativePhotoId 인가
-//  다르면 모달로 "대표사진이 지정되지 않았습니다. 다시 시도하기" 안내, 등록 자체는 성공으로 둔다 (Phase 3)
+//서버가 올린 파일 확인 → WebP 변환 → 사진 정보와 함께 등록
+//201이어도 일부는 failed에만 있을 수 있음 (파일 없음·이미지 아님)
+//대표사진: 켠 사진의 uploadKey를 보내면 기존 대표 교체 (안 보내면 유지)
+//representativePhotoId는 등록 후 작가의 현재 대표사진 (이번 요청 결과 아님)
+//TODO(Phase 3): 대표로 보낸 사진의 photoId ≠ representativePhotoId면 "대표 지정 실패" 안내 (등록은 성공 유지)
 export async function registerPhotos(
   body: RegisterPhotosRequest,
   fetchWithAuth: FetchWithAuth,

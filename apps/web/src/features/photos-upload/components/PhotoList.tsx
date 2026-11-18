@@ -10,14 +10,14 @@ export type PhotoListItem = {
 
 type PhotoListProps = {
   photos: PhotoListItem[];
-  //지금 오른쪽 폼에서 편집 중인 사진
+  //지금 폼에서 편집 중인 사진
   selectedId: string | null;
   onSelect: (localId: string) => void;
   onRemove: (localId: string) => void;
 };
 
-// 2단계 왼쪽: "사진 N장" + 72px 썸네일 3열
-// 썸네일: 선택 시 초록 테두리 / 필수 미입력 빨간 점 / 빼기 ✕
+//2단계 사진 목록: 데스크톱 3열, 태블릿·모바일 가로 스크롤
+//썸네일: 선택 시 초록 테두리 / 필수 미입력 빨간 점 / 빼기 ✕
 export default function PhotoList({
   photos,
   selectedId,
@@ -48,7 +48,12 @@ export default function PhotoList({
                 onClick={() => onSelect(localId)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기라 next/image 최적화 대상이 아님 */}
-                <img className={styles.image} src={previewUrl} alt="" />
+                <img
+                  className={styles.image}
+                  src={previewUrl}
+                  alt=""
+                  decoding="async"
+                />
               </button>
 
               {missingRequired && (

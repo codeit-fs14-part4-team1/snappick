@@ -14,11 +14,11 @@
   line-height: 22px;
 }
 
-/* 72px × 3열, 간격 12px */
+/* 72px × 3열, 간격 8px (시안 12px에서 조정) */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 72px);
-  gap: 12px;
+  gap: 8px;
   margin: 0;
   padding: 0;
 }
@@ -97,4 +97,23 @@
 .removeButton:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
+}
+
+/* 태블릿·모바일: 목록은 가로 한 줄, 넘치면 가로 스크롤 (72px, 간격 4px) */
+@media (max-width: 1199px) {
+  .list {
+    width: 100%;
+  }
+
+  .grid {
+    gap: 4px;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 72px;
+    overflow-x: auto;
+    /* 포커스 테두리(outline 2px + offset 2px)가 잘리지 않게 여유 */
+    padding: 4px;
+    margin: -4px;
+    overscroll-behavior-x: contain;
+  }
 }

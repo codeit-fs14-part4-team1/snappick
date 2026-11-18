@@ -24,7 +24,12 @@ export default function PhotoPreview({
   return (
     <div className={styles.preview}>
       {/* eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기라 next/image 최적화 대상이 아님 */}
-      <img className={styles.image} src={previewUrl} alt={fileName} />
+      <img
+        className={styles.image}
+        src={previewUrl}
+        alt={fileName}
+        decoding="async"
+      />
 
       <div className={styles.info}>
         <p className={styles.fileInfo}>

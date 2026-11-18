@@ -31,6 +31,14 @@
   content: '· ';
 }
 
+/* 시안 모바일: 정책 문구 Body(14/22) → Caption(12/18) */
+@media (max-width: 767px) {
+  .policyList {
+    font-size: 12px;
+    line-height: 18px;
+  }
+}
+
 .agree {
   display: inline-flex;
   align-items: center;
@@ -98,6 +106,19 @@
   color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 20px;
+}
+
+/* 장수 (전체 / 최대): 줄 오른쪽 끝 */
+.limit {
+  margin: 0 0 0 auto;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.limitCurrent {
+  color: var(--color-accent);
+  font-weight: 700;
 }
 
 .policyError {

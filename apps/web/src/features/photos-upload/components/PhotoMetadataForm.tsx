@@ -145,7 +145,10 @@ export default function PhotoMetadataForm({
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor={`${id}-keyword`}>
+        <label
+          className={`${styles.label} ${styles.labelStacked}`}
+          htmlFor={`${id}-keyword`}
+        >
           자유 키워드
           <span className={styles.meta}>
             최대 {MAX_KEYWORDS}개 · 키워드당 {MAX_KEYWORD_LENGTH}자 · 띄어쓰기

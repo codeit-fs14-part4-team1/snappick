@@ -5,6 +5,7 @@ import type { ChangeEvent } from 'react';
 import Button from '@/components/ui/Button';
 import UploadQueue from './UploadQueue';
 import type { UploadQueuePhoto } from './UploadQueue';
+import { MAX_PHOTOS } from '../validation';
 import styles from './PhotoUploader.module.css';
 
 type PhotoUploaderProps = {
@@ -20,6 +21,7 @@ type PhotoUploaderProps = {
   photos: UploadQueuePhoto[];
   onRemove: (localId: string) => void;
   onRetry: (localId: string) => void;
+  onRetryAll: () => void;
   onCancel: () => void;
   onNext: () => void;
   nextDisabled: boolean;
@@ -41,6 +43,7 @@ export default function PhotoUploader({
   photos,
   onRemove,
   onRetry,
+  onRetryAll,
   onCancel,
   onNext,
   nextDisabled,
@@ -48,6 +51,8 @@ export default function PhotoUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const agreeRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
+  //20장 기준은 상태 무관 전체 장수 (완료 장수는 목록 제목에)
+  const isFull = photos.length >= MAX_PHOTOS;
 
   //안내가 뜨면 고칠 곳(체크박스)으로 바로 보낸다
   useEffect(() => {
@@ -98,13 +103,18 @@ export default function PhotoUploader({
           <Button
             variant="outline"
             size="md"
-            disabled={!policyAgreed}
+            disabled={!policyAgreed || isFull}
             onClick={() => inputRef.current?.click()}
           >
             + 사진 선택
           </Button>
           <p className={styles.hint}>
-            JPG·PNG·WebP, 파일당 최대 20MB · 여러 장을 한 번에 고를 수 있어요
+            JPG·PNG·WebP, 파일당 최대 20MB · 최대 {MAX_PHOTOS}장까지 한 번에
+            고를 수 있어요
+          </p>
+          <p className={styles.limit}>
+            <span className={styles.limitCurrent}>{photos.length}</span> /{' '}
+            {MAX_PHOTOS}
           </p>
         </div>
         <div aria-live="polite">
@@ -117,7 +127,12 @@ export default function PhotoUploader({
       </div>
 
       {photos.length > 0 && (
-        <UploadQueue photos={photos} onRemove={onRemove} onRetry={onRetry} />
+        <UploadQueue
+          photos={photos}
+          onRemove={onRemove}
+          onRetry={onRetry}
+          onRetryAll={onRetryAll}
+        />
       )}
 
       <div className={styles.footer}>
