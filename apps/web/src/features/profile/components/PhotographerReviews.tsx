@@ -57,7 +57,6 @@ export default function PhotographerReviews({
   ratingAvg,
   pagination,
   isSelf = false,
-  isReady = true,
   onCreateReply,
   onUpdateReply,
   onDeleteReply,
