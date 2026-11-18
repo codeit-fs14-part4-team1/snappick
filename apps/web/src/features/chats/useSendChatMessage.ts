@@ -10,7 +10,11 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 import { queryKeys } from '@/lib/queryKeys';
 import { sendChatMessage } from './api';
-import type { ChatMessagesPage } from './types';
+import type {
+  ChatMessagesPage,
+  SendChatMessageInput,
+  InquiryPayload,
+} from './types';
 
 export default function useSendChatMessage(chatRoomId: string) {
   const { fetchWithAuth } = useAuth();
@@ -20,8 +24,8 @@ export default function useSendChatMessage(chatRoomId: string) {
   const messagesKey = queryKeys.chats.messages(chatRoomId);
 
   const mutation = useMutation({
-    mutationFn: (content: string) =>
-      sendChatMessage(chatRoomId, content, fetchWithAuth),
+    mutationFn: (input: SendChatMessageInput) =>
+      sendChatMessage(chatRoomId, input, fetchWithAuth),
     // 전송 요청은 서버에서 중복 저장될 수 있으므로 자동 재시도하지 않습니다.
     retry: false,
     onSuccess: async (message) => {
@@ -49,7 +53,7 @@ export default function useSendChatMessage(chatRoomId: string) {
       // 소켓 연결 전에도 최신 대화와 목록의 마지막 메시지·정렬을 서버 값으로 맞춥니다.
       void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
     },
-    onError: (error) => {
+    onError: (error, input) => {
       const notice =
         error.message === 'API 요청 실패: 401'
           ? '로그인이 만료됐어요. 다시 로그인해 주세요.'
@@ -59,14 +63,22 @@ export default function useSendChatMessage(chatRoomId: string) {
               ? '존재하지 않는 문의예요.'
               : error.message === 'API 요청 실패: 422'
                 ? '상대방에게 메시지를 보낼 수 없어요.'
-                : error.message === 'API 요청 실패: 400'
-                  ? '메시지 내용을 확인해 주세요. 1,000자까지 보낼 수 있어요.'
-                  : '메시지를 보내지 못했어요. 다시 시도해 주세요.';
+                : error.message === 'API 요청 실패: 409'
+                  ? '이미 촬영 정보를 전송한 문의예요. 대화 내역을 확인해 주세요.'
+                  : error.message === 'API 요청 실패: 400'
+                    ? typeof input === 'string'
+                      ? '메시지 내용을 확인해 주세요. 1,000자까지 보낼 수 있어요.'
+                      : '촬영 정보를 한 가지 이상 올바르게 입력해 주세요.'
+                    : '메시지를 보내지 못했어요. 다시 시도해 주세요.';
+      if (error.message === 'API 요청 실패: 409')
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       showToast(notice, 'error');
     },
   });
   return {
-    sendMessage: mutation.mutateAsync,
+    sendMessage: (content: string) => mutation.mutateAsync(content),
+    sendInquiry: (payload: InquiryPayload) =>
+      mutation.mutateAsync({ messageType: 'INITIAL_REQUEST', payload }),
     isSending: mutation.isPending,
     sentMessageId,
   };

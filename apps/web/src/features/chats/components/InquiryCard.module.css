@@ -1,0 +1,43 @@
+.card {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.card[data-mine='true'] {
+  border-color: var(--color-accent);
+}
+
+.card strong {
+  font-weight: 700;
+}
+
+.card dl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.card dl > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.card dt {
+  color: var(--color-text-tertiary);
+}
+
+.card dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}

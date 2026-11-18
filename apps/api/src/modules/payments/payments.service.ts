@@ -201,7 +201,7 @@ export async function preparePayment(
     return {
       paymentId: payment.id,
       orderId: payment.pg_order_id,
-      orderName: quote.product_name,
+      orderName: quote.quote_name,
       amount: payment.amount,
       status: payment.status,
     };

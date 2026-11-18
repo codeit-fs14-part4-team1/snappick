@@ -10,6 +10,8 @@ import {
   cancelRequestParamsSchema,
   patchCancelReservationSchema,
   getReservationSchema,
+  createDeliverableSchema,
+  patchDeliverableSchema,
 } from './reservations.schema.js';
 import {
   createReservation,
@@ -17,6 +19,9 @@ import {
   createCancelReservation,
   patchCancelReservation,
   getReservation,
+  getDeliverable,
+  createDeliverable,
+  patchDeliverable,
 } from './reservations.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -124,4 +129,29 @@ export async function getReservationHandler(req: Request, res: Response) {
     throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
   }
   res.json(await getReservation(viewer, query));
+}
+
+export async function getDeliverableHandler(req: Request, res: Response) {
+  const { reservationId } = reservationParamsSchema.parse(req.params);
+  const viewer = await resolveViewer(getAuth(req));
+  if (!viewer.userId && !viewer.photographerId) {
+    throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
+  }
+  res.json(await getDeliverable(viewer, reservationId));
+}
+
+export async function createDeliverableHandler(req: Request, res: Response) {
+  const { reservationId } = reservationParamsSchema.parse(req.params);
+  const input = createDeliverableSchema.parse(req.body);
+  const photographerId = await requirePhotographerId(getAuth(req));
+  res
+    .status(201)
+    .json(await createDeliverable(photographerId, reservationId, input));
+}
+
+export async function patchDeliverableHandler(req: Request, res: Response) {
+  const { reservationId } = reservationParamsSchema.parse(req.params);
+  const input = patchDeliverableSchema.parse(req.body);
+  const photographerId = await requirePhotographerId(getAuth(req));
+  res.json(await patchDeliverable(photographerId, reservationId, input));
 }

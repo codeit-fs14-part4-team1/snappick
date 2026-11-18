@@ -117,6 +117,7 @@ model photographers {
   reservation         reservations[]
   reviews             reviews[]
   representativePhoto representative_photos?
+  reviewSummary       review_summaries?
 }
 
 // reservations
@@ -419,13 +420,12 @@ model quotes {
   chat_room_id      String?  @db.Uuid
   shooting_case_id  String @db.Uuid
   photographer_id   String?  @db.Uuid
-  product_name      String
+  quote_name        String
   version           Int
   shoot_at          DateTime
   location          String
   duration_minutes  Int
   price             Int
-  extra_fee         Int?
   photo_count       Int?
   includes_original Boolean
   additional_notice String?
@@ -515,4 +515,37 @@ model review_replies {
   deleted_at DateTime?
 
   review reviews? @relation(fields: [review_id], references: [id], onDelete: SetNull)
+}
+
+// review_summaries: 작가별 AI 리뷰 요약 (작가당 1행)
+enum ReviewSummaryResult {
+  OK
+  REFUSED
+  INVALID
+  ERROR
+}
+
+model review_summaries {
+  photographer_id String @id @db.Uuid
+
+  // 마지막으로 성공한 요약
+  summary           String?
+  highlights        Json      @default("[]") // [{ label, reviewIds }]
+  caution           Json? // { text, reviewIds }
+  source_review_ids String[]  @default([]) // 요약에 쓴 리뷰 ID
+  source_key        String? // 요약에 쓴 리뷰의 (id, updated_at) 해시
+  model             String? // 실제로 응답한 모델
+  prompt_version    String?
+  generated_at      DateTime?
+
+  // 마지막 시도
+  last_attempt_key    String?
+  last_attempt_result ReviewSummaryResult?
+  last_attempt_at     DateTime?
+  locked_until        DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
 }

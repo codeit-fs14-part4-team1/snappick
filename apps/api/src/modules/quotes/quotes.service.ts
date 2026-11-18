@@ -50,14 +50,16 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
     );
   }
 
-  const product = await prisma.products.findFirst({
-    where: {
-      id: input.productId,
-      photographer_id: photographer.id,
-    },
-  });
+  const product = input.productId
+    ? await prisma.products.findFirst({
+        where: {
+          id: input.productId,
+          photographer_id: photographer.id,
+        },
+      })
+    : null;
 
-  if (!product) {
+  if (input.productId && !product) {
     throw new HttpError(404, 'PRODUCT_NOT_FOUND', '상품을 찾을 수 없습니다.');
   }
 
@@ -135,11 +137,19 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       },
       select: {
         version: true,
+        common_notice: true,
       },
     });
 
     // 기존 견적이 없으면 1, 있으면 마지막 버전 + 1
     const nextVersion = (latestQuote?.version ?? 0) + 1;
+    if (!product && !latestQuote) {
+      throw new HttpError(
+        400,
+        'PRODUCT_REQUIRED',
+        '새 견적을 작성할 촬영 상품을 선택해 주세요.',
+      );
+    }
 
     // 견적 저장
     const quote = await tx.quotes.create({
@@ -147,7 +157,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         chat_room_id: input.chatRoomId,
         shooting_case_id: shootingCaseId,
         photographer_id: photographer.id,
-        product_name: product.name,
+        quote_name: input.quoteName,
         version: nextVersion,
         shoot_at: new Date(input.shootAt),
         location: input.location,
@@ -156,7 +166,9 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         photo_count: input.photoCount ?? null,
         includes_original: input.includesOriginal,
         additional_notice: input.additionalNotice?.trim() || null,
-        common_notice: product.common_notice,
+        common_notice: product
+          ? product.common_notice
+          : latestQuote!.common_notice,
       },
     });
 
