@@ -255,7 +255,14 @@ export async function getReservationDetail(
       location: true,
       total_amount: true,
       created_at: true,
-      quote: { select: { duration_minutes: true, photo_count: true } },
+      quote: {
+        select: {
+          duration_minutes: true,
+          photo_count: true,
+          location_lat: true,
+          location_lng: true,
+        },
+      },
       user: { select: { id: true, nickname: true, profile_image_url: true } },
       photographer: {
         select: { id: true, nickname: true, profile_image_url: true },
@@ -293,6 +300,13 @@ export async function getReservationDetail(
     status: reservation.status,
     shootAt: reservation.shoot_at,
     location: reservation.location,
+    // 촬영 장소 지도 표시용 좌표 (견적 연결이 끊긴 예약은 null)
+    locationCoords: reservation.quote
+      ? {
+          lat: reservation.quote.location_lat,
+          lng: reservation.quote.location_lng,
+        }
+      : null,
     durationMinutes: reservation.quote?.duration_minutes ?? null,
     photoCount: reservation.quote?.photo_count ?? null,
     deliveryDueDate: toDeliveryDueDate(reservation.shoot_at),

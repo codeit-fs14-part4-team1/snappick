@@ -8,6 +8,8 @@ export const createQuoteSchema = z
     quoteName: z.string().trim().min(1).max(30),
     shootAt: z.iso.datetime({ offset: true }),
     location: z.string().trim().min(1),
+    locationLat: z.number().min(-90).max(90),
+    locationLng: z.number().min(-180).max(180),
     durationMinutes: z.number().int().positive(),
     price: z.number().int().nonnegative(),
     photoCount: z.number().int().positive().nullable().optional(),
