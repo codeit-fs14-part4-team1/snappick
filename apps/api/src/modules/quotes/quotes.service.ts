@@ -115,6 +115,26 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         );
       }
 
+      const pendingPayment = await tx.payments.findFirst({
+        where: {
+          status: 'PENDING',
+          quote: {
+            is: {
+              shooting_case_id: shootingCase.id,
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (pendingPayment) {
+        throw new HttpError(
+          409,
+          'PAYMENT_IN_PROGRESS',
+          '결제 처리 중에는 재견적을 보낼 수 없습니다.',
+        );
+      }
+
       shootingCaseId = shootingCase.id;
     } else {
       // 촬영 건 ID가 없으면 새 촬영 건을 만듬

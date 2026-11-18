@@ -134,6 +134,7 @@ export async function preparePayment(
         quote_id: true,
         status: true,
         pg_order_id: true,
+        amount: true,
       },
     });
 
@@ -163,16 +164,8 @@ export async function preparePayment(
 
     // 같은 촬영 건에 이미 준비된 결제가 있으면 중복 생성 차단
     const preparedPayment = relatedPayments.find(
-      (payment) => payment.status === 'READY',
+      (payment) => payment.status === 'READY' && payment.quote_id === quote.id,
     );
-
-    if (preparedPayment) {
-      throw new HttpError(
-        409,
-        'PAYMENT_ALREADY_PREPARED',
-        '이 촬영 건에 이미 준비된 결제가 있습니다.',
-      );
-    }
 
     const userId = quote.chat_room?.user_id;
     const photographerId = quote.photographer_id;
@@ -183,6 +176,17 @@ export async function preparePayment(
         'QUOTE_UNAVAILABLE',
         '결제에 필요한 사용자 또는 작가 정보를 찾을 수 없습니다.',
       );
+    }
+
+    if (preparedPayment) {
+      return {
+        paymentId: preparedPayment.id,
+        orderId: preparedPayment.pg_order_id,
+        orderName: quote.quote_name,
+        amount: preparedPayment.amount,
+        status: preparedPayment.status,
+        reused: true,
+      };
     }
 
     // 견적에 저장된 최종 금액으로 결제 준비
@@ -223,6 +227,9 @@ export async function confirmPayment(
           id: true,
           auth_account_id: true,
         },
+      },
+      quote: {
+        select: { shooting_case_id: true },
       },
     },
   });
@@ -316,15 +323,48 @@ export async function confirmPayment(
       },
     );
   } else {
-    const updated = await prisma.payments.updateMany({
-      where: {
-        id: payment.id,
-        status: 'READY',
-      },
-      data: {
-        status: 'PENDING',
-        pg_payment_id: input.paymentKey,
-      },
+    const shootingCaseId = payment.quote?.shooting_case_id;
+
+    if (!shootingCaseId) {
+      throw new HttpError(
+        409,
+        'QUOTE_UNAVAILABLE',
+        '결제에 연결된 견적을 찾을 수 없습니다.',
+      );
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT id
+        FROM shooting_cases
+        WHERE id = ${shootingCaseId}::uuid
+        FOR UPDATE
+      `;
+
+      const latestQuote = await tx.quotes.findFirst({
+        where: { shooting_case_id: shootingCaseId },
+        orderBy: { version: 'desc' },
+        select: { id: true },
+      });
+
+      if (!latestQuote || latestQuote.id !== payment.quote_id) {
+        throw new HttpError(
+          409,
+          'QUOTE_NOT_LATEST',
+          '새 견적이 도착해서 이 견적은 결제할 수 없습니다.',
+        );
+      }
+
+      return tx.payments.updateMany({
+        where: {
+          id: payment.id,
+          status: 'READY',
+        },
+        data: {
+          status: 'PENDING',
+          pg_payment_id: input.paymentKey,
+        },
+      });
     });
 
     if (updated.count === 0) {

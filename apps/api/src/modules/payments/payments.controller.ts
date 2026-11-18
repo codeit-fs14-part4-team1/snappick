@@ -11,9 +11,9 @@ export async function preparePaymentHandler(req: Request, res: Response) {
   const auth = getAuth(req);
   const input = preparePaymentSchema.parse(req.body);
 
-  const result = await preparePayment(auth.accountId, input);
+  const { reused, ...result } = await preparePayment(auth.accountId, input);
 
-  res.status(201).json(result);
+  res.status(reused ? 200 : 201).json(result);
 }
 
 export async function confirmPaymentHandler(req: Request, res: Response) {
