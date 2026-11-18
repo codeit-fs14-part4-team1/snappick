@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { ChatRoomSummary, ChatViewerRole } from '../types';
 import { getChatGreeting, getPartnerName } from '../utils';
@@ -7,22 +8,23 @@ import useChatMessages from '../useChatMessages';
 import useReadChatMessages from '../useReadChatMessages';
 import ChatMessageList from './ChatMessageList';
 import ChatMessageComposer from './ChatMessageComposer';
+import InquiryForm, { InquiryPrompt } from './InquiryForm';
 import useSendChatMessage from '../useSendChatMessage';
 import { useConnectedChatRooms } from './ConnectedChatsLayout';
 import styles from './ChatsLayout.module.css';
+
+type Props = {
+  room: ChatRoomSummary;
+  viewerRole: ChatViewerRole;
+  now: string;
+};
 
 export default function ConnectedChatMessages({
   room,
   viewerRole,
   now,
-}: {
-  room: ChatRoomSummary;
-  viewerRole: ChatViewerRole;
-  now: string;
-}) {
+}: Props) {
   const query = useChatMessages(room.id);
-  const markVisibleMessageRead = useReadChatMessages(room.id);
-  const { sendMessage, isSending, sentMessageId } = useSendChatMessage(room.id);
   const { isRealtimeConnected } = useConnectedChatRooms();
   if (query.isPending)
     return (
@@ -30,7 +32,7 @@ export default function ConnectedChatMessages({
         <p>메시지를 불러오고 있어요.</p>
       </div>
     );
-  if (query.isError && query.messages.length === 0) {
+  if (query.isError && !query.data) {
     const message = query.error instanceof Error ? query.error.message : '';
     const notice =
       message === 'API 요청 실패: 403'
@@ -48,6 +50,45 @@ export default function ConnectedChatMessages({
     );
   }
   return (
+    <ChatMessagesContent
+      room={room}
+      viewerRole={viewerRole}
+      now={now}
+      query={query}
+      isRealtimeConnected={isRealtimeConnected}
+    />
+  );
+}
+
+function ChatMessagesContent({
+  room,
+  viewerRole,
+  now,
+  query,
+  isRealtimeConnected,
+}: Props & {
+  query: ReturnType<typeof useChatMessages>;
+  isRealtimeConnected: boolean;
+}) {
+  const markVisibleMessageRead = useReadChatMessages(room.id);
+  const { sendMessage, sendInquiry, isSending, sentMessageId } =
+    useSendChatMessage(room.id);
+  // 첫 조회 후 초기 상태를 정하고, 작가의 답장이 와도 작성 중인 폼은 유지합니다.
+  const [step, setStep] = useState<'form' | 'skipped' | 'done'>(() =>
+    viewerRole === 'user' && !query.hasNextPage && query.messages.length === 0
+      ? 'form'
+      : 'done',
+  );
+  const formPanel = useRef<HTMLDivElement>(null);
+  const canOfferInquiry =
+    viewerRole === 'user' &&
+    !room.partner.isWithdrawn &&
+    step !== 'done' &&
+    !query.messages.some(
+      (message) => message.isMine && message.messageType !== 'SYSTEM',
+    );
+  const showInquiryForm = canOfferInquiry && step === 'form';
+  return (
     <>
       {isRealtimeConnected &&
         query.isRefetchError &&
@@ -64,12 +105,51 @@ export default function ConnectedChatMessages({
           </div>
         )}
       <ChatMessageList
+        startAtTop={showInquiryForm}
         onVisibleMessage={markVisibleMessageRead}
         scrollToMessageId={sentMessageId}
         messages={query.messages}
         partnerName={getPartnerName(room.partner)}
         partnerImageUrl={room.partner.profileImageUrl}
         now={now}
+        endContent={
+          canOfferInquiry ? (
+            <div>
+              <div ref={formPanel} hidden={!showInquiryForm}>
+                <InquiryForm
+                  referenceDate={now}
+                  onSkip={() => setStep('skipped')}
+                  onSubmit={async (payload) => {
+                    try {
+                      await sendInquiry(payload);
+                      setStep('done');
+                    } catch (error) {
+                      if (
+                        error instanceof Error &&
+                        error.message === 'API 요청 실패: 409'
+                      ) {
+                        setStep('done');
+                        return;
+                      }
+                      throw error;
+                    }
+                  }}
+                />
+              </div>
+              {step === 'skipped' && (
+                <InquiryPrompt
+                  disabled={isSending}
+                  onResume={() => {
+                    setStep('form');
+                    requestAnimationFrame(() =>
+                      formPanel.current?.querySelector('button')?.focus(),
+                    );
+                  }}
+                />
+              )}
+            </div>
+          ) : undefined
+        }
         greeting={
           viewerRole === 'user' &&
           !room.partner.isWithdrawn &&
@@ -90,6 +170,7 @@ export default function ConnectedChatMessages({
         viewerRole={viewerRole}
         isWithdrawn={room.partner.isWithdrawn}
         isSending={isSending}
+        isBlocked={showInquiryForm}
         onSend={sendMessage}
       />
     </>

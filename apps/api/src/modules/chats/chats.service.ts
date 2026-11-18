@@ -406,7 +406,7 @@ export async function getMessages(
           chatRoomId: message.quote.chat_room_id,
           shootingCaseId: message.quote.shooting_case_id,
           version: message.quote.version,
-          productName: message.quote.product_name,
+          quoteName: message.quote.quote_name,
           shootAt: message.quote.shoot_at,
           location: message.quote.location,
           durationMinutes: message.quote.duration_minutes,
