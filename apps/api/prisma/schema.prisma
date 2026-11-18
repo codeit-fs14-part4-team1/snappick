@@ -420,13 +420,12 @@ model quotes {
   chat_room_id      String?  @db.Uuid
   shooting_case_id  String @db.Uuid
   photographer_id   String?  @db.Uuid
-  product_name      String
+  quote_name        String
   version           Int
   shoot_at          DateTime
   location          String
   duration_minutes  Int
   price             Int
-  extra_fee         Int?
   photo_count       Int?
   includes_original Boolean
   additional_notice String?
