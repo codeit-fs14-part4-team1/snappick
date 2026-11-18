@@ -2,6 +2,8 @@
  * 사진 파일 저장소. 개발은 로컬 디스크, 배포는 S3를 쓴다 (STORAGE_DRIVER)
  * 임시 원본: 'uploads/{photographerId}/{uuid}.png' (FE가 직접 올리고, 등록하면 지운다)
  * 보관본: 'photos/{photographerId}/{uuid}.webp' (photos.storage_location에 저장)
+ * 프로필 이미지: 'uploads/profiles/{accountId}/{uuid}.png' → 'profiles/{accountId}/{uuid}.webp'
+ *   (users/photographers.profile_image_url에 저장)
  */
 export type UploadTarget = {
   key: string;

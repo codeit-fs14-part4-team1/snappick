@@ -38,8 +38,9 @@ export async function registerPhotosHandler(req: Request, res: Response) {
     );
 }
 
+// 사진: uploads/{photographerId}/{uuid}.ext, 프로필 이미지: uploads/profiles/{accountId}/{uuid}.ext
 const LOCAL_UPLOAD_KEY =
-  /^uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+  /^uploads\/(profiles\/)?[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
 // 개발용 로컬 저장소에 파일 받기 (S3 presigned URL에 PUT하는 것과 같은 흐름)
 export async function putLocalUploadHandler(req: Request, res: Response) {

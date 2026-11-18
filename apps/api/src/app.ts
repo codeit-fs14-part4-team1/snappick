@@ -15,6 +15,7 @@ import {
   localUploadRouter,
   myPhotoUploadsRouter,
 } from './modules/uploads/uploads.routes.js';
+import { myProfileImageRouter } from './modules/uploads/profile-image.routes.js';
 import { storageDriver } from './lib/storage/index.js';
 import { LOCAL_UPLOAD_PATH } from './lib/storage/local-storage.js';
 import { myPhotosRouter } from './modules/my-photos/my-photos.routes.js';
@@ -32,6 +33,7 @@ import {
 } from './modules/reviews/reviews.routes.js';
 import { quotesRouter } from './modules/quotes/quotes.routes.js';
 import { myReservationsRouter } from './modules/reservations/reservations.routes.js';
+import { reviewSummariesRouter } from './modules/review-summaries/review-summaries.routes.js';
 
 export const app: Express = express();
 
@@ -77,9 +79,11 @@ app.use('/photographers', photographerSavesRouter);
 app.use('/photographers', photographerProductsRouter);
 app.use('/me', myPickRouter);
 app.use('/photographers', photographerReviewsRouter);
+app.use('/photographers', reviewSummariesRouter);
 app.use('/me', myReviewsRouter);
 app.use('/me', myReservationsRouter);
 app.use('/me/photos', myPhotoUploadsRouter);
+app.use('/me/profile-image', myProfileImageRouter);
 if (storageDriver === 'local') {
   app.use(LOCAL_UPLOAD_PATH, localUploadRouter);
 }

@@ -48,6 +48,34 @@ export async function toStoredWebp(
   }
 }
 
+// 프로필 이미지: 가운데 기준 512px 정사각형 WebP
+const PROFILE_SIZE = 512;
+
+/**
+ * 원본을 프로필 이미지로 바꾼다. 이미지가 아니거나 실제 형식이 확장자와 다르면 null
+ * 정사각형으로 잘라내므로 작은 이미지는 512px까지 늘어난다
+ */
+export async function toProfileWebp(
+  input: Uint8Array,
+  extension: string,
+): Promise<StoredImage | null> {
+  try {
+    const image = sharp(input);
+    const { format } = await image.metadata();
+    if (format !== FORMATS[extension]) {
+      return null;
+    }
+    const { data, info } = await image
+      .rotate()
+      .resize({ width: PROFILE_SIZE, height: PROFILE_SIZE, fit: 'cover' })
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer({ resolveWithObject: true });
+    return { data, width: info.width, height: info.height };
+  } catch {
+    return null;
+  }
+}
+
 let queue: Promise<unknown> = Promise.resolve();
 
 // 여러 요청이 동시에 들어와도 차례대로 처리한다 (staging 메모리 1GB)
