@@ -252,6 +252,35 @@ export async function confirmPayment(
     );
   }
 
+  if (payment.status === 'SUCCEEDED') {
+    if (payment.pg_payment_id !== input.paymentKey) {
+      throw new HttpError(
+        409,
+        'PAYMENT_KEY_MISMATCH',
+        '기존 결제 요청과 결제 키가 일치하지 않습니다.',
+      );
+    }
+
+    const reservation = await prisma.reservations.findUnique({
+      where: { payment_id: payment.id },
+      select: { id: true },
+    });
+
+    if (!reservation) {
+      throw new HttpError(
+        409,
+        'PAYMENT_STATE_CHANGED',
+        '결제에 연결된 예약을 찾을 수 없습니다.',
+      );
+    }
+
+    return {
+      paymentId: payment.id,
+      status: 'SUCCEEDED',
+      reservationId: reservation.id,
+    };
+  }
+
   const tossSecretKey = process.env.TOSS_SECRET_KEY;
 
   if (!tossSecretKey?.startsWith('test_')) {
@@ -266,49 +295,68 @@ export async function confirmPayment(
   const authorization =
     'Basic ' + Buffer.from(`${tossSecretKey}:`).toString('base64');
 
-  // READY 상태인 결제만 승인 처리 중으로 변경
-  const updated = await prisma.payments.updateMany({
-    where: {
-      id: payment.id,
-      status: 'READY',
-    },
-    data: {
-      status: 'PENDING',
-      pg_payment_id: input.paymentKey,
-    },
-  });
+  let tossResponse: Response;
 
-  if (updated.count === 0) {
-    throw new HttpError(
-      409,
-      'PAYMENT_NOT_READY',
-      '이미 처리 중이거나 처리된 결제입니다.',
+  if (payment.status === 'PENDING') {
+    // 기존 결제 시도와 같은 키인지 확인합니다.
+    if (payment.pg_payment_id !== input.paymentKey) {
+      throw new HttpError(
+        409,
+        'PAYMENT_KEY_MISMATCH',
+        '기존 결제 요청과 결제 키가 일치하지 않습니다.',
+      );
+    }
+
+    const paymentKey = encodeURIComponent(input.paymentKey);
+    tossResponse = await fetch(
+      `https://api.tosspayments.com/v1/payments/${paymentKey}`,
+      {
+        method: 'GET',
+        headers: { Authorization: authorization },
+      },
+    );
+  } else {
+    const updated = await prisma.payments.updateMany({
+      where: {
+        id: payment.id,
+        status: 'READY',
+      },
+      data: {
+        status: 'PENDING',
+        pg_payment_id: input.paymentKey,
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new HttpError(
+        409,
+        'PAYMENT_NOT_READY',
+        '이미 처리 중이거나 처리된 결제입니다.',
+      );
+    }
+
+    tossResponse = await fetch(
+      'https://api.tosspayments.com/v1/payments/confirm',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: authorization,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentKey: input.paymentKey,
+          orderId: input.orderId,
+          amount: payment.amount,
+        }),
+      },
     );
   }
-
-  // 토스에 결제 승인 요청
-  // https://docs.tosspayments.com/reference 내용 참조
-  const tossResponse = await fetch(
-    'https://api.tosspayments.com/v1/payments/confirm',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: authorization,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        paymentKey: input.paymentKey,
-        orderId: input.orderId,
-        amount: payment.amount,
-      }),
-    },
-  );
 
   if (!tossResponse.ok) {
     throw new HttpError(
       502,
       'TOSS_CONFIRM_FAILED',
-      '토스 결제 승인 응답을 확인해 주세요.',
+      '토스 결제 상태를 확인할 수 없습니다.',
     );
   }
 
@@ -348,35 +396,41 @@ export async function confirmPayment(
     );
   }
 
-  // 확인된 결제 성공을 우리 DB에 저장
-  const completed = await prisma.payments.updateMany({
-    where: {
-      id: payment.id,
-      status: 'PENDING',
-      pg_payment_id: input.paymentKey,
-    },
-    data: {
-      status: 'SUCCEEDED',
-      paid_at: new Date(),
-    },
-  });
+  const userId = payment.user.id;
 
-  if (completed.count === 0) {
-    throw new HttpError(
-      409,
-      'PAYMENT_STATE_CHANGED',
-      '토스 결제는 승인됐지만 결제 상태를 확인해야 합니다.',
+  return prisma.$transaction(async (tx) => {
+    const completed = await tx.payments.updateMany({
+      where: {
+        id: payment.id,
+        status: 'PENDING',
+        pg_payment_id: input.paymentKey,
+      },
+      data: {
+        status: 'SUCCEEDED',
+        paid_at: new Date(),
+      },
+    });
+
+    if (completed.count === 0) {
+      throw new HttpError(
+        409,
+        'PAYMENT_STATE_CHANGED',
+        '토스 결제는 승인됐지만 결제 상태를 확인해야 합니다.',
+      );
+    }
+
+    const reservation = await createReservation(
+      userId,
+      {
+        paymentId: payment.id,
+      },
+      tx,
     );
-  }
 
-  // 결제 성공 후 기존 예약 생성 함수 호출
-  const reservation = await createReservation(payment.user.id, {
-    paymentId: payment.id,
+    return {
+      paymentId: payment.id,
+      status: 'SUCCEEDED',
+      reservationId: reservation.reservationId,
+    };
   });
-
-  return {
-    paymentId: payment.id,
-    status: 'SUCCEEDED',
-    reservationId: reservation.reservationId,
-  };
 }
