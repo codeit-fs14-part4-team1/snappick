@@ -27,7 +27,10 @@ export type MapPickerMessage = {
 
 // ---- 사용하는 부분만 선언한 네이버 지도 타입 ----
 export type NaverLatLng = { lat(): number; lng(): number };
-export type NaverMap = { setCenter(center: NaverLatLng): void };
+export type NaverMap = {
+  setCenter(center: NaverLatLng): void;
+  destroy(): void;
+};
 export type NaverMarker = { setPosition(position: NaverLatLng): void };
 
 type ServiceResponse<T> = { v2: T };

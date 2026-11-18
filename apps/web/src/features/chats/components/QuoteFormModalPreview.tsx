@@ -3,6 +3,7 @@
 // ==================== [임시] 견적 모달 개발용 미리보기 (작업 후 파일 삭제) ====================
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import NaverMapView from '@/features/map/components/NaverMapView';
 import type { PickedLocation } from '@/features/map/naver-maps';
 import { useMapPicker } from '@/features/map/useMapPicker';
 
@@ -29,6 +30,16 @@ export default function QuoteFormModalPreview() {
           }}
         />
       </label>
+
+      {/* 지도 팝업에서 받은 위치 확인용 */}
+      {location && (
+        <section aria-label="선택한 촬영 장소">
+          <p>주소: {location.address}</p>
+          <p>위도: {location.lat}</p>
+          <p>경도: {location.lng}</p>
+          <NaverMapView lat={location.lat} lng={location.lng} />
+        </section>
+      )}
     </Modal>
   );
 }
