@@ -68,3 +68,6 @@ terraform.rc
 # 로컬 업로드 저장소 (STORAGE_DRIVER=local)
 apps/web/public/uploads/
 apps/web/public/photos/
+
+# 로컬 프로필 이미지 업로드 파일 제외
+/apps/web/public/profiles/
