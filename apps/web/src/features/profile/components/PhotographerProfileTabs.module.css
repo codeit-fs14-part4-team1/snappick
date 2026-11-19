@@ -1,10 +1,15 @@
-/* 작가 프로필 콘텐츠 탭 영역 */
+/* 작가 프로필 콘텐츠 탭을 Header 아래에 고정함 */
 .tabs {
+  position: sticky;
+  top: 81px;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 32px;
   width: 100%;
   margin-top: 48px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-base, #fff);
 }
 
 /* 개별 탭 항목 */
@@ -14,12 +19,27 @@
   align-items: center;
   flex-shrink: 0;
   gap: 6px;
-  padding-bottom: 14px;
+  padding: 0 0 14px;
+  border: none;
+  background: transparent;
   color: var(--color-text-tertiary);
+  font-family: inherit;
   font-size: 18px;
   font-weight: 500;
   line-height: 26px;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 탭에 마우스를 올렸을 때 글자 색상을 변경함 */
+.tab:hover {
+  color: var(--color-text-primary);
+}
+
+/* 탭에 키보드로 접근했을 때 포커스 상태를 표시함 */
+.tab:focus-visible {
+  outline: none;
+  box-shadow: 0 2px 0 var(--color-accent);
 }
 
 /* 탭 숫자의 글자 굵기 설정 */
@@ -27,18 +47,18 @@
   font-weight: 500;
 }
 
-/* 현재 선택된 탭 강조 */
+/* 현재 활성화된 탭 강조 */
 .activeTab {
   color: var(--color-text-primary);
   font-weight: 700;
 }
 
-/* 선택된 탭 숫자 색상 */
+/* 활성화된 탭 숫자 색상 */
 .activeTab .tabCount {
   color: var(--color-primary);
 }
 
-/* 선택된 탭 아래 밑줄 표시 */
+/* 활성화된 탭 아래 밑줄 표시 */
 .activeTab::after {
   position: absolute;
   right: 0;
@@ -49,11 +69,19 @@
   content: '';
 }
 
-/* 모바일 탭 글자 크기와 스크롤 설정 */
+/* 모바일 탭 고정 위치와 가로 스크롤을 설정함 */
 @media (max-width: 767px) {
   .tabs {
+    top: 57px;
+    gap: 24px;
     overflow-x: auto;
     overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  /* 모바일 탭 스크롤바를 숨김 */
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tab {
