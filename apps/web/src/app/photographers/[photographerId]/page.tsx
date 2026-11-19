@@ -314,7 +314,8 @@ export default function PhotographerProfilePage() {
     input: UpdatePhotographerProfileInput,
     imageFile?: File,
   ) => {
-    if (!editDraft) {
+    // 편집 상태가 없거나 서버 저장 중이면 임시 변경을 막음
+    if (!editDraft || isSavingEdit) {
       return;
     }
 
@@ -341,11 +342,13 @@ export default function PhotographerProfilePage() {
     );
   };
 
-  // 촬영 상품 신규 등록 또는 수정을 임시 상태에만 반영함
   const handleApplyProduct = (
     productId: string | null,
     input: CreatePhotographerProductInput,
   ) => {
+    // 서버 저장 중에는 상품 등록 및 수정 내용을 임시 상태에 반영하지 않음
+    if (!editDraft || isSavingEdit) return;
+
     if (productId === null && (editDraft?.products.length ?? 0) >= 3) {
       showToast('촬영 상품은 최대 3개까지 등록할 수 있어요.', 'error');
       return;
@@ -376,6 +379,9 @@ export default function PhotographerProfilePage() {
 
   // 삭제 버튼도 최종 저장 전에는 API를 호출하지 않음
   const handleDeleteProduct = (productId: string) => {
+    // 서버 저장 중에는 상품 삭제를 임시 상태에 반영하지 않음
+    if (!editDraft || isSavingEdit) return;
+
     setEditDraft((previous) =>
       previous
         ? {
@@ -626,8 +632,14 @@ export default function PhotographerProfilePage() {
     // 작가 본인의 편집 모드 상태를 전달함
     isEditingProfile: photographer.isSelf && isEditingProfile,
 
-    // 기본 정보 수정 버튼 클릭 시 모달을 표시함
-    onEditBasicInfo: () => setIsBasicInfoModalOpen(true),
+    // 서버 저장 중에는 기본 정보 수정 버튼을 비활성화함
+    isSavingEdit,
+
+    // 서버 저장 중에는 기본 정보 수정 모달을 열지 않음
+    onEditBasicInfo: () => {
+      if (isSavingEdit) return;
+      setIsBasicInfoModalOpen(true);
+    },
 
     // 로그인 계정 유형을 전달하고 비회원은 null로 처리함
     viewerAccountType: user?.accountType ?? null,
@@ -708,6 +720,7 @@ export default function PhotographerProfilePage() {
           onClose={() => setIsBasicInfoModalOpen(false)}
           onApply={handleApplyBasicInfo}
           photographer={activeProfile}
+          isSavingEdit={isSavingEdit}
         />
       )}
       {/* 프로필 수정 중에는 콘텐츠 탭을 숨기고 공개 프로필에서만 표시함 */}
@@ -747,6 +760,7 @@ export default function PhotographerProfilePage() {
           isSelf={photographer.isSelf}
           isReady={photographer.isReady}
           isEditing={isEditingProfile && photographer.isSelf}
+          isSavingEdit={isSavingEdit}
           isBasicInfoComplete={isBasicInfoComplete}
           onApplyProduct={handleApplyProduct}
           onDeleteProduct={handleDeleteProduct}

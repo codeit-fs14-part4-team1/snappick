@@ -18,6 +18,9 @@ type PhotographerProductModalProps = {
   open: boolean;
   product: PhotographerProduct | null;
   onClose: () => void;
+
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
   // 상위 컴포넌트의 임시 상품 목록만 변경함
   onApply: (
     productId: string | null,
@@ -39,6 +42,7 @@ export default function PhotographerProductModal({
   onClose,
   onApply,
   onDelete,
+  isSavingEdit = false,
 }: PhotographerProductModalProps) {
   const formId = useId();
 
@@ -71,14 +75,19 @@ export default function PhotographerProductModal({
   // 상품 삭제 확인 화면의 표시 여부를 관리함
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  // 서버 요청이 없으므로 모달을 닫으면 입력 중인 값만 취소됨
+  // 서버 저장 중에는 모달을 닫지 않도록 보호함
   const handleClose = () => {
+    if (isSavingEdit) return;
+
     onClose();
   };
 
   // 상품 입력값을 검증한 뒤 임시 상품 목록에 적용함
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // 서버 저장 중에는 상품 변경 사항을 임시 적용하지 않음
+    if (isSavingEdit) return;
 
     const trimmedName = name.trim();
     const priceValue = Number(price.replaceAll(',', ''));
@@ -150,7 +159,9 @@ export default function PhotographerProductModal({
 
   // 삭제를 확정해도 서버에서 삭제하지 않고 임시 목록에서만 제거함
   const handleDelete = () => {
-    if (!product) return;
+    // 서버 저장 중에는 상품 삭제를 차단함
+    if (!product || isSavingEdit) return;
+
     onDelete(product.productId);
   };
 
@@ -173,6 +184,7 @@ export default function PhotographerProductModal({
               variant="outline"
               size="lg"
               onClick={() => setIsDeleteConfirmOpen(false)}
+              disabled={isSavingEdit}
             >
               취소
             </Button>
@@ -181,6 +193,7 @@ export default function PhotographerProductModal({
               type="button"
               className={styles.dangerButton}
               onClick={handleDelete}
+              disabled={isSavingEdit}
             >
               삭제
             </button>
@@ -193,6 +206,7 @@ export default function PhotographerProductModal({
                 type="button"
                 className={styles.deleteTrigger}
                 onClick={() => setIsDeleteConfirmOpen(true)}
+                disabled={isSavingEdit}
               >
                 상품 삭제
               </button>
@@ -201,11 +215,22 @@ export default function PhotographerProductModal({
             )}
 
             <div className={styles.footerRight}>
-              <Button variant="outline" size="lg" onClick={handleClose}>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleClose}
+                disabled={isSavingEdit}
+              >
                 취소
               </Button>
 
-              <Button type="submit" form={formId} variant="primary" size="lg">
+              <Button
+                type="submit"
+                form={formId}
+                variant="primary"
+                size="lg"
+                disabled={isSavingEdit}
+              >
                 적용
               </Button>
             </div>
@@ -237,6 +262,7 @@ export default function PhotographerProductModal({
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={50}
+              disabled={isSavingEdit}
               required
             />
           </div>
@@ -328,22 +354,26 @@ export default function PhotographerProductModal({
             <span className={styles.label}>원본 제공 여부 (선택)</span>
 
             <div className={styles.choiceGroup}>
+              {/* 원본 제공 선택 */}
               <button
                 type="button"
                 className={styles.choiceButton}
                 data-selected={includesOriginal}
                 aria-pressed={includesOriginal}
                 onClick={() => setIncludesOriginal(true)}
+                disabled={isSavingEdit}
               >
                 제공
               </button>
 
+              {/* 원본 미제공 선택 */}
               <button
                 type="button"
                 className={styles.choiceButton}
                 data-selected={!includesOriginal}
                 aria-pressed={!includesOriginal}
                 onClick={() => setIncludesOriginal(false)}
+                disabled={isSavingEdit}
               >
                 미제공
               </button>

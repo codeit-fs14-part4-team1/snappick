@@ -27,6 +27,10 @@ type PhotographerProductsProps = {
   isSelf?: boolean;
   isReady?: boolean;
   isEditing?: boolean;
+
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
+
   isBasicInfoComplete: boolean;
   // 편집 중 변경 사항은 서버에 저장하지 않고 상위 임시 상태에 반영함
   onApplyProduct?: (
@@ -52,6 +56,7 @@ export default function PhotographerProducts({
   isSelf = false,
   isReady = true,
   isEditing = false,
+  isSavingEdit = false,
   isBasicInfoComplete,
   onApplyProduct,
   onDeleteProduct,
@@ -68,6 +73,9 @@ export default function PhotographerProducts({
 
   // 임시 프로필 기본 정보 완료 여부를 확인한 뒤 상품 등록 모달을 표시함
   const handleCreateProduct = () => {
+    // 서버 저장 중에는 상품 등록 모달을 열지 않음
+    if (isSavingEdit) return;
+
     if (!isBasicInfoComplete) {
       showToast(
         '촬영 상품을 등록하려면 먼저 프로필 기본 정보 설정을 완료해 주세요.',
@@ -82,6 +90,9 @@ export default function PhotographerProducts({
 
   // 상품 수정 모달을 표시함
   const handleEditProduct = (product: PhotographerProduct) => {
+    // 서버 저장 중에는 상품 수정 모달을 열지 않음
+    if (isSavingEdit) return;
+
     setEditingProduct(product);
     setIsProductModalOpen(true);
   };
@@ -91,6 +102,9 @@ export default function PhotographerProducts({
     productId: string | null,
     input: CreatePhotographerProductInput,
   ) => {
+    // 서버 저장 중에는 상품 변경 사항을 임시 적용하지 않음
+    if (isSavingEdit) return;
+
     onApplyProduct?.(productId, input);
     setIsProductModalOpen(false);
     showToast(
@@ -100,6 +114,9 @@ export default function PhotographerProducts({
 
   // 상품 삭제 역시 임시 목록에서만 삭제함
   const handleDeleteProduct = (productId: string) => {
+    // 서버 저장 중에는 상품 삭제를 임시 적용하지 않음
+    if (isSavingEdit) return;
+
     onDeleteProduct?.(productId);
     setIsProductModalOpen(false);
     showToast('상품 삭제를 임시 적용했어요. 수정 완료를 눌러 저장해 주세요.');
@@ -131,6 +148,7 @@ export default function PhotographerProducts({
                   variant="outline"
                   size="lg"
                   onClick={handleCreateProduct}
+                  disabled={isSavingEdit}
                 >
                   + 상품 추가
                 </Button>
@@ -194,6 +212,7 @@ export default function PhotographerProducts({
                     type="button"
                     className={styles.editButton}
                     onClick={() => handleEditProduct(product)}
+                    disabled={isSavingEdit}
                   >
                     상품 수정
                   </button>
@@ -214,6 +233,7 @@ export default function PhotographerProducts({
         <PhotographerProductModal
           open
           product={editingProduct}
+          isSavingEdit={isSavingEdit}
           onClose={() => setIsProductModalOpen(false)}
           onApply={handleApplyProduct}
           onDelete={handleDeleteProduct}

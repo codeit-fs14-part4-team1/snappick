@@ -35,6 +35,9 @@ type PhotographerProfileInfoProps = {
   // 현재 프로필 편집 모드인지 확인함
   isEditingProfile?: boolean;
 
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
+
   // 기본 정보 수정 모달 열기를 처리함
   onEditBasicInfo?: () => void;
 
@@ -65,6 +68,7 @@ export default function PhotographerProfileInfo({
   isReady = true,
   onEditProfile,
   isEditingProfile = false,
+  isSavingEdit = false,
   onEditBasicInfo,
   viewerAccountType = null,
 }: PhotographerProfileInfoProps) {
@@ -231,6 +235,7 @@ export default function PhotographerProfileInfo({
               size="lg"
               fullWidth
               onClick={isEditingProfile ? onEditBasicInfo : onEditProfile}
+              disabled={isSavingEdit}
             >
               {isEditingProfile
                 ? '기본 정보 수정'

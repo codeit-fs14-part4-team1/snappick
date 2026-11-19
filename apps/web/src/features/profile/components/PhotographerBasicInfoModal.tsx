@@ -25,6 +25,9 @@ type PhotographerBasicInfoModalProps = {
   onClose: () => void;
   photographer: PhotographerProfile;
 
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
+
   // 기본 정보와 선택한 이미지를 서버에 저장하지 않고 임시 상태에 반영함
   onApply: (input: UpdatePhotographerProfileInput, imageFile?: File) => void;
 };
@@ -34,6 +37,7 @@ export default function PhotographerBasicInfoModal({
   onClose,
   photographer,
   onApply,
+  isSavingEdit = false,
 }: PhotographerBasicInfoModalProps) {
   // 입력 폼과 각 입력 요소의 고유 ID를 생성함
   const formId = useId();
@@ -99,7 +103,8 @@ export default function PhotographerBasicInfoModal({
 
   // 이미지 파일의 형식을 확인하고 미리보기를 생성함
   const handleSelectImage = (file: File | undefined) => {
-    if (!file) {
+    // 서버 저장 중에는 새로운 이미지 선택을 처리하지 않음
+    if (isSavingEdit || !file) {
       return;
     }
 
@@ -176,6 +181,9 @@ export default function PhotographerBasicInfoModal({
 
   // 모달을 닫을 때 저장하지 않은 입력값과 선택 상태를 초기화함
   const handleClose = () => {
+    // 서버 저장 중에는 모달 닫기 요청을 처리하지 않음
+    if (isSavingEdit) return;
+
     formRef.current?.reset();
 
     // 선택한 프로필 이미지와 미리보기 상태를 초기화함
@@ -203,12 +211,23 @@ export default function PhotographerBasicInfoModal({
       footer={
         <>
           {/* 모달의 취소는 적용하지 않은 입력값만 폐기함 */}
-          <Button variant="outline" size="lg" onClick={handleRequestClose}>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleRequestClose}
+            disabled={isSavingEdit}
+          >
             취소
           </Button>
 
           {/* 최종 서버 저장 전 화면에 입력값을 임시 적용함 */}
-          <Button type="submit" form={formId} variant="primary" size="lg">
+          <Button
+            type="submit"
+            form={formId}
+            variant="primary"
+            size="lg"
+            disabled={isSavingEdit}
+          >
             적용
           </Button>
         </>
@@ -221,6 +240,9 @@ export default function PhotographerBasicInfoModal({
         className={styles.form}
         onSubmit={(event) => {
           event.preventDefault();
+
+          // 서버 저장 중에는 기본 정보 변경 사항을 임시 적용하지 않음
+          if (isSavingEdit) return;
 
           // 폼에 입력한 기본 정보 값을 가져옴
           const formData = new FormData(event.currentTarget);
@@ -320,6 +342,7 @@ export default function PhotographerBasicInfoModal({
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 hidden
+                disabled={isSavingEdit}
                 onChange={(event) =>
                   handleSelectImage(event.currentTarget.files?.[0])
                 }
@@ -330,6 +353,7 @@ export default function PhotographerBasicInfoModal({
                 type="button"
                 className={styles.imageChangeButton}
                 onClick={() => imageInputRef.current?.click()}
+                disabled={isSavingEdit}
               >
                 이미지 변경
               </button>
@@ -355,6 +379,7 @@ export default function PhotographerBasicInfoModal({
               defaultValue={photographer.nickname}
               minLength={2}
               maxLength={20}
+              disabled={isSavingEdit}
               required
             />
           </div>
@@ -376,6 +401,7 @@ export default function PhotographerBasicInfoModal({
                 min={0}
                 max={80}
                 step={1}
+                disabled={isSavingEdit}
                 required
                 aria-describedby={`${formId}-career-unit`}
               />
@@ -400,6 +426,7 @@ export default function PhotographerBasicInfoModal({
             defaultValue={photographer.introduction ?? ''}
             maxLength={1000}
             rows={5}
+            disabled={isSavingEdit}
           />
         </div>
 
@@ -424,6 +451,7 @@ export default function PhotographerBasicInfoModal({
                 aria-expanded={isRegionPickerOpen}
                 aria-controls={`${formId}-region-picker`}
                 onClick={handleOpenRegionPicker}
+                disabled={isSavingEdit}
               >
                 + 지역 추가
               </button>
@@ -457,6 +485,7 @@ export default function PhotographerBasicInfoModal({
                         className={styles.regionCheckbox}
                         checked={draftRegions.includes(region)}
                         onChange={() => handleToggleDraftRegion(region)}
+                        disabled={isSavingEdit}
                       />
 
                       <span>{RegionLabel[region]}</span>
@@ -470,6 +499,7 @@ export default function PhotographerBasicInfoModal({
                     type="button"
                     className={styles.regionResetButton}
                     onClick={handleResetDraftRegions}
+                    disabled={isSavingEdit}
                   >
                     초기화
                   </button>
@@ -478,6 +508,7 @@ export default function PhotographerBasicInfoModal({
                     type="button"
                     className={styles.regionApplyButton}
                     onClick={handleApplyRegions}
+                    disabled={isSavingEdit}
                   >
                     적용
                   </button>
@@ -515,6 +546,7 @@ export default function PhotographerBasicInfoModal({
                         : [...prev, category],
                     )
                   }
+                  disabled={isSavingEdit}
                 >
                   {CategoryLabel[category]}
                 </button>
