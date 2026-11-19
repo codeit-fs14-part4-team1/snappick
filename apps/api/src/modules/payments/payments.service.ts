@@ -427,6 +427,31 @@ export async function confirmPayment(
     );
   }
 
+  if (tossPayment.status === 'ABORTED' || tossPayment.status === 'EXPIRED') {
+    const updated = await prisma.payments.updateMany({
+      where: {
+        id: payment.id,
+        status: 'PENDING',
+        pg_payment_id: input.paymentKey,
+      },
+      data: { status: 'FAILED' },
+    });
+
+    if (updated.count === 0) {
+      throw new HttpError(
+        409,
+        'PAYMENT_STATE_CHANGED',
+        '결제 상태가 변경되었습니다. 다시 확인해 주세요.',
+      );
+    }
+
+    throw new HttpError(
+      409,
+      'PAYMENT_RETRY_REQUIRED',
+      '결제가 실패했거나 만료되었습니다. 결제를 다시 시작해 주세요.',
+    );
+  }
+
   // 토스에서 결제 완료 상태인지 확인
   if (tossPayment.status !== 'DONE') {
     throw new HttpError(
