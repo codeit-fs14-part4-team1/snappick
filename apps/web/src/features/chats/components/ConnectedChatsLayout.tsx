@@ -9,7 +9,8 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import AuthGuard from '@/features/auth/components/AuthGuard';
+import type { AuthUser } from '@/features/auth/types';
 import { useSelectedLayoutSegment } from 'next/navigation';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { getChatRooms } from '../api';
@@ -17,7 +18,6 @@ import useChatRooms from '../useChatRooms';
 import useChatSocket from '../useChatSocket';
 import type { ChatRoomListLoader, ChatRoomSummary } from '../types';
 import ChatsLayout from './ChatsLayout';
-import styles from './ChatsLayout.module.css';
 
 type ChatRoomsContextValue = {
   rooms: ChatRoomSummary[];
@@ -40,7 +40,25 @@ export default function ConnectedChatsLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, authStatus, accessToken, clearAuth } = useAuth();
+  return (
+    <AuthGuard loginDescription="로그인 후 문의 내역을 확인할 수 있어요.">
+      {(user) => (
+        <AuthenticatedChatsLayout user={user}>
+          {children}
+        </AuthenticatedChatsLayout>
+      )}
+    </AuthGuard>
+  );
+}
+
+function AuthenticatedChatsLayout({
+  user,
+  children,
+}: {
+  user: AuthUser;
+  children: ReactNode;
+}) {
+  const { authStatus, accessToken, clearAuth } = useAuth();
   const selectedRoomId = useSelectedLayoutSegment();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -103,32 +121,6 @@ export default function ConnectedChatsLayout({
     query.rooms.map((room) => room.id),
     selectedRoomId,
   );
-
-  if (authStatus === 'initializing')
-    return <p role="status">로그인 정보를 확인하고 있어요.</p>;
-  if (authStatus === 'error')
-    return (
-      <section className={styles.empty} role="alert">
-        <h2>로그인 정보를 확인하지 못했어요</h2>
-        <button
-          type="button"
-          className={styles.exploreLink}
-          onClick={() => window.location.reload()}
-        >
-          다시 시도
-        </button>
-      </section>
-    );
-  if (!user || authStatus !== 'authenticated')
-    return (
-      <section className={styles.empty}>
-        <h2>로그인이 필요해요</h2>
-        <p>로그인 후 문의 내역을 확인할 수 있어요.</p>
-        <Link className={styles.exploreLink} href="/login">
-          로그인
-        </Link>
-      </section>
-    );
 
   const role = user.accountType === 'PHOTOGRAPHER' ? 'photographer' : 'user';
   return (
