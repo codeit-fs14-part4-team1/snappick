@@ -49,6 +49,12 @@ export default function NaverMapView({
       map.current = new maps.Map(mapElement.current, {
         center: position,
         zoom,
+        // 확대·축소 +, - 버튼만 오른쪽 위에 표시 (슬라이더 없음)
+        zoomControl: true,
+        zoomControlOptions: {
+          position: maps.Position.TOP_RIGHT,
+          style: maps.ZoomControlStyle.SMALL,
+        },
       });
       marker.current = new maps.Marker({ position, map: map.current });
       return;

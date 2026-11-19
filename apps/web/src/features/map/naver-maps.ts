@@ -10,6 +10,10 @@ export const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 export const naverMapScriptUrl = (clientId: string) =>
   `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}&submodules=geocoder`;
 
+// 네이버 지도 웹에서 주소를 검색한 화면 (별도 API 키 없이 열리는 일반 링크)
+export const naverMapSearchUrl = (address: string) =>
+  `https://map.naver.com/p/search/${encodeURIComponent(address)}`;
+
 // 지도 팝업에서 고른 위치 (opener로 postMessage)
 export type PickedLocation = {
   address: string;
@@ -49,8 +53,17 @@ type GeocodeResult = {
 export type NaverMaps = {
   Map: new (
     element: HTMLElement,
-    options: { center: NaverLatLng; zoom: number },
+    options: {
+      center: NaverLatLng;
+      zoom: number;
+      zoomControl?: boolean;
+      zoomControlOptions?: { position?: number; style?: number };
+    },
   ) => NaverMap;
+  // 지도 컨트롤 위치 (zoomControlOptions.position 등에 사용)
+  Position: { TOP_LEFT: number; TOP_RIGHT: number };
+  // 줌 컨트롤 모양: SMALL은 +, - 버튼만, LARGE는 단계 슬라이더 포함
+  ZoomControlStyle: { SMALL: number; LARGE: number };
   LatLng: new (lat: number, lng: number) => NaverLatLng;
   Marker: new (options: {
     position: NaverLatLng;
