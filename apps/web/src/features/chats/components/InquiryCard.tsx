@@ -1,4 +1,5 @@
 import { Category, Region, Style } from '@snappick/shared';
+import { formatDate } from '@/utils/dateTime';
 import {
   CategoryLabel,
   RegionLabel,
@@ -30,7 +31,7 @@ export default function InquiryCard({
   ).find((value) => value === info.timeSlot);
   const date =
     typeof info.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(info.date)
-      ? info.date.replaceAll('-', '.')
+      ? formatDate(info.date)
       : '';
   const location = typeof info.location === 'string' ? info.location : '';
   const rows = [
