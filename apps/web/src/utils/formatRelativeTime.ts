@@ -1,4 +1,5 @@
-type DateValue = string | number | Date;
+import { formatDate } from './dateTime';
+import type { DateValue } from './dateTime';
 
 /** 한국 시간 기준으로 경과 시간을 내림해 표시 */
 export function formatRelativeTime(
@@ -22,14 +23,5 @@ export function formatRelativeTime(
   if (elapsed < day) return `${Math.floor(elapsed / hour)}시간 전`;
   if (elapsed < day * 7) return `${Math.floor(elapsed / day)}일 전`;
 
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value;
-
-  return `${getPart('year')}.${getPart('month')}.${getPart('day')}`;
+  return formatDate(date);
 }
