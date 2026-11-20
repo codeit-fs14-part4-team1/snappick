@@ -60,6 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 로그인 계정 변경과 토큰 재발급을 구분함
   const sessionVersionRef = useRef(0);
+  const refreshScopeRef = useRef<object>({});
+
+  const createTokenRefresher = useCallback(() => {
+    const scope = refreshScopeRef.current;
+    return () => {
+      if (refreshScopeRef.current !== scope) {
+        throw new Error('요청 중 인증 상태가 변경되었습니다.');
+      }
+      return refreshSession(scope);
+    };
+  }, []);
 
   // 토큰 변경 시 Ref와 State를 함께 갱신함
   const setAccessToken = useCallback((token: string | null) => {
@@ -80,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           { method: 'GET' },
           {
             accessToken: token,
+            refreshToken: createTokenRefresher(),
             onTokenRefresh: (newToken) => {
               // 이전 요청이 최신 인증 정보를 덮어쓰지 않도록 방지함
               if (authVersionRef.current !== requestVersion) return;
@@ -118,13 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [setAccessToken, queryClient],
+    [setAccessToken, queryClient, createTokenRefresher],
   );
 
   // 인증 정보와 React Query 캐시를 초기화함
   const clearAuth = useCallback(() => {
     // 기존 세션에서 시작한 요청을 무효화함
     sessionVersionRef.current += 1;
+    refreshScopeRef.current = {};
 
     setAccessToken(null);
     setUser(null);
@@ -168,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 인증 API 요청 및 토큰 재발급을 처리함
         const result = await authFetch<T>(path, options, {
           accessToken: token,
+          refreshToken: createTokenRefresher(),
 
           onTokenRefresh: (newToken) => {
             // 다른 계정으로 변경되었다면 이전 요청을 중단함
@@ -204,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [setAccessToken, clearAuth],
+    [setAccessToken, clearAuth, createTokenRefresher],
   );
 
   // 현재 로그인한 사용자의 최신 정보를 다시 조회함
@@ -236,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (token: string) => {
       // 기존 세션의 비동기 요청을 무효화함
       sessionVersionRef.current += 1;
+      refreshScopeRef.current = {};
 
       queryClient.clear();
       setAccessToken(token);
@@ -265,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function restoreSession() {
       try {
-        const token = await refreshSession();
+        const token = await refreshSession(refreshScopeRef.current);
 
         // 이전 세션 복구가 취소되었다면 사용자 정보 조회를 중단함
         if (cancelled || authVersionRef.current !== restoreVersion) return;
