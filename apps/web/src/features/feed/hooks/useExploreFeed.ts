@@ -16,7 +16,7 @@ export type FeedFilters = Omit<FeedPhotosParams, 'seed' | 'cursor' | 'limit'>;
 //커서기반 탐색
 export function useExploreFeed(filters: FeedFilters) {
   const isRandom = (filters.sort ?? 'random') === 'random';
-  const { user, authStatus, accessToken } = useAuth();
+  const { user, authStatus, fetchWithAuth } = useAuth();
 
   return useInfiniteQuery({
     queryKey: queryKeys.photos.feed({
@@ -33,7 +33,7 @@ export function useExploreFeed(filters: FeedFilters) {
           cursor: pageParam,
           seed: isRandom ? getFeedSeed() : undefined,
         },
-        accessToken,
+        fetchWithAuth,
       ),
 
     enabled: authStatus !== 'initializing',

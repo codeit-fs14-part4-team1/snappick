@@ -3,20 +3,11 @@
 import type { ReactNode } from 'react';
 import PageContainer from '@/components/layout/PageContainer';
 import StateMessage from '@/components/ui/StateMessage';
-import { useAuth } from '../context/AuthContext';
-import type { AuthUser } from '../types';
-import styles from './AuthGuard.module.css';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import styles from './layout.module.css';
 
-type AuthGuardProps = {
-  loginDescription: string;
-  children: (user: AuthUser) => ReactNode;
-};
-
-/** 인증된 경우에만 콘텐츠를 렌더링합니다. 토큰 요청·갱신은 기존 AuthContext가 담당합니다. */
-export default function AuthGuard({
-  loginDescription,
-  children,
-}: AuthGuardProps) {
+// 보호 경로의 인증 확인과 안내 화면을 공통으로 처리합니다.
+export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { user, authStatus } = useAuth();
 
   if (authStatus === 'initializing') {
@@ -53,12 +44,12 @@ export default function AuthGuard({
         <StateMessage
           className={styles.state}
           title="로그인이 필요해요"
-          description={loginDescription}
+          description="로그인 후 이용할 수 있어요."
           link={{ label: '로그인', href: '/login' }}
         />
       </PageContainer>
     );
   }
 
-  return children(user);
+  return children;
 }

@@ -5,11 +5,9 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import AuthGuard from '@/features/auth/components/AuthGuard';
 import type { AuthUser } from '@/features/auth/types';
 import { useSelectedLayoutSegment } from 'next/navigation';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -40,14 +38,10 @@ export default function ConnectedChatsLayout({
 }: {
   children: ReactNode;
 }) {
+  const { user } = useAuth();
+  if (!user) return null;
   return (
-    <AuthGuard loginDescription="로그인 후 문의 내역을 확인할 수 있어요.">
-      {(user) => (
-        <AuthenticatedChatsLayout user={user}>
-          {children}
-        </AuthenticatedChatsLayout>
-      )}
-    </AuthGuard>
+    <AuthenticatedChatsLayout user={user}>{children}</AuthenticatedChatsLayout>
   );
 }
 
@@ -58,7 +52,7 @@ function AuthenticatedChatsLayout({
   user: AuthUser;
   children: ReactNode;
 }) {
-  const { authStatus, accessToken, clearAuth } = useAuth();
+  const { authStatus, fetchWithAuth } = useAuth();
   const selectedRoomId = useSelectedLayoutSegment();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -79,42 +73,12 @@ function AuthenticatedChatsLayout({
     };
   }, [authStatus]);
 
-  const refreshedToken = useRef<{ sourceToken: string; token: string } | null>(
-    null,
-  );
   const loadPage = useCallback<ChatRoomListLoader>(
-    async (params) => {
-      if (!accessToken) throw new Error('로그인이 필요합니다.');
-      const token =
-        refreshedToken.current?.sourceToken === accessToken
-          ? refreshedToken.current.token
-          : accessToken;
-      try {
-        return await getChatRooms(params, {
-          accessToken: token,
-          onTokenRefresh: (newToken) => {
-            if (!params.signal?.aborted)
-              refreshedToken.current = {
-                sourceToken: accessToken,
-                token: newToken,
-              };
-          },
-        });
-      } catch (error) {
-        if (
-          !params.signal?.aborted &&
-          error instanceof Error &&
-          error.message === 'API 요청 실패: 401'
-        )
-          clearAuth();
-        throw error;
-      }
-    },
-    [accessToken, clearAuth],
+    (params) => getChatRooms(params, fetchWithAuth),
+    [fetchWithAuth],
   );
   const query = useChatRooms({
-    accountId:
-      authStatus === 'authenticated' && accessToken ? (user?.id ?? null) : null,
+    accountId: authStatus === 'authenticated' ? user.id : null,
     loadPage,
   });
   const realtime = useChatSocket(

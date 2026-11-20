@@ -21,3 +21,13 @@ export type AuthUser = AuthUserBase &
         introduction: string | null;
       }
   );
+
+export type FetchWithAuthOptions = {
+  optionalAuth?: boolean;
+};
+
+export type FetchWithAuth = <T>(
+  path: string,
+  options?: RequestInit,
+  config?: FetchWithAuthOptions,
+) => Promise<T | undefined>;

@@ -13,7 +13,7 @@ const LIKE_DEBOUNCE_MS = 300;
 
 export function usePhotoLike({ photoId, liked }: UsePhotoLikeParams) {
   const queryClient = useQueryClient();
-  const { user, accessToken } = useAuth();
+  const { user, fetchWithAuth } = useAuth();
   const { showToast } = useToast();
 
   //화면에 쓰지 않는 요청 제어용 기록
@@ -25,8 +25,7 @@ export function usePhotoLike({ photoId, liked }: UsePhotoLikeParams) {
   //요청에 대한 처리 담당
   const { mutate } = useMutation({
     mutationFn: async (nextLiked: boolean): Promise<PhotoLikeResponse> => {
-      if (!accessToken) throw new Error('토큰이 없습니다.');
-      return await updatePhotoLike(photoId, nextLiked, accessToken);
+      return await updatePhotoLike(photoId, nextLiked, fetchWithAuth);
     },
     onSuccess: (result) => {
       confirmedRef.current = result.liked;
