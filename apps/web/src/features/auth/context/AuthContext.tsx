@@ -161,8 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 요청 시작 시점의 로그인 세션을 저장함
       const requestSessionVersion = sessionVersionRef.current;
 
-      // Refresh 성공 여부를 구분함
-      let refreshSucceeded = false;
+      // 갱신 후 재요청을 포함하여 이 요청에서 사용하는 토큰을 추적함
+      let requestToken = token;
 
       try {
         // 인증 API 요청 및 토큰 재발급을 처리함
@@ -170,13 +170,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           accessToken: token,
 
           onTokenRefresh: (newToken) => {
-            // Refresh 요청 성공 여부를 기록함
-            refreshSucceeded = true;
-
             // 다른 계정으로 변경되었다면 이전 요청을 중단함
             if (sessionVersionRef.current !== requestSessionVersion) {
               throw new Error('요청 중 인증 상태가 변경되었습니다.');
             }
+
+            requestToken = newToken;
 
             // 갱신된 Access Token을 Context에 반영함
             if (accessTokenRef.current !== newToken) {
@@ -192,13 +191,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return result;
       } catch (error) {
-        // Refresh 자체가 401로 실패한 경우에만 인증을 초기화함
+        // 갱신 실패 또는 재요청의 401은 해당 세션·토큰이 여전히 현재 것일 때만 초기화함
         if (
-          !refreshSucceeded &&
           error instanceof Error &&
           error.message === 'API 요청 실패: 401' &&
           sessionVersionRef.current === requestSessionVersion &&
-          accessTokenRef.current === token
+          accessTokenRef.current === requestToken
         ) {
           clearAuth();
         }
