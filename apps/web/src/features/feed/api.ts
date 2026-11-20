@@ -1,8 +1,7 @@
 //'/photos'
 //'/photos/{photoId}/like'
 
-import { apiFetch } from '@/lib/api';
-import { authFetch } from '@/features/auth/authFetch';
+import type { FetchWithAuth } from '@/features/auth/types';
 import type {
   FeedPhotosParams,
   FeedPhotosResponse,
@@ -11,7 +10,7 @@ import type {
 
 export async function getFeedPhotos(
   params: FeedPhotosParams,
-  accessToken: string | null,
+  fetchWithAuth: FetchWithAuth,
 ): Promise<FeedPhotosResponse> {
   const searchParams = new URLSearchParams();
 
@@ -30,13 +29,11 @@ export async function getFeedPhotos(
   const query = searchParams.toString();
   const path = query ? `/photos?${query}` : '/photos';
 
-  const response = accessToken
-    ? await authFetch<FeedPhotosResponse>(
-        path,
-        {},
-        { accessToken, onTokenRefresh: () => {} },
-      )
-    : await apiFetch<FeedPhotosResponse>(path);
+  const response = await fetchWithAuth<FeedPhotosResponse>(
+    path,
+    {},
+    { optionalAuth: true },
+  );
 
   if (!response) throw new Error('사진 목록을 불러오지 못했습니다.');
   return response;
@@ -45,13 +42,12 @@ export async function getFeedPhotos(
 export async function updatePhotoLike(
   photoId: string,
   liked: boolean,
-  accessToken: string,
+  fetchWithAuth: FetchWithAuth,
 ): Promise<PhotoLikeResponse> {
   const method = liked ? 'PUT' : 'DELETE';
-  const response = await authFetch<PhotoLikeResponse>(
+  const response = await fetchWithAuth<PhotoLikeResponse>(
     `/photos/${photoId}/like`,
     { method },
-    { accessToken, onTokenRefresh: () => {} },
   );
   if (!response) throw new Error('좋아요 응답이 없습니다.');
   return response;

@@ -16,24 +16,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getMe, logoutSession } from '@/features/auth/api';
 import { authFetch } from '@/features/auth/authFetch';
 import { refreshSession } from '@/features/auth/refresh';
-import type { AuthUser } from '@/features/auth/types';
+import type {
+  AuthUser,
+  FetchWithAuth,
+  FetchWithAuthOptions,
+} from '@/features/auth/types';
 import { apiFetch } from '@/lib/api';
 
 // 인증 상태를 구분하는 타입 정의
 type AuthStatus =
   'initializing' | 'authenticated' | 'unauthenticated' | 'error';
-
-// 공통 인증 요청 옵션 정의
-type FetchWithAuthOptions = {
-  optionalAuth?: boolean;
-};
-
-// 공통 인증 요청 함수 타입 정의
-type FetchWithAuth = <T>(
-  path: string,
-  options?: RequestInit,
-  config?: FetchWithAuthOptions,
-) => Promise<T | undefined>;
 
 // 인증 Context에서 공유할 값의 타입 정의
 type AuthContextValue = {

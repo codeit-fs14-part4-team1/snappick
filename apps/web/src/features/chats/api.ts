@@ -6,11 +6,7 @@ import type {
   ChatMessage,
   SendChatMessageInput,
 } from './types';
-import { authFetch } from '@/features/auth/authFetch';
-import type { useAuth } from '@/features/auth/context/AuthContext';
-
-type ChatAuth = Parameters<typeof authFetch>[2];
-type FetchWithAuth = ReturnType<typeof useAuth>['fetchWithAuth'];
+import type { FetchWithAuth } from '@/features/auth/types';
 
 export async function markChatMessagesRead(
   chatRoomId: string,
@@ -90,16 +86,14 @@ type ChatRoomsResponse = Pick<ChatRoomListPage, 'items'> &
 
 export async function getChatRooms(
   { cursor, limit = 20, signal }: GetChatRoomsParams,
-  auth: ChatAuth,
+  fetchWithAuth: FetchWithAuth,
 ): Promise<ChatRoomListPage> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) params.set('cursor', cursor);
 
-  const page = await authFetch<ChatRoomsResponse>(
-    `/chats?${params}`,
-    { signal },
-    auth,
-  );
+  const page = await fetchWithAuth<ChatRoomsResponse>(`/chats?${params}`, {
+    signal,
+  });
   if (!page) throw new Error('채팅방 목록 응답이 없습니다.');
   // 페이지네이션은 후속 구현 예정이므로 items만 있는 현재 응답 지원
   return {

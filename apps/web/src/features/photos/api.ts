@@ -2,14 +2,12 @@
 //'/photographers/{photographerId}/photos'
 //둘 다 비회원 허용: optionalAuth로 요청, 로그인 시 liked·saved 포함
 
-import type { useAuth } from '@/features/auth/context/AuthContext';
+import type { FetchWithAuth } from '@/features/auth/types';
 import type {
   PhotoDetail,
   PhotographerPhotosParams,
   PhotographerPhotosResponse,
 } from './types';
-
-type FetchWithAuth = ReturnType<typeof useAuth>['fetchWithAuth'];
 
 export async function getPhotoDetail(
   photoId: string,
