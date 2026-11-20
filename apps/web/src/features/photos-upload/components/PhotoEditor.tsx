@@ -5,7 +5,7 @@ import type { Category, Style } from '@snappick/shared';
 import Button from '@/components/ui/Button';
 import type { PhotoDetail } from '../types';
 import PhotoList from './PhotoList';
-import type { PhotoListItem } from './PhotoList';
+import type { PhotoListItem, PhotoListLoadMore } from './PhotoList';
 import PhotoPreview from './PhotoPreview';
 import PhotoMetadataForm, {
   MAX_KEYWORDS,
@@ -13,11 +13,14 @@ import PhotoMetadataForm, {
 } from './PhotoMetadataForm';
 import styles from './PhotoEditor.module.css';
 
-//오른쪽에서 편집 중인 사진 한 장의 정보
-export type EditorPhoto = PhotoDetail & {
+//가운데 미리보기: 사진을 고르면 바로 보인다
+//name: 대체 텍스트 (목록 썸네일과 같은 이름)
+//fileName·fileSize는 업로드에만 있음 (관리는 서버에 원본 정보가 없어 생략 → 정보 줄 숨김)
+export type EditorPreview = {
   previewUrl: string;
-  fileName: string;
-  fileSize: number;
+  name: string;
+  fileName?: string;
+  fileSize?: number;
   isRepresentative: boolean;
 };
 
@@ -27,16 +30,24 @@ type PhotoEditorProps = {
   selectedId: string | null;
   onSelect: (localId: string) => void;
   onRemove: (localId: string) => void;
+  //목록 끝 더 불러오기 (관리 모달만)
+  loadMore?: PhotoListLoadMore;
 
-  //선택한 사진 (가운데 미리보기 + 오른쪽 폼)
-  current: EditorPhoto | null;
+  //선택한 사진: 미리보기는 고르면 바로, 폼은 정보가 있을 때만
+  //(관리 모달은 상세를 불러오는 동안 detail이 null → 폼 자리에 안내, 레이아웃 유지)
+  preview: EditorPreview | null;
+  detail: PhotoDetail | null;
+  detailError?: boolean;
   onRepresentativeChange: (on: boolean) => void;
   //입력 규칙(토글·키워드 검증)은 여기서 처리하고, 바뀐 결과만 올려 보낸다
   onChange: (patch: Partial<PhotoDetail>) => void;
 
-  //하단
-  onPrev: () => void;
+  //하단: onPrev가 없으면 이전 버튼 숨김 (관리 모달)
+  onPrev?: () => void;
   onSubmit: () => void;
+  submitLabel: string;
+  //버튼 · 오버레이에 같이 쓴다
+  submittingLabel: string;
   //모든 사진에 필수 정보가 채워지기 전·등록 중에는 막는다
   submitDisabled: boolean;
   isSubmitting: boolean;
@@ -56,11 +67,16 @@ export default function PhotoEditor({
   selectedId,
   onSelect,
   onRemove,
-  current,
+  loadMore,
+  preview,
+  detail,
+  detailError = false,
   onRepresentativeChange,
   onChange,
   onPrev,
   onSubmit,
+  submitLabel,
+  submittingLabel,
   submitDisabled,
   isSubmitting,
 }: PhotoEditorProps) {
@@ -79,7 +95,7 @@ export default function PhotoEditor({
 
   //추가했으면 true (폼이 입력창을 비움), 규칙에 안 맞으면 안내를 띄우고 false
   const submitKeyword = (input: string): boolean => {
-    if (!current) return false;
+    if (!detail) return false;
     const keyword = input.trim();
     if (keyword === '') return false;
 
@@ -87,14 +103,14 @@ export default function PhotoEditor({
     if (/\s/.test(keyword)) error = '띄어쓰기 없이 입력해 주세요.';
     else if (keyword.length > MAX_KEYWORD_LENGTH)
       error = `키워드는 ${MAX_KEYWORD_LENGTH}자까지 입력할 수 있어요.`;
-    else if (current.keywords.includes(keyword))
+    else if (detail.keywords.includes(keyword))
       error = '이미 추가한 키워드예요.';
-    else if (current.keywords.length >= MAX_KEYWORDS)
+    else if (detail.keywords.length >= MAX_KEYWORDS)
       error = `키워드는 ${MAX_KEYWORDS}개까지 넣을 수 있어요.`;
 
     setKeywordError(error);
     if (error) return false;
-    onChange({ keywords: [...current.keywords, keyword] });
+    onChange({ keywords: [...detail.keywords, keyword] });
     return true;
   };
 
@@ -106,61 +122,78 @@ export default function PhotoEditor({
           selectedId={selectedId}
           onSelect={handleSelect}
           onRemove={handleRemove}
+          loadMore={loadMore}
         />
 
-        {current && (
-          <>
-            <PhotoPreview
-              previewUrl={current.previewUrl}
-              fileName={current.fileName}
-              fileSize={current.fileSize}
-              isRepresentative={current.isRepresentative}
-              onRepresentativeChange={onRepresentativeChange}
-            />
-            {/* 사진을 바꾸면 입력 중이던 키워드를 비우도록 사진마다 새로 그린다 */}
-            <PhotoMetadataForm
-              key={selectedId}
-              categories={current.categories}
-              onToggleCategory={(category: Category) =>
-                onChange({ categories: toggle(current.categories, category) })
-              }
-              styles={current.styles}
-              onToggleStyle={(style: Style) =>
-                onChange({ styles: toggle(current.styles, style) })
-              }
-              keywords={current.keywords}
-              onKeywordSubmit={submitKeyword}
-              onKeywordRemove={(keyword) => {
-                setKeywordError(null);
-                onChange({
-                  keywords: current.keywords.filter((k) => k !== keyword),
-                });
-              }}
-              keywordError={keywordError}
-              description={current.description}
-              onDescriptionChange={(description) => onChange({ description })}
-            />
-          </>
+        {preview && (
+          <PhotoPreview
+            previewUrl={preview.previewUrl}
+            name={preview.name}
+            fileName={preview.fileName}
+            fileSize={preview.fileSize}
+            isRepresentative={preview.isRepresentative}
+            onRepresentativeChange={onRepresentativeChange}
+          />
+        )}
+
+        {preview && detail && (
+          //사진을 바꾸면 입력 중이던 키워드를 비우도록 사진마다 새로 그린다
+          <PhotoMetadataForm
+            key={selectedId}
+            categories={detail.categories}
+            onToggleCategory={(category: Category) =>
+              onChange({ categories: toggle(detail.categories, category) })
+            }
+            styles={detail.styles}
+            onToggleStyle={(style: Style) =>
+              onChange({ styles: toggle(detail.styles, style) })
+            }
+            keywords={detail.keywords}
+            onKeywordSubmit={submitKeyword}
+            onKeywordRemove={(keyword) => {
+              setKeywordError(null);
+              onChange({
+                keywords: detail.keywords.filter((k) => k !== keyword),
+              });
+            }}
+            keywordError={keywordError}
+            description={detail.description}
+            onDescriptionChange={(description) => onChange({ description })}
+          />
+        )}
+
+        {/* 정보를 불러오는 동안 폼 자리를 비워 두지 않는다 (미리보기·목록이 출렁이지 않게) */}
+        {preview && !detail && (
+          <div
+            className={styles.formPlaceholder}
+            role={detailError ? 'alert' : 'status'}
+          >
+            {detailError
+              ? '사진 정보를 불러오지 못했어요. 다른 사진을 골랐다가 다시 골라 주세요.'
+              : '사진 정보를 불러오는 중이에요…'}
+          </div>
         )}
       </div>
 
       <div className={styles.footer} inert={isSubmitting}>
-        <Button variant="outline" size="md" onClick={onPrev}>
-          이전
-        </Button>
+        {onPrev && (
+          <Button variant="outline" size="md" onClick={onPrev}>
+            이전
+          </Button>
+        )}
         <Button
           size="md"
           disabled={submitDisabled || isSubmitting}
           onClick={onSubmit}
         >
-          {isSubmitting ? '등록 중…' : `${photos.length}장 등록하기`}
+          {isSubmitting ? submittingLabel : submitLabel}
         </Button>
       </div>
 
       {isSubmitting && (
         <div className={styles.overlay} role="status">
           <span className={styles.spinner} aria-hidden="true" />
-          등록중입니다...
+          {submittingLabel}
         </div>
       )}
     </div>

@@ -2,9 +2,12 @@ import styles from './PhotoPreview.module.css';
 
 type PhotoPreviewProps = {
   previewUrl: string;
-  fileName: string;
+  //대체 텍스트
+  name: string;
+  //업로드에만 있음 → 없으면 파일 정보 줄 숨김
+  fileName?: string;
   //바이트
-  fileSize: number;
+  fileSize?: number;
   isRepresentative: boolean;
   onRepresentativeChange: (on: boolean) => void;
 };
@@ -16,6 +19,7 @@ function formatSize(bytes: number) {
 // 2단계 가운데: 큰 미리보기 + 파일 정보 + 대표 이미지 스위치
 export default function PhotoPreview({
   previewUrl,
+  name,
   fileName,
   fileSize,
   isRepresentative,
@@ -27,14 +31,16 @@ export default function PhotoPreview({
       <img
         className={styles.image}
         src={previewUrl}
-        alt={fileName}
+        alt={name}
         decoding="async"
       />
 
       <div className={styles.info}>
-        <p className={styles.fileInfo}>
-          {fileName} · {formatSize(fileSize)}
-        </p>
+        {fileName !== undefined && fileSize !== undefined && (
+          <p className={styles.fileInfo}>
+            {fileName} · {formatSize(fileSize)}
+          </p>
+        )}
 
         <label className={styles.switchRow}>
           {/* 실제 체크박스는 숨기고 스위치 모양만 그린다 (키보드 Space·화면 낭독기 그대로) */}

@@ -97,6 +97,7 @@ export default function PhotoUploadModal({
 
   //quit 없이 앱 안에서 페이지를 떠날 때: 미리보기 URL 해제 + 업로드 중단
   useEffect(() => {
+    abortRef.current = new AbortController();
     return () => {
       photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       abortRef.current.abort();
@@ -470,9 +471,10 @@ export default function PhotoUploadModal({
             photos={editablePhotos.map((p) => ({
               localId: p.localId,
               previewUrl: p.previewUrl,
-              fileName: p.file.name,
+              name: p.file.name,
               //카테고리 비면 썸네일에 빨간 점
               missingRequired: p.categories.length === 0,
+              isRepresentative: p.localId === representativeId,
             }))}
             selectedId={selectedPhoto?.localId ?? null}
             onSelect={setSelectedId}
@@ -484,14 +486,22 @@ export default function PhotoUploadModal({
                 removePhotos(photos.filter((p) => p.localId === id));
               }
             }}
-            current={
+            preview={
               selectedPhoto
                 ? {
                     previewUrl: selectedPhoto.previewUrl,
+                    name: selectedPhoto.file.name,
                     fileName: selectedPhoto.file.name,
                     fileSize: selectedPhoto.file.size,
                     isRepresentative:
                       selectedPhoto.localId === representativeId,
+                  }
+                : null
+            }
+            //업로드는 정보가 로컬에 있어서 미리보기와 항상 같이 있음
+            detail={
+              selectedPhoto
+                ? {
                     categories: selectedPhoto.categories,
                     styles: selectedPhoto.styles,
                     keywords: selectedPhoto.keywords,
@@ -508,6 +518,8 @@ export default function PhotoUploadModal({
             onChange={updateSelected}
             onPrev={() => setStep(1)}
             onSubmit={handleRegister}
+            submitLabel={`${editablePhotos.length}장 등록하기`}
+            submittingLabel="등록 중…"
             //0장이거나 카테고리 빈 사진이 있으면 등록 막기
             submitDisabled={
               editablePhotos.length === 0 ||

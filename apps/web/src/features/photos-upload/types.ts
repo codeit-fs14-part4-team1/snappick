@@ -103,3 +103,23 @@ export type PhotoData = {
   description: string | null;
   isRepresentative: boolean;
 };
+
+export type BatchUpdate = { photoId: string } & {
+  categories?: Category[];
+  styles?: Style[];
+  keywords?: string[];
+  description?: string | null;
+};
+
+export type BatchRequest = {
+  updates: BatchUpdate[];
+  deletePhotoIds: string[];
+  representativePhotoId?: string;
+};
+
+export type BatchResponse = {
+  updatedCount: number;
+  deletedCount: number;
+  representativePhotoId: string | null;
+  photoCount: number;
+};

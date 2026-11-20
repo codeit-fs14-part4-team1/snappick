@@ -1,5 +1,7 @@
 import type { useAuth } from '@/features/auth/context/AuthContext';
 import type {
+  BatchRequest,
+  BatchResponse,
   PhotoData,
   RegisterPhotosRequest,
   RegisterPhotosResponse,
@@ -101,5 +103,20 @@ export async function getPhotoData(
 ): Promise<PhotoData> {
   const response = await fetchWithAuth<PhotoData>(`/me/photos/${photoId}`, {});
   if (!response) throw new Error('사진 정보 응답이 비어 있어요');
+  return response;
+}
+
+//⑤ PATCH /me/photos/batch
+//updates·deletes 각 20개 / 대표 생략=유지 / description 생략=유지, null·''=지움
+export async function batchPhotos(
+  body: BatchRequest,
+  fetchWithAuth: FetchWithAuth,
+): Promise<BatchResponse> {
+  const response = await fetchWithAuth<BatchResponse>(`/me/photos/batch`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response) throw new Error('사진 업데이트 대한 응답을 받지 못했어요.');
   return response;
 }
