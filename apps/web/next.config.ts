@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       new URL('http://localhost:3000/mock/**'),
+      new URL('http://localhost:3000/photos/**'),
       new URL('https://snappick-alpha.vercel.app/mock/**'),
     ],
     //로컬 개발에서만 localhost 이미지를 허용함 (운영에서는 기본값대로 차단)
