@@ -23,8 +23,8 @@ const userMenuItems = [
 const photographerMenuItems = [
   { label: '프로필 관리', href: '/photographers/me' },
   { label: '문의 내역', href: '/chats' },
-  { label: '예약 내역', href: '/photographer/reservations' },
-  { label: '내 정보', href: '/photographer/my' },
+  { label: '예약 내역', href: '/my/reservations' },
+  { label: '내 정보', href: '/my/profile' },
 ];
 
 export default function ProfileMenu({ user }: ProfileMenuProps) {

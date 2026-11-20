@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { formatDateWithWeekday as dateLabel } from '@/utils/dateTime';
 import styles from './InquiryForm.module.css';
 
 export const timeSlotLabels = {
@@ -10,11 +11,6 @@ export const timeSlotLabels = {
   UNDECIDED: '미정',
 } as const;
 export type InquiryTimeSlot = keyof typeof timeSlotLabels;
-
-function dateLabel(date: string) {
-  const value = new Date(`${date}T00:00:00Z`);
-  return `${date.replaceAll('-', '.')} (${'일월화수목금토'[value.getUTCDay()]})`;
-}
 
 export default function SchedulePicker({
   referenceDate,

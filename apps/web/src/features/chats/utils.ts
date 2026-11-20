@@ -1,3 +1,4 @@
+import { formatLongDate, formatTime, isSameDate } from '@/utils/dateTime';
 import type {
   ChatRoomListPage,
   ChatRoomSummary,
@@ -5,40 +6,13 @@ import type {
   ChatMessageItem,
 } from './types';
 
-// 실행 환경의 locale과 시간대에 영향받지 않도록 한국 시간을 UTC 접근자로 읽습니다.
-function getKoreanDate(value: string) {
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp)
-    ? new Date(timestamp + 9 * 60 * 60 * 1000)
-    : null;
-}
-
 export function formatChatDate(value: string, now?: string) {
-  const date = getKoreanDate(value);
-  if (!date) return '';
-  const today = now ? getKoreanDate(now) : null;
-  if (
-    today &&
-    date.toISOString().slice(0, 10) === today.toISOString().slice(0, 10)
-  )
-    return '오늘';
-  const weekdays = [
-    '일요일',
-    '월요일',
-    '화요일',
-    '수요일',
-    '목요일',
-    '금요일',
-    '토요일',
-  ];
-  return `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 ${weekdays[date.getUTCDay()]}`;
+  if (now && isSameDate(value, now)) return '오늘';
+  return formatLongDate(value);
 }
 
 export function formatChatTime(value: string) {
-  const date = getKoreanDate(value);
-  if (!date) return '';
-  const hour = date.getUTCHours();
-  return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+  return formatTime(value);
 }
 
 export function getChatGreeting(photographerName: string) {
