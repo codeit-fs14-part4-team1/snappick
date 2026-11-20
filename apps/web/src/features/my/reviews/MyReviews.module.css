@@ -1,0 +1,243 @@
+.tabs {
+  border-bottom: 1px solid var(--color-border);
+}
+.bookings,
+.reviews {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bookings {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 20px;
+}
+.booking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+}
+.booking .bookingName {
+  font-size: 16px;
+  line-height: 24px;
+}
+.booking .date {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.writeButton {
+  flex-shrink: 0;
+  line-height: 22px;
+}
+.bookingText {
+  min-width: 0;
+}
+.bookingName {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.date {
+  margin: 4px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.empty {
+  min-height: 240px;
+}
+.review {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.reviewHeader,
+.author,
+.actions {
+  display: flex;
+  align-items: center;
+}
+.reviewHeader {
+  justify-content: space-between;
+  gap: 16px;
+}
+.author {
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.author .date {
+  margin: 0;
+}
+.actions {
+  flex-shrink: 0;
+  gap: 12px;
+}
+.actions button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.rating {
+  display: flex;
+  margin: 12px 0 8px;
+}
+.rating svg {
+  width: 20px;
+  height: 20px;
+}
+.comment {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reply {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+}
+.reply .comment {
+  color: var(--color-text-secondary);
+}
+.modal {
+  width: 560px;
+}
+.confirm {
+  width: 400px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--color-bg-subtle);
+}
+.summary .date {
+  font-size: 13px;
+  line-height: 20px;
+}
+.thumbnail {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--color-border);
+}
+.ratingField {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  text-align: center;
+}
+.ratingField legend {
+  width: 100%;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+.ratingField .date {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+.star {
+  position: relative;
+  cursor: pointer;
+}
+.star input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.star svg {
+  display: block;
+  width: 32px;
+  height: 40px;
+}
+.unfilled {
+  color: var(--color-border);
+}
+.filled {
+  color: var(--color-accent);
+}
+.star:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+.field textarea {
+  width: 100%;
+  height: 160px;
+  min-height: 160px;
+  padding: 14px 16px;
+  resize: none;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-base);
+  font-size: 14px;
+  line-height: 22px;
+}
+.field textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+.field .date {
+  margin: 0;
+}
+.field textarea:focus-visible,
+.actions button:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: -2px;
+}
+@media (max-width: 767px) {
+  .modal.modal {
+    padding-inline: 20px;
+  }
+}
