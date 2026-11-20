@@ -1,34 +1,9 @@
 'use client';
 
-//사진 관리 모달: 내 포트폴리오 사진 수정 · 삭제 · 대표 변경을 모아 두었다가 저장 때 한 번에 보냄
-//
-//목록
-// GET /photographers/:photographerId/photos (usePhotographerPhotos, 프로필과 캐시 공유) 최신순 20장 + 무한 스크롤
-// 처음엔 첫 장 선택, 사진을 고르면 GET /me/photos/:photoId로 상세를 불러와 오른쪽 폼에 채움
-// 한 번 불러온 상세는 쿼리 캐시에 남음 (다시 골라도 요청 안 함)
-//
-//정보는 두 겹
-// 서버 원본 = 쿼리 캐시 / 내가 고친 값 = 이 모달의 로컬 상태 (drafts · deleteIds · representativeId)
-// 저장 전엔 캐시를 건드리지 않음 (프로필과 같이 쓰고, 취소하면 되돌릴 기준이 없어서)
-//
-//저장 버튼
-// 바뀐 게 없으면 비활성 (서버도 셋 다 비면 400) → ✕로 그냥 닫힘
-// 고친 사진은 카테고리 1개 이상이어야 활성 (안 연 사진은 서버 값 그대로라 검사 안 함)
-// 바뀐 게 있는데 닫으면 "저장 안 하고 나갈까요?" 확인
-//
-//예외
-// 수정 후 삭제한 사진은 updates에서 뺌 (같이 보내면 400 CONFLICTING_PHOTO_ACTION)
-// 대표 사진을 지우면 남은 사진 중 첫 장을 대표로 (삭제 대상을 대표로 보내면 400)
-// 전부 지우면 0장 허용 → 대표 없이 보냄 (cascade로 대표도 사라짐, 빈 포트폴리오)
-//
-//저장: PATCH /me/photos/batch, updates · deletes 각각 20개 제한 → 20개씩 잘라 같은 순번끼리 한 요청
-// for...of로 순서대로, 대표는 첫 요청에 (옛 대표 삭제와 같은 트랜잭션)
-// 요청 하나 성공할 때마다 그만큼 로컬 상태에서 지움 → 일부 성공해도 다시 저장하면 남은 것만 감
-// 실패하면 멈춤 → 모달 유지 + 에러 모달
-//
-//저장 후 캐시: portfolioAll · feedAll · 고친 사진 상세 무효화, 지운 사진 상세는 removeQueries
-//
-//TODO(백엔드 반영 후): 이미 수정·삭제돼 실패한 사진 → 서버가 에러에 id를 돌려줌 → 그 사진 안내 + 목록 새로고침
+//사진 관리 모달: 수정 · 삭제 · 대표 변경을 모아 두었다가 저장 때 한 번에 보냄
+//서버 값은 쿼리 캐시, 고친 값은 로컬 상태 (저장 전엔 캐시를 안 건드림)
+//저장: PATCH /me/photos/batch 20개씩 순서대로, 대표는 첫 요청 (옛 대표 삭제와 같은 트랜잭션)
+//성공한 묶음만 로컬에서 지움 → 실패하면 멈추고 남은 것만 다시 저장
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -50,40 +25,36 @@ import type { EditorPreview } from './PhotoEditor';
 import type { PhotoListItem } from './PhotoList';
 import uploadStyles from './PhotoUploadModal.module.css';
 
-//프로필에서 내려주는 것
 type PhotoManageModalProps = {
   open: boolean;
   onClose: () => void;
   photographerId: string;
 };
 
-//서버 batch 제한 (updates · deletes 각각)
+//서버 batch 제한 (수정 · 삭제 각각)
 const MAX_BATCH = 20;
 
-//대표는 끌 수 없음 (대표 1장 유지, 서버도 null = 유지라 해제 미지원) → 다른 사진을 켜서 바꾸도록 안내
+//대표는 끌 수 없음 (서버가 해제를 지원 안 함)
 const REPRESENTATIVE_OFF_MESSAGE =
   '대표 이미지를 바꾸려면 다른 사진을 대표로 설정해 주세요.';
 
-//다음 페이지가 남았는데 보이는 사진이 마지막 1장이면 빼기 막음
-//(지우는 순간 대표 후보가 없어 대표가 비는 것 방지, 불러오기 실패 시 목록 끝 "다시 시도")
+//다음 페이지 전에 마지막 1장을 지우면 대표가 비어서 막음
 const REMOVE_BLOCKED_MESSAGE = '사진을 더 불러온 뒤 시도해주세요.';
 
-//로그인 만료 토스트 · 판별 (PhotoUploadModal과 같은 코드)
-//TODO(공용 에러): 공용 에러 처리 생기면 그걸로 교체 (메시지 비교 → status 기반)
+//로그인 만료 판단 (업로드 모달과 같음)
 const SESSION_EXPIRED_MESSAGE = '로그인이 만료됐어요. 다시 로그인해 주세요.';
 const isUnauthorized = (error: unknown) =>
   error instanceof Error &&
   (error.message === 'API 요청 실패: 401' ||
     error.message === '로그인이 필요한 요청입니다.');
 
-//사진별 원본(처음 고칠 때 상세에서 복사) + 수정본
+//사진별 원본 + 수정본
 type PhotoDraft = {
   original: PhotoDetail;
   edited: PhotoDetail;
 };
 
-//저장 결과: 몇 묶음 성공했는지 + 실패했으면 그 에러
-//updatedIds·deletedIds: 성공한 묶음에 들어 있던 id (캐시 갱신용, 서버 응답엔 없음)
+//저장 결과 (성공한 id는 캐시 갱신용, 서버 응답엔 없음)
 type SaveResult = {
   saved: number;
   updatedIds: string[];
@@ -126,7 +97,6 @@ export default function PhotoManageModal({
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  // ── 목록 ──
   const {
     data,
     hasNextPage,
@@ -136,7 +106,6 @@ export default function PhotoManageModal({
   } = usePhotographerPhotos(open ? photographerId : undefined);
   const allPhotos = data?.pages.flatMap((page) => page.items) ?? [];
 
-  // ── 내가 고친 값 (로컬) ──
   const [drafts, setDrafts] = useState<Record<string, PhotoDraft>>({});
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [representativeId, setRepresentativeId] = useState<string | null>(null);
@@ -149,24 +118,23 @@ export default function PhotoManageModal({
   const selected =
     visiblePhotos.find((p) => p.photoId === selectedId) ?? visiblePhotos[0];
 
-  //지금 화면의 대표: 바꿨으면 그 사진, 아니면 서버 값 (삭제 대기면 없음)
+  //지금 대표: 고른 사진 → 없으면 서버 값 (삭제 대기 제외)
   const currentRepresentativeId =
     representativeId ?? visiblePhotos.find((p) => p.isRepresentative)?.photoId;
 
-  // ── 선택한 사진 상세 ──
   const detailQuery = useQuery({
     queryKey: queryKeys.photos.metadata(selected?.photoId ?? ''),
     queryFn: () => getPhotoData(selected!.photoId, fetchWithAuth),
     enabled: open && !!selected,
   });
 
-  //폼에 보일 값: 고친 적 있으면 수정본, 아니면 서버 원본
+  //고친 적 있으면 수정본, 아니면 서버 값
   const selectedDetail: PhotoDetail | null = selected
     ? (drafts[selected.photoId]?.edited ??
       (detailQuery.data ? toDetail(detailQuery.data) : null))
     : null;
 
-  // ── 바뀐 것 판단 ──
+  //바뀐 사진 (삭제할 사진은 빼기: 같이 보내면 400)
   const changedIds = Object.entries(drafts)
     .filter(([id, draft]) => isEdited(draft) && !deleteIds.includes(id))
     .map((item) => item[0]);
@@ -174,12 +142,10 @@ export default function PhotoManageModal({
   const isDirty =
     changedIds.length > 0 || deleteIds.length > 0 || representativeId !== null;
 
-  // ── 필수 요건을 충족햇나 판단 ──
   const hasMissingRequired = changedIds.some(
     (id) => drafts[id].edited.categories.length === 0,
   );
 
-  // ── 입력 ──
   function handleChange(patch: Partial<PhotoDetail>) {
     if (!selected || !selectedDetail) return;
     setDrafts((prev) => {
@@ -197,7 +163,6 @@ export default function PhotoManageModal({
   }
 
   function handleRepresentativeChange(on: boolean) {
-    //끄기는 막고 안내만 (켜기만 가능 → 다른 사진을 켜면 대표가 바뀜)
     if (!on) {
       showToast(REPRESENTATIVE_OFF_MESSAGE, 'error');
       return;
@@ -224,7 +189,6 @@ export default function PhotoManageModal({
     if (photoId === selectedId) setSelectedId(null);
   }
 
-  // ── 요청을 20개씩 저장 ──
   function buildRequests(): BatchRequest[] {
     const edits = changedIds.map((id): BatchUpdate => ({
       photoId: id,
@@ -243,7 +207,6 @@ export default function PhotoManageModal({
         representativeId && { representativePhotoId: representativeId }),
     }));
   }
-  // ── 요청을 20개씩 요청 ──
   async function saveAll(): Promise<SaveResult> {
     const requests = buildRequests();
     let saved = 0;
@@ -305,7 +268,6 @@ export default function PhotoManageModal({
     },
   });
 
-  // ── 닫기 ──
   function reset() {
     setDrafts({});
     setDeleteIds([]);
@@ -320,13 +282,11 @@ export default function PhotoManageModal({
     onClose();
   }
 
-  //바뀐 게 있으면 확인, 없으면 바로 닫기
   function requestClose() {
     if (isDirty) setConfirmOpen(true);
     else quit();
   }
 
-  // ── PhotoEditor에 넘길 모양 ──
   const listItems: PhotoListItem[] = visiblePhotos.map((p, index) => ({
     localId: p.photoId,
     previewUrl: p.imageUrl,
@@ -335,8 +295,7 @@ export default function PhotoManageModal({
     isRepresentative: p.photoId === currentRepresentativeId,
   }));
 
-  //미리보기는 목록 값으로 바로 (상세 기다리지 않음 → 사진 바꿀 때 깜빡임 없음)
-  //파일명·용량은 서버에 없어서 안 넘김 → 정보 줄 숨김
+  //미리보기는 목록 값으로 바로 (깜빡임 방지), 파일명 · 용량은 서버에 없음
   const preview: EditorPreview | null = selected
     ? {
         previewUrl: selected.imageUrl,
@@ -354,7 +313,7 @@ export default function PhotoManageModal({
         closeOnEscape={!isSaving}
         closeOnBackdrop={!isSaving}
         onClose={() => {
-          //저장 중엔 닫기 무시 (나눠 보내는 루프가 도는 중)
+          //저장 중엔 닫기 무시
           if (isSaving) return;
           requestClose();
         }}
@@ -385,7 +344,7 @@ export default function PhotoManageModal({
         />
       </Modal>
 
-      {/* 아래 모달들은 형제로 둬야 Esc·Tab이 그 모달 안에서만 처리됨 */}
+      {/* 아래 모달은 형제로 둬야 Esc·Tab이 그 안에서만 동작 */}
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}

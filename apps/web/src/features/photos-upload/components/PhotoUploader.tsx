@@ -11,13 +11,12 @@ import styles from './PhotoUploader.module.css';
 type PhotoUploaderProps = {
   policyAgreed: boolean;
   onPolicyAgreedChange: (agreed: boolean) => void;
-  //동의 없이 다음을 누르면 true → 체크박스 아래 안내 + 체크박스로 포커스
+  //동의 안 하고 다음 누르면 에러
   policyError: boolean;
-  //파일 선택 결과 (검증·전처리·업로드는 받는 쪽에서)
   onFilesChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  //검증에서 빠진 파일 안내 (예: "IMG_2101.heic는 … 올리지 않았어요.")
+  //형식 · 장수 초과 안내
   rejectMessages: string[];
-  //아래 세 개는 목록(UploadQueue)으로 그대로 넘긴다
+  //올린 사진 목록용
   photos: UploadQueuePhoto[];
   onRemove: (localId: string) => void;
   onRetry: (localId: string) => void;
@@ -33,7 +32,7 @@ const POLICIES = [
   '업로드 정책을 어긴 사진에 대한 책임은 작가에게 있어요.',
 ];
 
-// 1단계 화면: 정책 동의 → 사진 선택 → 올린 사진 목록(UploadQueue) → 취소/다음
+//사진 올리기 (정책 동의 · 사진 선택 · 올린 사진 목록 · 하단 버튼)
 export default function PhotoUploader({
   policyAgreed,
   onPolicyAgreedChange,
@@ -51,10 +50,10 @@ export default function PhotoUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const agreeRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
-  //20장 기준은 상태 무관 전체 장수 (완료 장수는 목록 제목에)
+  //20장 기준은 전체 장수 (상태 무관)
   const isFull = photos.length >= MAX_PHOTOS;
 
-  //안내가 뜨면 고칠 곳(체크박스)으로 바로 보낸다
+  //에러 시 체크박스로 포커스
   useEffect(() => {
     if (policyError) agreeRef.current?.focus();
   }, [policyError]);
@@ -91,7 +90,7 @@ export default function PhotoUploader({
 
       <div className={styles.select}>
         <div className={styles.selectRow}>
-          {/* 파일 input은 숨기고 버튼으로 연다 */}
+          {/* input 숨기고 버튼으로 열기 */}
           <input
             ref={inputRef}
             type="file"

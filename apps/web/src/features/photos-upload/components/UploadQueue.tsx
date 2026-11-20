@@ -3,7 +3,7 @@
 import Button from '@/components/ui/Button';
 import styles from './UploadQueue.module.css';
 
-// 타일에 필요한 사진 정보 (모달의 SelectedPhoto가 그대로 들어온다)
+//타일용 사진 정보
 export type UploadQueuePhoto = {
   localId: string;
   file: File;
@@ -16,15 +16,13 @@ type UploadQueueProps = {
   photos: UploadQueuePhoto[];
   onRemove: (localId: string) => void;
   onRetry: (localId: string) => void;
-  //실패한 사진 전부 재시도
   onRetryAll: () => void;
 };
 
-//실패 2장 이상일 때만 "실패한 파일 재시도" (1장이면 타일 ↻와 같음)
+//전체 재시도는 실패 2장부터 (1장이면 타일 ↻와 같음)
 const RETRY_ALL_MIN = 2;
 
-//1단계 올린 사진 목록: 제목(완료 장수) + 실패한 파일 재시도 + 타일
-//타일: 완료 ✓ / 업로드 중 % / 실패 ↻ / 준비 중·대기 중은 이미지만
+//올린 사진 목록 (타일: 완료 ✓ / 업로드 중 % / 실패 ↻)
 export default function UploadQueue({
   photos,
   onRemove,
@@ -114,7 +112,7 @@ export default function UploadQueue({
               </div>
             )}
 
-            {/* 처리 중엔 빼기 없음 (빼도 ①·PUT이 계속되고 URL이 남음) */}
+            {/* 처리 중엔 빼기 버튼 숨김 (빼도 업로드는 계속됨) */}
             {(status === 'uploaded' || status === 'failed') && (
               <button
                 type="button"

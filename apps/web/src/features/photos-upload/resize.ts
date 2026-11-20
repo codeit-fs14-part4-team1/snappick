@@ -1,10 +1,10 @@
-//긴 변 2048px로 줄임. 이미 작거나 오히려 커지면 원본 그대로
+//긴 변 2048px로 줄이기
 export async function resizeImage(file: File): Promise<File> {
   const MAX_EDGE = 2048;
   const QUALITY = 0.9;
   const bitmap = await createImageBitmap(file);
   try {
-    //이미 작으면 원본 (다시 인코딩하면 화질만 떨어짐)
+    //이미 작으면 원본
     if (Math.max(bitmap.width, bitmap.height) <= MAX_EDGE) return file;
     const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
     const newWidth = Math.max(1, Math.round(bitmap.width * scale));
@@ -32,7 +32,7 @@ export async function resizeImage(file: File): Promise<File> {
         QUALITY,
       );
     });
-    //형식이 바뀌었거나 오히려 커졌으면 원본
+    //형식이 바뀌거나 커지면 원본
     if (blob.type !== file.type || blob.size >= file.size) {
       return file;
     }

@@ -20,8 +20,8 @@ export type PhotoDetail = {
 export type SelectedPhoto = {
   file: File;
   previewUrl: string;
-  localId: string; //선택 시 부여, 모든 상태 업데이트의 기준
-  //중복 확인용 원본 키 (리사이즈로 file이 바뀌어도 그대로)
+  localId: string; //선택 시 부여, 상태 업데이트 기준
+  //중복 확인용 원본 키
   sourceKey: string;
   uploadKey?: string;
   status: UploadStatus;
@@ -37,7 +37,7 @@ export type UploadFileInfo = {
 
 export type UploadUrlsRequest = {
   files: UploadFileInfo[];
-  policyAgreed: true; //false면 400 POLICY_NOT_AGREED
+  policyAgreed: true; //false면 400
 };
 
 export type UploadUrlItem = {
@@ -62,7 +62,7 @@ export type RegisterPhotoItem = {
 
 export type RegisterPhotosRequest = {
   items: RegisterPhotoItem[];
-  representativeUploadKey?: string; //보내면 기존 대표를 이 사진으로 바꾼다 (안 보내면 기존 대표 유지)
+  representativeUploadKey?: string; //보내면 대표 교체 (생략 시 유지)
 };
 
 export type RegisteredPhoto = {

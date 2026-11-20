@@ -4,7 +4,7 @@ type PhotoPreviewProps = {
   previewUrl: string;
   //대체 텍스트
   name: string;
-  //업로드에만 있음 → 없으면 파일 정보 줄 숨김
+  //업로드만 사용 (없으면 파일 정보 숨김)
   fileName?: string;
   //바이트
   fileSize?: number;
@@ -16,7 +16,7 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
-// 2단계 가운데: 큰 미리보기 + 파일 정보 + 대표 이미지 스위치
+//가운데 미리보기 (큰 이미지 · 파일 정보 · 대표사진 스위치)
 export default function PhotoPreview({
   previewUrl,
   name,
@@ -43,7 +43,7 @@ export default function PhotoPreview({
         )}
 
         <label className={styles.switchRow}>
-          {/* 실제 체크박스는 숨기고 스위치 모양만 그린다 (키보드 Space·화면 낭독기 그대로) */}
+          {/* 체크박스 숨기고 스위치 모양만 (키보드 · 낭독기 그대로) */}
           <input
             type="checkbox"
             role="switch"

@@ -10,10 +10,9 @@ export type InfiniteScrollTriggerProps = {
   isFetchingNextPage: boolean;
   isError: boolean;
   onLoadMore: () => void;
-  //목록 상자 안에서 스크롤될 때 그 상자 (없으면 화면 기준)
-  //화면 기준이면 상자 안에서는 미리 불러오기 여백(rootMargin)이 먹지 않음
+  //스크롤 기준 상자 (사진 관리 썸네일용)
   root?: RefObject<HTMLElement | null>;
-  //좁은 목록용: 여백·글자 작게, 끝 안내 생략
+  //좁은 목록용 (끝 안내 생략)
   compact?: boolean;
 };
 
@@ -38,7 +37,7 @@ export default function InfiniteScrollTrigger({
       },
       {
         root: root?.current ?? null,
-        //상자 안은 가로 스크롤일 수도 있어서 사방으로 여백
+        //상자 안은 가로 스크롤도 감지
         rootMargin: root ? '100px' : '100px 0px',
       },
     );

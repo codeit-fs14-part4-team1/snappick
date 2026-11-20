@@ -15,7 +15,6 @@
   object-fit: cover;
 }
 
-/* 시안 태블릿·모바일: 미리보기를 가로 꽉 채우고 4:5 비율 (616×770, 303×379) */
 @media (max-width: 1199px) {
   .preview {
     width: 100%;
@@ -42,7 +41,6 @@
   overflow-wrap: anywhere;
 }
 
-/* 대표 이미지 스위치 */
 .switchRow {
   display: inline-flex;
   align-items: center;

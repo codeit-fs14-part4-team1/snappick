@@ -30,10 +30,10 @@ const STYLE_ORDER: Style[] = [
   Style.MINIMAL,
 ];
 
-//서버 규칙과 같은 값 (apps/api photo-info.ts)
+//서버 규칙과 같은 값 (photo-info.ts)
 export const MAX_STYLES = 3;
 export const MAX_KEYWORDS = 5;
-export const MAX_KEYWORD_LENGTH = 10; //서버처럼 String.length로 센다
+export const MAX_KEYWORD_LENGTH = 10; //String.length 기준
 export const MAX_DESCRIPTION_LENGTH = 50;
 
 type PhotoMetadataFormProps = {
@@ -42,16 +42,15 @@ type PhotoMetadataFormProps = {
   styles: Style[];
   onToggleStyle: (style: Style) => void;
   keywords: string[];
-  //입력한 키워드를 받는다. 추가했으면 true (입력창을 비운다), 규칙에 안 맞으면 false
+  //키워드 추가
   onKeywordSubmit: (keyword: string) => boolean;
   onKeywordRemove: (keyword: string) => void;
-  //키워드 규칙 위반 안내 (있으면 입력창 빨간 테두리)
   keywordError: string | null;
   description: string;
   onDescriptionChange: (description: string) => void;
 };
 
-// 2단계 오른쪽: 촬영 카테고리(필수) / 스타일 태그(최대 3) / 자유 키워드(최대 5) / 한 줄 설명
+//오른쪽 정보 입력 폼 (카테고리 필수 / 스타일 최대 3 / 키워드 최대 5 / 한 줄 설명)
 export default function PhotoMetadataForm({
   categories,
   onToggleCategory,
@@ -65,7 +64,7 @@ export default function PhotoMetadataForm({
   onDescriptionChange,
 }: PhotoMetadataFormProps) {
   const id = useId();
-  //입력 중인 키워드 (이 폼 안에서만 쓰는 값)
+  //입력 중인 키워드
   const [draft, setDraft] = useState('');
   const styleFull = selectedStyles.length >= MAX_STYLES;
 
@@ -75,13 +74,13 @@ export default function PhotoMetadataForm({
   };
 
   const handleKeywordKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    //한글 조합 중 Enter는 글자 확정용이라 무시
+    //한글 조합 중 Enter 무시
     if (event.nativeEvent.isComposing) return;
     if (event.key === 'Enter') {
       event.preventDefault();
       submitDraft();
     }
-    //빈 입력창에서 Backspace: 마지막 키워드 빼기
+    //빈 입력창 Backspace: 마지막 키워드 빼기
     if (event.key === 'Backspace' && draft === '' && keywords.length > 0) {
       onKeywordRemove(keywords[keywords.length - 1]);
     }
@@ -133,7 +132,7 @@ export default function PhotoMetadataForm({
                 type="button"
                 className={styles.chip}
                 aria-pressed={selected}
-                //3개를 고르면 나머지는 못 고른다 (고른 것은 풀 수 있음)
+                //3개 고르면 나머지 막기
                 disabled={styleFull && !selected}
                 onClick={() => onToggleStyle(style)}
               >

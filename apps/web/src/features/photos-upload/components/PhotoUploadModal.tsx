@@ -38,7 +38,7 @@ const STEPS: { step: UploadModalStep; label: string }[] = [
   { step: 2, label: '정보 입력' },
 ];
 
-//① 요청 본문용 파일 정보
+//① 요청에 보낼 파일 정보
 function toFileInfos(files: File[]): UploadFileInfo[] {
   return files.map((file) => ({
     fileName: file.name,
@@ -47,20 +47,17 @@ function toFileInfos(files: File[]): UploadFileInfo[] {
   }));
 }
 
-//로그인 만료 토스트 (①·재시도·③ 공통)
 const SESSION_EXPIRED_MESSAGE = '로그인이 만료됐어요. 다시 로그인해 주세요.';
 
-//로그인 만료: 첫 401(재발급 실패) 이후에는 토큰이 지워져 메시지가 바뀐다
-//TODO(공용 에러): 메시지 문자열 비교 대신 status 기반으로 교체
 const isUnauthorized = (error: unknown) =>
   error instanceof Error &&
   (error.message === 'API 요청 실패: 401' ||
     error.message === '로그인이 필요한 요청입니다.');
 
-//사진 올리기 모달: 단계·업로드 상태 관리, 1단계 PhotoUploader / 2단계 PhotoEditor
-//TODO(백엔드): 등록 취소 API 요청 — staging 등록 시간 재보고 판단
-//TODO(공용 Modal): ESC 연타하면 강제로 닫힘 — 팀원 수정 후 잠금 prop으로
-//TODO: 미리보기 교체 때 깜빡임 — img.decode() 후 교체
+//사진 올리기 모달
+//1단계: 파일 선택 → 형식 검증 → 중복 확인 → 리사이즈 → ① URL 발급 → ② S3 업로드 (실패하면 재시도)
+//2단계: 정보 입력 → ③ 등록 → 결과 모달
+//닫기: 사진이 있으면 확인창 → 업로드 중단 · 초기화
 export default function PhotoUploadModal({
   open,
   onClose,
@@ -76,26 +73,26 @@ export default function PhotoUploadModal({
   const [rejectMessages, setRejectMessages] = useState<string[]>([]);
   const [result, setResult] = useState<RegisterResult | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
-  //2단계에서 편집 중인 사진 (없으면 첫 장)
+  //2단계에서 고른 사진 (없으면 첫 장)
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [representativeId, setRepresentativeId] = useState<string | null>(null);
   const [policyError, setPolicyError] = useState(false);
-  //2단계 마지막 사진 빼기 확인 중인 사진 (null이면 모달 닫힘)
+  //2단계 마지막 사진 빼기 확인 (null : 모달 닫힘)
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
-  //중복 확인 모달이 떠 있는 동안 맡아 둔 선택 (null이면 모달 닫힘)
+  //중복 확인 중에 맡아 둔 선택 (null : 모달 닫힘)
   const [pendingFiles, setPendingFiles] = useState<{
     files: File[];
     duplicates: File[];
     messages: string[];
   } | null>(null);
   const photosRef = useRef(photos);
-  //업로드 중단용, 그만두기 때 abort 후 새 것으로 교체
+  //업로드 중단용
   const abortRef = useRef(new AbortController());
   useEffect(() => {
     photosRef.current = photos;
   }, [photos]);
 
-  //quit 없이 앱 안에서 페이지를 떠날 때: 미리보기 URL 해제 + 업로드 중단
+  //언마운트: 미리보기 URL 해제 + 업로드 중단
   useEffect(() => {
     abortRef.current = new AbortController();
     return () => {
@@ -104,7 +101,7 @@ export default function PhotoUploadModal({
     };
   }, []);
 
-  //다음 막기: 처리 중인 사진이 있거나 완료된 사진이 없을 때 (0장 포함)
+  //처리 중이거나 완료된 사진이 없으면 다음 막기
   const disabled =
     photos.some(
       (p) =>
@@ -113,16 +110,14 @@ export default function PhotoUploadModal({
         p.status === 'uploading',
     ) || photos.every((p) => !(p.status === 'uploaded'));
 
-  //ids에 있는 사진만 patch로 덮어씀 (사진 갱신은 모두 여기로)
-  //이전 값에 따라 달라지는 갱신은 못 함 → setPhotos(prev => …) 직접
+  //ids에 있는 사진만 덮어쓰기
   const patchPhotos = (ids: string[], patch: Partial<SelectedPhoto>) => {
     setPhotos((prev) =>
       prev.map((p) => (ids.includes(p.localId) ? { ...p, ...patch } : p)),
     );
   };
 
-  // ── 1단계: 선택 → 전처리 → ① URL 발급 → ② 업로드 ──
-  //파일 선택: 형식 검증 → 중복 확인 → 업로드 시작
+  //1단계: 파일 선택
   async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const files = Array.from(input.files ?? []);
@@ -138,7 +133,7 @@ export default function PhotoUploadModal({
       else validFiles.push(file);
     }
 
-    //목록에 같은 원본이 있으면 모달로 묻고 멈춤, 없으면 바로 업로드
+    //중복처리
     const sourceKeys = new Set(photos.map((p) => p.sourceKey));
     const duplicates = validFiles.filter((file) =>
       sourceKeys.has(toSourceKey(file)),
@@ -150,14 +145,11 @@ export default function PhotoUploadModal({
     await startUpload(validFiles, messages);
   }
 
-  //업로드 시작: 20장 자르기 → 목록 추가 → 리사이즈 → ① → ②
-  //messages: 형식 검증 안내, 덮어쓰지 않게 받아서 이어 붙임
+  //1단계: 업로드 시작
   async function startUpload(validFiles: File[], messages: string[] = []) {
-    //이번 업로드의 중단 신호 (시작 시점 것을 끝까지 씀)
     const signal = abortRef.current.signal;
     const message = [...messages];
 
-    //남은 자리만큼만 받음 (모달 전체 MAX_PHOTOS장, 상태 무관)
     const leftInput = MAX_PHOTOS - photos.length;
     const acceptedFiles = validFiles.slice(0, leftInput);
     const droppedCount = validFiles.length - acceptedFiles.length;
@@ -168,7 +160,7 @@ export default function PhotoUploadModal({
     }
     setRejectMessages(message);
     if (acceptedFiles.length === 0) return;
-    //목록에 '준비 중'으로 먼저 띄움 (미리보기는 원본으로 바로)
+    //'준비 중'으로 먼저 띄움
     const newPhotos: SelectedPhoto[] = acceptedFiles.map((file) => ({
       file,
       sourceKey: toSourceKey(file),
@@ -182,7 +174,7 @@ export default function PhotoUploadModal({
       description: '',
     }));
     setPhotos((prev) => [...prev, ...newPhotos]);
-    //한 장씩 리사이즈 → '대기 중' (①에는 state 말고 prepared를 넘김)
+    //한 장씩 리사이즈 → '대기 중'
     const prepared: SelectedPhoto[] = [];
     for (const photo of newPhotos) {
       const file = await resizeImage(photo.file).catch(() => photo.file);
@@ -190,7 +182,6 @@ export default function PhotoUploadModal({
         return;
       }
 
-      //리사이즈됐으면 미리보기도 교체 (원본 디코딩 부담 줄이기)
       const previewUrl =
         file !== photo.file ? URL.createObjectURL(file) : photo.previewUrl;
 
@@ -202,20 +193,18 @@ export default function PhotoUploadModal({
       };
       prepared.push(ready);
       patchPhotos([photo.localId], { file, previewUrl, status: 'waiting' });
-      //교체했으면 원본 URL 해제
       if (previewUrl !== photo.previewUrl)
         URL.revokeObjectURL(photo.previewUrl);
     }
     const issued = await createUrl(prepared, signal);
     if (signal.aborted) return;
 
-    //401: 재시도해도 소용없음 → 이번 사진 빼고 토스트
+    //에러
     if (issued === 'unauthorized') {
       removePhotos(newPhotos);
       showToast(SESSION_EXPIRED_MESSAGE, 'error');
       return;
     }
-    //네트워크·서버: failed로 남기고 재시도
     if (issued === 'failed') {
       patchPhotos(
         prepared.map(({ localId }) => localId),
@@ -224,8 +213,7 @@ export default function PhotoUploadModal({
     }
   }
 
-  //재시도: 한 장 / 실패 전부 / 다시 올리기 — 항상 ①부터 (새 URL이라 만료 걱정 없음)
-  //바로 waiting으로 바꿔 연타 막기
+  //1단계: 재시도 (항상 ①부터)
   async function handleRetry(targets: SelectedPhoto[]) {
     const signal = abortRef.current.signal;
 
@@ -233,7 +221,7 @@ export default function PhotoUploadModal({
     patchPhotos(ids, { status: 'waiting', progress: 0 });
     const issued = await createUrl(targets, signal);
     if (signal.aborted) return;
-    //① 실패: failed로 되돌림 (401이면 토스트도)
+    //에러
     if (issued !== 'ok') {
       patchPhotos(ids, { status: 'failed' });
       if (issued === 'unauthorized')
@@ -241,8 +229,7 @@ export default function PhotoUploadModal({
     }
   }
 
-  //① URL 발급 → ② 한 장씩 PUT
-  //반환값은 ①의 결과 ('ok' | 'failed' | 'unauthorized'), 처리는 부른 쪽에서
+  //1단계: ① URL 발급 → ② 업로드
   async function createUrl(
     newPhotos: SelectedPhoto[],
     signal: AbortSignal,
@@ -250,7 +237,7 @@ export default function PhotoUploadModal({
     let items: UploadUrlItem[];
     const body: UploadUrlsRequest = {
       files: toFileInfos(newPhotos.map(({ file }) => file)),
-      //선택은 동의 후에만 열리고 등록은 다음을 거쳐야 해서 항상 true (재시도 포함)
+      //동의해야 선택할 수 있어서 항상 true
       policyAgreed: true,
     };
     try {
@@ -258,7 +245,7 @@ export default function PhotoUploadModal({
     } catch (error) {
       return isUnauthorized(error) ? 'unauthorized' : 'failed';
     }
-    //items[i]와 newPhotos[i]는 순서로 짝 (서버가 순서 보장)
+    //items와 newPhotos는 순서로 짝
     for (const [i, item] of items.entries()) {
       const { localId, file } = newPhotos[i];
       patchPhotos([localId], { status: 'uploading' });
@@ -269,43 +256,37 @@ export default function PhotoUploadModal({
           (progress) => patchPhotos([localId], { progress }),
           signal,
         );
-        //PUT이 끝난 뒤에만 성공 처리
         patchPhotos([localId], {
           uploadKey: item.uploadKey,
           status: 'uploaded',
         });
       } catch {
-        //그만두기면 남은 사진도 멈춤 (실패 표시 안 함)
+        //에러 (그만두기면 멈춤)
         if (signal?.aborted) break;
-        //이 사진만 실패, 나머지는 계속
         patchPhotos([localId], { status: 'failed' });
       }
     }
     return 'ok';
   }
 
-  //목록에서 빼고 미리보기 URL 해제 (한 장·401·등록 성공·그만두기)
+  //목록에서 빼고 미리보기 URL 해제
   function removePhotos(targets: SelectedPhoto[]) {
     const ids = targets.map((t) => t.localId);
     setPhotos((prev) => prev.filter((p) => !ids.includes(p.localId)));
     targets.forEach((t) => URL.revokeObjectURL(t.previewUrl));
   }
 
-  // ── 2단계: 정보 입력 ──
-  //2단계에는 완료된 사진만
+  //2단계: 정보 입력
   const editablePhotos = photos.filter((p) => p.status === 'uploaded');
   const selectedPhoto =
     editablePhotos.find((p) => p.localId === selectedId) ?? editablePhotos[0];
 
-  //선택한 사진의 입력정보 수정
   function updateSelected(patch: Partial<PhotoDetail>) {
     if (!selectedPhoto) return;
     patchPhotos([selectedPhoto.localId], patch);
   }
 
-  //③ 등록: 완료된 사진만 보냄
-  //전체 실패(서버·네트워크): 등록 안 됨 → 같은 사진으로 다시 등록
-  //일부 실패(201 안 failed[]): 성공한 것만 빼고 결과 모달 → 다시 올리기(①부터)
+  //2단계: ③ 등록
   async function handleRegister() {
     setIsRegistering(true);
     const body: RegisterPhotosRequest = {
@@ -316,7 +297,7 @@ export default function PhotoUploadModal({
         keywords: p.keywords,
         description: p.description || null, //'' → null
       })),
-      //대표 안 켰거나 그 사진을 뺐으면 undefined → 요청에서 빠짐
+      //대표가 없으면 undefined → 요청에서 빠짐
       representativeUploadKey: editablePhotos.find(
         (p) => p.localId === representativeId,
       )?.uploadKey,
@@ -324,7 +305,7 @@ export default function PhotoUploadModal({
     try {
       const { items, failed } = await registerPhotos(body, fetchWithAuth);
 
-      //1장이라도 등록되면 포트폴리오·피드 다시 불러오기
+      //1장이라도 등록되면 갱신
       if (items.length > 0) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.photos.portfolioAll(),
@@ -338,9 +319,9 @@ export default function PhotoUploadModal({
       );
       removePhotos(succeeded);
 
-      //목록에는 실패한 사진만 남음
       setResult({ kind: 'done', succeededCount: succeeded.length, failed });
     } catch (error) {
+      //에러
       if (isUnauthorized(error)) {
         showToast(SESSION_EXPIRED_MESSAGE, 'error');
         return;
@@ -351,15 +332,13 @@ export default function PhotoUploadModal({
     }
   }
 
-  // ── 닫기 ──
-
-  //✕·Esc·배경·취소: 사진 있으면 확인창, 없으면 바로 닫기
+  //닫기
   const requestClose = () => {
     if (photos.length > 0) setConfirmOpen(true);
     else quit();
   };
 
-  //그만두기: 업로드 중단 → 상태 초기화 → 닫기
+  //그만두기
   const quit = () => {
     abortRef.current.abort();
     abortRef.current = new AbortController();
@@ -376,7 +355,7 @@ export default function PhotoUploadModal({
     onClose();
   };
 
-  //등록 결과 문구: 전부 성공 / 일부 실패 / 전부 실패, 있는 문장만 이어 붙임
+  //등록 결과 문구
   let resultTitle = '';
   let resultDescription = '';
   if (result?.kind === 'done') {
@@ -398,7 +377,7 @@ export default function PhotoUploadModal({
         closeOnEscape={!isRegistering}
         closeOnBackdrop={!isRegistering}
         onClose={() => {
-          //등록 중엔 닫기 무시 (서버 처리는 못 멈춤)
+          //등록 중엔 닫기 무시
           if (isRegistering) {
             return;
           }
@@ -472,14 +451,13 @@ export default function PhotoUploadModal({
               localId: p.localId,
               previewUrl: p.previewUrl,
               name: p.file.name,
-              //카테고리 비면 썸네일에 빨간 점
               missingRequired: p.categories.length === 0,
               isRepresentative: p.localId === representativeId,
             }))}
             selectedId={selectedPhoto?.localId ?? null}
             onSelect={setSelectedId}
             onRemove={(id) => {
-              //마지막 한 장이면 확인 모달 (빼면 1단계로)
+              //마지막 한 장이면 확인 모달
               if (editablePhotos.length === 1) {
                 setPendingRemoveId(id);
               } else {
@@ -498,7 +476,6 @@ export default function PhotoUploadModal({
                   }
                 : null
             }
-            //업로드는 정보가 로컬에 있어서 미리보기와 항상 같이 있음
             detail={
               selectedPhoto
                 ? {
@@ -509,7 +486,7 @@ export default function PhotoUploadModal({
                   }
                 : null
             }
-            //켜면 이 사진으로 교체, 끄면 대표 없음
+            //켜면 이 사진, 끄면 대표 없음
             onRepresentativeChange={(on) =>
               setRepresentativeId(
                 on && selectedPhoto ? selectedPhoto.localId : null,
@@ -520,7 +497,7 @@ export default function PhotoUploadModal({
             onSubmit={handleRegister}
             submitLabel={`${editablePhotos.length}장 등록하기`}
             submittingLabel="등록 중…"
-            //0장이거나 카테고리 빈 사진이 있으면 등록 막기
+            //0장이거나 카테고리 빈 사진이 있으면 막기
             submitDisabled={
               editablePhotos.length === 0 ||
               editablePhotos.some((p) => p.categories.length === 0)
@@ -530,7 +507,6 @@ export default function PhotoUploadModal({
         )}
       </Modal>
 
-      {/* 아래 모달들은 형제로 둬야 Esc·Tab이 그 모달 안에서만 처리됨 */}
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -554,7 +530,7 @@ export default function PhotoUploadModal({
         }
       />
 
-      {/* 중복 사진: 건너뛰기 / 그래도 추가, 닫기는 이번 선택 취소 */}
+      {/* 중복 사진 */}
       <Modal
         open={pendingFiles !== null}
         onClose={() => setPendingFiles(null)}
@@ -599,7 +575,7 @@ export default function PhotoUploadModal({
         </ul>
       </Modal>
 
-      {/* 2단계 마지막 사진 빼기: 확인하면 빼고 1단계로 */}
+      {/* 2단계 마지막 사진 빼기 → 1단계로 */}
       <Modal
         open={pendingRemoveId !== null}
         onClose={() => {
@@ -637,7 +613,7 @@ export default function PhotoUploadModal({
         }
       />
 
-      {/* 등록 전체 실패: 닫으면 2단계에 남아 다시 등록 */}
+      {/* 등록 전체 실패 */}
       {result?.kind === 'error' && (
         <Modal
           open
@@ -654,7 +630,7 @@ export default function PhotoUploadModal({
         />
       )}
 
-      {/* 등록 결과: 전부 성공이면 확인, 실패 있으면 그만두기 / 다시 올리기 */}
+      {/* 등록 결과 */}
       {result?.kind === 'done' && (
         <Modal
           open

@@ -7,15 +7,15 @@ import styles from './PhotoList.module.css';
 export type PhotoListItem = {
   localId: string;
   previewUrl: string;
-  //화면 낭독기가 부르는 이름 (업로드: 파일명 / 관리: 순서 "사진 N")
+  //화면 낭독기용 이름 (업로드: 파일명 / 사진 관리: 사진 N)
   name: string;
-  //필수 정보(촬영 카테고리)를 아직 안 채움
+  //필수 정보 미입력
   missingRequired: boolean;
-  //지금 화면의 대표 (썸네일 아래 띠)
+  //대표사진 (썸네일 아래 띠)
   isRepresentative: boolean;
 };
 
-//목록 끝 더 불러오기 (관리 모달만, 업로드는 생략)
+//무한스크롤 (사진 관리만 사용)
 export type PhotoListLoadMore = Pick<
   InfiniteScrollTriggerProps,
   'hasNextPage' | 'isFetchingNextPage' | 'isError' | 'onLoadMore'
@@ -23,16 +23,13 @@ export type PhotoListLoadMore = Pick<
 
 type PhotoListProps = {
   photos: PhotoListItem[];
-  //지금 폼에서 편집 중인 사진
   selectedId: string | null;
   onSelect: (localId: string) => void;
   onRemove: (localId: string) => void;
   loadMore?: PhotoListLoadMore;
 };
 
-//2단계 사진 목록: 데스크톱 3열, 태블릿·모바일 가로 스크롤
-//썸네일: 선택 시 초록 테두리 / 필수 미입력 빨간 점 / 빼기 ✕ / 대표 아래 띠
-//loadMore가 있으면 목록 끝에 무한 스크롤 트리거 (감지 기준 = 이 목록 상자)
+//왼쪽 썸네일 목록 (데스크톱 3열, 태블릿 · 모바일 가로 스크롤)
 export default function PhotoList({
   photos,
   selectedId,
@@ -40,7 +37,7 @@ export default function PhotoList({
   onRemove,
   loadMore,
 }: PhotoListProps) {
-  //스크롤되는 상자 = 그리드 (트리거가 이 안에서 보이는지 감지)
+  //무한스크롤 감지 기준
   const gridRef = useRef<HTMLUListElement>(null);
 
   return (
@@ -58,7 +55,7 @@ export default function PhotoList({
             isRepresentative,
           }) => {
             const selected = localId === selectedId;
-            //눈으로 보이는 표시(띠·빨간 점)를 화면 낭독기에도 같은 순서로 알림
+            //화면 낭독기용 라벨
             const label = [
               name,
               isRepresentative && '(대표)',
@@ -73,7 +70,7 @@ export default function PhotoList({
                 data-selected={selected || undefined}
                 data-missing={missingRequired || undefined}
               >
-                {/* 버튼 안에 버튼을 넣을 수 없어서 선택·빼기 버튼을 나란히 둔다 */}
+                {/* 버튼 안에 버튼 불가 → 나란히 */}
                 <button
                   type="button"
                   className={styles.select}

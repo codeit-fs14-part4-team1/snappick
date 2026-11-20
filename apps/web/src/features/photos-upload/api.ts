@@ -11,7 +11,7 @@ import type {
 
 type FetchWithAuth = ReturnType<typeof useAuth>['fetchWithAuth'];
 
-//① POST /me/photos/upload-urls
+//① 업로드 URL 발급: POST /me/photos/upload-urls
 export async function createUploadUrls(
   body: UploadUrlsRequest,
   fetchWithAuth: FetchWithAuth,
@@ -28,11 +28,7 @@ export async function createUploadUrls(
   return response;
 }
 
-//② PUT {uploadUrl}
-//진행률 받으려고 fetch 대신 xhr
-//Content-Type은 ①의 contentType과 같아야 함 (형식·크기가 서명에 들어 있음)
-//성공 200 본문 없음 / 실패 403(만료·서명), 400(형식·크기 불일치)
-//저장소는 STORAGE_DRIVER로 결정 (local: apps/web/public, s3: 버킷)
+//② 파일 업로드: PUT {uploadUrl} (진행률 때문에 xhr 사용)
 export async function putFileToUploadUrl(
   uploadUrl: string,
   file: File,
@@ -46,12 +42,13 @@ export async function putFileToUploadUrl(
       return;
     }
     const xhr = new XMLHttpRequest();
-    //중단 신호 오면 xhr 끊기, 끊기면 실패와 구분되는 AbortError (fetch와 같은 모양)
+    //중단
     const abortXhr = () => xhr.abort();
     signal?.addEventListener('abort', abortXhr);
     xhr.onabort = () => reject(new DOMException('업로드 중단', 'AbortError'));
 
     xhr.open('PUT', uploadUrl);
+    //① 때 보낸 파일 형식과 같아야 함 (서명에 포함)
     xhr.setRequestHeader('Content-Type', file.type);
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -69,19 +66,13 @@ export async function putFileToUploadUrl(
     xhr.onerror = () => {
       reject(new Error('네트워크 오류'));
     };
-
-    //성공·실패·중단 모두 끝나면 리스너 정리 (컨트롤러를 여러 PUT이 같이 씀)
+    //cleanup
     xhr.onloadend = () => signal?.removeEventListener('abort', abortXhr);
     xhr.send(file);
   });
 }
 
-//③ POST /me/photos
-//서버가 올린 파일 확인 → WebP 변환 → 사진 정보와 함께 등록
-//201이어도 일부는 failed에만 있을 수 있음 (파일 없음·이미지 아님)
-//대표사진: 켠 사진의 uploadKey를 보내면 기존 대표 교체 (안 보내면 유지)
-//representativePhotoId는 등록 후 작가의 현재 대표사진 (이번 요청 결과 아님)
-//TODO(Phase 3): 대표로 보낸 사진의 photoId ≠ representativePhotoId면 "대표 지정 실패" 안내 (등록은 성공 유지)
+//③ 사진 등록: POST /me/photos (201: 성공 · 실패 같이 돌려줌)
 export async function registerPhotos(
   body: RegisterPhotosRequest,
   fetchWithAuth: FetchWithAuth,
@@ -95,8 +86,7 @@ export async function registerPhotos(
   return response;
 }
 
-//④ GET /me/photos/{photoId}
-//내 사진 한 장의 정보 (다른 작가 사진이면 403, 없으면 404)
+//④ 사진 정보 조회: GET /me/photos/{photoId}
 export async function getPhotoData(
   photoId: string,
   fetchWithAuth: FetchWithAuth,
@@ -106,8 +96,7 @@ export async function getPhotoData(
   return response;
 }
 
-//⑤ PATCH /me/photos/batch
-//updates·deletes 각 20개 / 대표 생략=유지 / description 생략=유지, null·''=지움
+//⑤ 사진 일괄 수정: PATCH /me/photos/batch (수정 · 삭제 각 20개)
 export async function batchPhotos(
   body: BatchRequest,
   fetchWithAuth: FetchWithAuth,
