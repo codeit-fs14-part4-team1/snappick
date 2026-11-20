@@ -7,6 +7,8 @@ import { useToast } from '@/components/ui/ToastProvider';
 
 import PhotographerProductModal from './PhotographerProductModal';
 
+import type { CreatePhotographerProductInput } from '../types';
+
 import styles from './PhotographerProducts.module.css';
 
 // 촬영 상품 데이터 타입 정의
@@ -26,8 +28,16 @@ type PhotographerProductsProps = {
   isReady?: boolean;
   isEditing?: boolean;
 
-  // 프로필 기본 정보 5개 완료 여부를 전달받음
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
+
   isBasicInfoComplete: boolean;
+  // 편집 중 변경 사항은 서버에 저장하지 않고 상위 임시 상태에 반영함
+  onApplyProduct?: (
+    productId: string | null,
+    input: CreatePhotographerProductInput,
+  ) => void;
+  onDeleteProduct?: (productId: string) => void;
 };
 
 // 촬영 시간을 시간과 분으로 변환함
@@ -46,10 +56,14 @@ export default function PhotographerProducts({
   isSelf = false,
   isReady = true,
   isEditing = false,
+  isSavingEdit = false,
   isBasicInfoComplete,
+  onApplyProduct,
+  onDeleteProduct,
 }: PhotographerProductsProps) {
   // 상품 등록 제한 및 처리 결과를 안내하는 Toast를 사용함
   const { showToast } = useToast();
+
   // 상품 등록·수정 모달 상태를 관리함
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
@@ -57,9 +71,11 @@ export default function PhotographerProducts({
   const [editingProduct, setEditingProduct] =
     useState<PhotographerProduct | null>(null);
 
-  // 기본 정보 완료 여부를 확인한 뒤 상품 등록 모달을 표시함
+  // 임시 프로필 기본 정보 완료 여부를 확인한 뒤 상품 등록 모달을 표시함
   const handleCreateProduct = () => {
-    // 필수 기본 정보가 미완료라면 상품 등록을 차단함
+    // 서버 저장 중에는 상품 등록 모달을 열지 않음
+    if (isSavingEdit) return;
+
     if (!isBasicInfoComplete) {
       showToast(
         '촬영 상품을 등록하려면 먼저 프로필 기본 정보 설정을 완료해 주세요.',
@@ -68,15 +84,42 @@ export default function PhotographerProducts({
       return;
     }
 
-    // 기본 정보가 완료된 경우 상품 등록 모달을 표시함
     setEditingProduct(null);
     setIsProductModalOpen(true);
   };
 
   // 상품 수정 모달을 표시함
   const handleEditProduct = (product: PhotographerProduct) => {
+    // 서버 저장 중에는 상품 수정 모달을 열지 않음
+    if (isSavingEdit) return;
+
     setEditingProduct(product);
     setIsProductModalOpen(true);
+  };
+
+  // 상품 모달의 저장은 API 호출이 아닌 임시 적용으로 처리함
+  const handleApplyProduct = (
+    productId: string | null,
+    input: CreatePhotographerProductInput,
+  ) => {
+    // 서버 저장 중에는 상품 변경 사항을 임시 적용하지 않음
+    if (isSavingEdit) return;
+
+    onApplyProduct?.(productId, input);
+    setIsProductModalOpen(false);
+    showToast(
+      '상품 변경 사항을 임시 적용했어요. 수정 완료를 눌러 저장해 주세요.',
+    );
+  };
+
+  // 상품 삭제 역시 임시 목록에서만 삭제함
+  const handleDeleteProduct = (productId: string) => {
+    // 서버 저장 중에는 상품 삭제를 임시 적용하지 않음
+    if (isSavingEdit) return;
+
+    onDeleteProduct?.(productId);
+    setIsProductModalOpen(false);
+    showToast('상품 삭제를 임시 적용했어요. 수정 완료를 눌러 저장해 주세요.');
   };
 
   return (
@@ -105,6 +148,7 @@ export default function PhotographerProducts({
                   variant="outline"
                   size="lg"
                   onClick={handleCreateProduct}
+                  disabled={isSavingEdit}
                 >
                   + 상품 추가
                 </Button>
@@ -113,90 +157,86 @@ export default function PhotographerProducts({
           </div>
         )}
       </div>
-
-      {/* 상품이 없는 경우 본인 미설정 상태와 공개 상태를 구분함 */}
+      {/* 상품이 없는 경우 준비 상태와 관계없이 빈 상태 박스를 표시함 */}
       {products.length === 0 ? (
-        isSelf && !isReady ? (
-          <div className={styles.emptyStateOwn}>
-            {/* 작가 본인 미설정 상태의 상품 등록 안내 */}
-            <p className={styles.emptyStateOwnTitle}>
-              아직 등록한 상품이 없어요
-            </p>
+        <div className={styles.emptyStateOwn}>
+          <p className={styles.emptyStateOwnTitle}>
+            {isSelf ? '아직 등록한 상품이 없어요' : '아직 등록된 상품이 없어요'}
+          </p>
+
+          {/* 본인 프로필이 준비되지 않은 경우 상품 등록 제한을 안내함 */}
+          {isSelf && !isReady && (
             <p className={styles.emptyStateOwnDescription}>
               상품은 최대 3개까지 등록할 수 있어요.
             </p>
-          </div>
-        ) : (
-          // 공개 프로필에서는 기존 빈 상태 안내를 유지함
-          <p className={styles.emptyState}>아직 등록된 촬영 상품이 없습니다.</p>
-        )
+          )}
+        </div>
       ) : (
-        <>
-          {/* 촬영 상품 목록 표시 */}
-          <ul className={styles.productList}>
-            {products.map((product) => (
-              <li key={product.productId} className={styles.productCard}>
-                {/* 촬영 상품명 표시 */}
-                <h3 className={styles.productName}>{product.name}</h3>
+        <ul className={styles.productList}>
+          {products.map((product) => (
+            <li key={product.productId} className={styles.productCard}>
+              <h3 className={styles.productName}>{product.name}</h3>
 
-                <p className={styles.price}>
-                  {product.price.toLocaleString('ko-KR')}원~
-                </p>
+              <p className={styles.price}>
+                {product.price.toLocaleString('ko-KR')}원~
+              </p>
 
-                {/* 촬영 상품 상세 정보 표시 */}
-                <dl className={styles.details}>
-                  <div className={styles.detail}>
-                    <dt>촬영 시간</dt>
-                    <dd>{formatDuration(product.durationMinutes)}</dd>
-                  </div>
+              <dl className={styles.details}>
+                <div className={styles.detail}>
+                  <dt>촬영 시간</dt>
+                  <dd>{formatDuration(product.durationMinutes)}</dd>
+                </div>
+                <div className={styles.detail}>
+                  <dt>제공 사진</dt>
+                  <dd>{product.photoCount}장</dd>
+                </div>
+                <div className={styles.detail}>
+                  <dt>원본 제공</dt>
+                  <dd>{product.includesOriginal ? '제공' : '미제공'}</dd>
+                </div>
+                <div className={styles.detail}>
+                  <dt>전달 예정</dt>
+                  <dd>촬영 다음 날부터 14일 이내</dd>
+                </div>
+              </dl>
 
-                  <div className={styles.detail}>
-                    <dt>제공 사진</dt>
-                    <dd>{product.photoCount}장</dd>
-                  </div>
+              {/* 안내 문구가 있는 상품은 상세 정보 아래에 표시함 */}
+              {product.commonNotice?.trim() && (
+                <p className={styles.commonNotice}>{product.commonNotice}</p>
+              )}
 
-                  <div className={styles.detail}>
-                    <dt>원본 제공</dt>
-                    <dd>{product.includesOriginal ? '제공' : '미제공'}</dd>
-                  </div>
-
-                  <div className={styles.detail}>
-                    <dt>전달 예정</dt>
-                    <dd>촬영 다음 날부터 14일 이내</dd>
-                  </div>
-                </dl>
-
-                {/* 작가 본인 편집 모드에서 상품 수정 버튼 표시 */}
-                {isSelf && isEditing && (
-                  <div className={styles.productEditAction}>
-                    <button
-                      type="button"
-                      className={styles.editButton}
-                      onClick={() => handleEditProduct(product)}
-                    >
-                      상품 수정
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
+              {/* 작가 본인 편집 모드에서 상품 수정 버튼을 표시함 */}
+              {isSelf && isEditing && (
+                <div className={styles.productEditAction}>
+                  <button
+                    type="button"
+                    className={styles.editButton}
+                    onClick={() => handleEditProduct(product)}
+                    disabled={isSavingEdit}
+                  >
+                    상품 수정
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
 
-      {/* 상품이 있거나 본인 미설정 상태일 때 가격 안내 표시 */}
-      {(products.length > 0 || (isSelf && !isReady)) && (
-        <p className={styles.priceNotice}>
-          표시된 가격은 참고용이에요. 촬영 조건에 따라 달라질 수 있어요.
-        </p>
-      )}
+      {/* 상품 등록 여부와 관계없이 가격 안내 문구를 표시함 */}
+      <p className={styles.priceNotice}>
+        표시된 가격은 참고용이에요. 촬영 조건에 따라 달라질 수 있어요.
+      </p>
 
-      {/* 촬영 상품 등록·수정 모달을 표시함 */}
+      {/* 상품 등록·수정·삭제를 임시 상태에만 반영함 */}
       {isSelf && isEditing && isProductModalOpen && (
         <PhotographerProductModal
           open
           product={editingProduct}
+          isSavingEdit={isSavingEdit}
           onClose={() => setIsProductModalOpen(false)}
+          onApply={handleApplyProduct}
+          onDelete={handleDeleteProduct}
         />
       )}
     </section>
