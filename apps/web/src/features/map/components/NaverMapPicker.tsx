@@ -25,6 +25,8 @@ export default function NaverMapPicker() {
   const mapElement = useRef<HTMLDivElement>(null);
   const map = useRef<NaverMap | null>(null);
   const marker = useRef<NaverMarker | null>(null);
+  // 위치를 고를 때마다 늘린다. 응답이 늦게 와도 최신 요청의 응답만 반영하기 위함
+  const requestSeq = useRef(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(
     NAVER_MAP_CLIENT_ID
@@ -50,6 +52,7 @@ export default function NaverMapPicker() {
     const maps = window.naver?.maps;
     if (!maps || !map.current) return;
     const position = new maps.LatLng(lat, lng);
+    const seq = ++requestSeq.current;
 
     if (marker.current) {
       marker.current.setPosition(position);
@@ -61,9 +64,12 @@ export default function NaverMapPicker() {
       setPicked({ address: knownAddress, lat, lng });
       return;
     }
+    // 주소를 받기 전에는 이전 선택이 전송되지 않도록 비운다 (선택 버튼 비활성)
+    setPicked(null);
     maps.Service.reverseGeocode(
       { coords: position, orders: 'roadaddr,addr' },
       (status, response) => {
+        if (seq !== requestSeq.current) return;
         const found = response.v2.address;
         const address =
           status === maps.Service.Status.OK
@@ -92,8 +98,10 @@ export default function NaverMapPicker() {
     const maps = window.naver?.maps;
     const keyword = query.trim();
     if (!maps || !map.current || !keyword) return;
+    const seq = ++requestSeq.current;
 
     maps.Service.geocode({ query: keyword }, (status, response) => {
+      if (seq !== requestSeq.current) return;
       const first = response.v2.addresses[0];
       if (status !== maps.Service.Status.OK || !first) {
         setError(null);
