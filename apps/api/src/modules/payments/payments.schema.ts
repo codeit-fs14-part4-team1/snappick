@@ -24,3 +24,7 @@ export const tossPaymentResponseSchema = z.object({
   totalAmount: z.number(),
   status: z.string(),
 });
+
+export const tossErrorResponseSchema = z.object({
+  code: z.string(),
+});

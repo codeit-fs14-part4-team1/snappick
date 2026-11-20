@@ -4,7 +4,10 @@ import type {
   PreparePaymentInput,
   ConfirmPaymentInput,
 } from './payments.schema.js';
-import { tossPaymentResponseSchema } from './payments.schema.js';
+import {
+  tossPaymentResponseSchema,
+  tossErrorResponseSchema,
+} from './payments.schema.js';
 import { createReservation } from '../reservations/reservations.service.js';
 
 export async function preparePayment(
@@ -302,7 +305,24 @@ export async function confirmPayment(
   const authorization =
     'Basic ' + Buffer.from(`${tossSecretKey}:`).toString('base64');
 
-  let tossResponse: Response;
+  const fetchTossPayment = async (): Promise<Response | undefined> => {
+    const paymentKey = encodeURIComponent(input.paymentKey);
+
+    try {
+      return await fetch(
+        `https://api.tosspayments.com/v1/payments/${paymentKey}`,
+        {
+          method: 'GET',
+          headers: { Authorization: authorization },
+        },
+      );
+    } catch {
+      return undefined;
+    }
+  };
+
+  let tossConfirmResponse: Response | undefined;
+  let tossResponse: Response | undefined;
 
   if (payment.status === 'PENDING') {
     // 기존 결제 시도와 같은 키인지 확인합니다.
@@ -314,14 +334,7 @@ export async function confirmPayment(
       );
     }
 
-    const paymentKey = encodeURIComponent(input.paymentKey);
-    tossResponse = await fetch(
-      `https://api.tosspayments.com/v1/payments/${paymentKey}`,
-      {
-        method: 'GET',
-        headers: { Authorization: authorization },
-      },
-    );
+    tossResponse = await fetchTossPayment();
   } else {
     const shootingCaseId = payment.quote?.shooting_case_id;
 
@@ -375,24 +388,72 @@ export async function confirmPayment(
       );
     }
 
-    tossResponse = await fetch(
-      'https://api.tosspayments.com/v1/payments/confirm',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authorization,
-          'Content-Type': 'application/json',
+    try {
+      tossConfirmResponse = await fetch(
+        'https://api.tosspayments.com/v1/payments/confirm',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: authorization,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentKey: input.paymentKey,
+            orderId: input.orderId,
+            amount: payment.amount,
+          }),
         },
-        body: JSON.stringify({
-          paymentKey: input.paymentKey,
-          orderId: input.orderId,
-          amount: payment.amount,
-        }),
+      );
+    } catch {
+      tossResponse = undefined;
+    }
+
+    tossResponse = tossConfirmResponse;
+  }
+
+  let tossConfirmErrorCode: string | undefined;
+
+  if (tossConfirmResponse && !tossConfirmResponse.ok) {
+    const body: unknown = await tossConfirmResponse
+      .json()
+      .catch(() => undefined);
+    const result = tossErrorResponseSchema.safeParse(body);
+
+    if (result.success) {
+      tossConfirmErrorCode = result.data.code;
+    }
+  }
+
+  if (!tossResponse?.ok && payment.status === 'READY') {
+    tossResponse = await fetchTossPayment();
+  }
+
+  if (!tossResponse?.ok && tossConfirmErrorCode === 'REJECT_CARD_COMPANY') {
+    const failed = await prisma.payments.updateMany({
+      where: {
+        id: payment.id,
+        status: 'PENDING',
+        pg_payment_id: input.paymentKey,
       },
+      data: { status: 'FAILED' },
+    });
+
+    if (failed.count === 0) {
+      throw new HttpError(
+        409,
+        'PAYMENT_STATE_CHANGED',
+        '결제 상태가 변경되었습니다. 다시 확인해 주세요.',
+      );
+    }
+
+    throw new HttpError(
+      409,
+      'PAYMENT_RETRY_REQUIRED',
+      '결제 승인이 거절되었습니다. 결제를 다시 시작해 주세요.',
     );
   }
 
-  if (!tossResponse.ok) {
+  if (!tossResponse?.ok) {
     throw new HttpError(
       502,
       'TOSS_CONFIRM_FAILED',
@@ -477,6 +538,29 @@ export async function confirmPayment(
     });
 
     if (completed.count === 0) {
+      const latestPayment = await tx.payments.findUnique({
+        where: { id: payment.id },
+        select: { status: true, pg_payment_id: true },
+      });
+
+      if (
+        latestPayment?.status === 'SUCCEEDED' &&
+        latestPayment.pg_payment_id === input.paymentKey
+      ) {
+        const reservation = await tx.reservations.findUnique({
+          where: { payment_id: payment.id },
+          select: { id: true },
+        });
+
+        if (reservation) {
+          return {
+            paymentId: payment.id,
+            status: 'SUCCEEDED',
+            reservationId: reservation.id,
+          };
+        }
+      }
+
       throw new HttpError(
         409,
         'PAYMENT_STATE_CHANGED',
