@@ -111,11 +111,11 @@ resource "aws_elastic_beanstalk_environment" "api" {
     value     = "none"
   }
 
-  # 상대 경로 이미지(목 데이터, apps/web/public/mock)를 응답용 전체 주소로 바꿀 때 쓰는 주소
+  # DB 이미지 경로(/mock/…, photos/…, profiles/…)를 응답용 전체 주소로 바꿀 때 앞에 붙이는 주소 (이미지 CDN)
   setting {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "IMAGE_BASE_URL"
-    value     = "https://snappick-alpha.vercel.app"
+    value     = "https://d33h37hxjt8j2m.cloudfront.net"
   }
 
   # 사진 업로드 저장소 (apps/api STORAGE_DRIVER=s3, 배포 기본값)
