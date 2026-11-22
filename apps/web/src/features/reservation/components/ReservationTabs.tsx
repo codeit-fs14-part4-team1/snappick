@@ -1,4 +1,4 @@
-import styles from './UserReservationTabs.module.css';
+import styles from './ReservationTabs.module.css';
 
 // 예약 목록 화면에서 사용하는 탭 정의
 const RESERVATION_TABS = [
@@ -9,27 +9,27 @@ const RESERVATION_TABS = [
 ] as const;
 
 // 예약 목록 화면의 탭 타입 정의
-export type UserReservationTab = (typeof RESERVATION_TABS)[number]['key'];
+export type ReservationTab = (typeof RESERVATION_TABS)[number]['key'];
 
-type UserReservationTabsProps = {
+type ReservationTabsProps = {
   // 전체 예약 조회 시 선택된 상태 탭이 없도록 처리함
-  selectedTab: UserReservationTab | null;
-  onTabChange: (tab: UserReservationTab) => void;
+  selectedTab: ReservationTab | null;
+  onTabChange: (tab: ReservationTab) => void;
 
   // 서버에서 확인된 탭별 예약 개수만 표시함
-  counts?: Partial<Record<UserReservationTab, number>>;
+  counts?: Partial<Record<ReservationTab, number>>;
 
   // 사용할 수 없는 탭을 비활성화할 수 있도록 함
-  disabledTabs?: Partial<Record<UserReservationTab, boolean>>;
+  disabledTabs?: Partial<Record<ReservationTab, boolean>>;
 };
 
 // 일반 사용자 예약 목록의 상태 탭을 표시
-export default function UserReservationTabs({
+export default function ReservationTabs({
   selectedTab,
   onTabChange,
   counts,
   disabledTabs,
-}: UserReservationTabsProps) {
+}: ReservationTabsProps) {
   return (
     <div className={styles.tabs} role="group" aria-label="예약 상태 선택">
       {RESERVATION_TABS.map((tab) => {
