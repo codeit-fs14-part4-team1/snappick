@@ -176,6 +176,7 @@ resource "aws_elastic_beanstalk_environment" "api" {
 
 }
 
+# API 서버 주소 (apply 후 터미널에 출력)
 output "api_environment_cname" {
   description = "Elastic Beanstalk API environment hostname"
   value       = aws_elastic_beanstalk_environment.api.cname
