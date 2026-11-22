@@ -41,34 +41,13 @@
 
 .editDescription {
   margin: 0;
-  color: #595959;
+  color: var(--color-text-secondary);
   font-size: 14px;
   line-height: 22px;
 }
 
 .editAction {
   flex-shrink: 0;
-}
-
-/* 필수 항목 확인 영역 */
-.readinessSection {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.readinessHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.readinessTitle {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
 }
 
 /* 프로필 준비 상태 배지 */
@@ -79,60 +58,16 @@
   min-height: 28px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: #f0f0f0;
-  color: #595959;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 /* 기본 정보 미완료 상태일 때 연두색 배지를 표시함 */
 .readinessBadge[data-ready='false'] {
-  background: #f0f5dc;
-  color: var(--color-accent);
-}
-
-.readinessMessage {
-  margin: 0;
-  color: #595959;
-  font-size: 14px;
-  line-height: 22px;
-}
-
-/* 필수 항목 목록 */
-.readinessList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 개별 필수 항목 */
-.readinessItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: #fff;
-  color: #595959;
-  font-size: 13px;
-  line-height: 20px;
-}
-
-/* 완료된 필수 항목 강조 */
-.readinessItem[data-state='complete'] {
-  border-color: #dce8b7;
-  background: #f4f8e8;
+  background: var(--color-accent-soft);
   color: var(--color-accent-strong);
-}
-
-.readinessItemStatus {
-  font-size: 12px;
-  font-weight: 600;
 }
 
 /* 수정 취소와 수정 완료 버튼을 나란히 배치함 */
@@ -195,14 +130,6 @@
     grid-row: 1;
     justify-self: end;
     width: auto;
-  }
-
-  .readinessList {
-    gap: 8px;
-  }
-
-  .readinessItem {
-    font-size: 12px;
   }
 
   /* 모바일에서 수정 취소와 완료 버튼을 가로로 배치함 */

@@ -9,13 +9,13 @@
   margin-top: 48px;
   padding: 24px 28px;
   border-radius: 16px;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-subtle);
 }
 
 /* AI 리뷰 요약 제목을 표시함 */
 .title {
   margin: 0;
-  color: #111111;
+  color: var(--color-text-primary);
   font-size: 18px;
   font-weight: 700;
   line-height: 26px;
@@ -24,7 +24,7 @@
 /* 리뷰 요약 문장을 표시함 */
 .description {
   margin: 0;
-  color: #595959;
+  color: var(--color-text-secondary);
   font-size: 16px;
   font-weight: 400;
   line-height: 24px;
@@ -50,8 +50,8 @@
   max-width: 100%;
   padding: 6px 14px;
   border-radius: 999px;
-  background-color: #f0f4d9;
-  color: #556500;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 700;
   line-height: 22px;
@@ -61,7 +61,7 @@
 /* 요약에 사용한 리뷰 범위를 안내함 */
 .note {
   margin: 0;
-  color: #595959;
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
