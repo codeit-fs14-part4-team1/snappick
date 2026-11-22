@@ -13,7 +13,7 @@ type ProfileMenuProps = {
 };
 
 const userMenuItems = [
-  { label: 'MY 픽', href: '/my/mypicks' },
+  { label: 'MY 픽', href: '/mypick' },
   { label: '문의 내역', href: '/chats' },
   { label: '예약 내역', href: '/my/reservations' },
   { label: '리뷰 내역', href: '/my/reviews' },
