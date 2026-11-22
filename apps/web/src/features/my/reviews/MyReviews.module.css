@@ -241,3 +241,6 @@
     padding-inline: 20px;
   }
 }
+.pagination {
+  margin-top: 32px;
+}

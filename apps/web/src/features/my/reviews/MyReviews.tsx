@@ -1,6 +1,17 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Pagination from '@/components/ui/Pagination';
+import { useToast } from '@/components/ui/ToastProvider';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { queryKeys } from '@/lib/queryKeys';
+import {
+  getEligibleReviews,
+  getMyReviews,
+  REVIEW_PAGE_SIZE,
+  saveMyReview,
+} from './api';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import StateMessage from '@/components/ui/StateMessage';
@@ -9,7 +20,6 @@ import {
   formatDate,
   formatDateWithWeekday as formatShootDate,
 } from '@/utils/dateTime';
-import { mockMyReviews, mockReviewBookings } from './mocks';
 import type { MyReview, ReviewBooking } from './types';
 import styles from './MyReviews.module.css';
 
@@ -32,46 +42,87 @@ type Editor = { booking: ReviewBooking; review?: MyReview };
 
 export default function MyReviews() {
   const [tab, setTab] = useState('available');
-  const [bookings, setBookings] = useState(mockReviewBookings);
-  const [reviews, setReviews] = useState(mockMyReviews);
+  const [page, setPage] = useState(1);
+  const { user, fetchWithAuth } = useAuth();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [deleting, setDeleting] = useState<MyReview | null>(null);
-
-  function saveReview(rating: number, comment: string) {
-    if (!editor) return;
-    // API 연결 전까지 화면 상태만 변경하며, 새로고침하면 초기화됩니다.
-    if (editor.review) {
-      setReviews((current) =>
-        current.map((review) =>
-          review.id === editor.review?.id
-            ? { ...review, rating, comment }
-            : review,
-        ),
-      );
-    } else {
-      const createdAt = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'Asia/Seoul',
-      }).format(new Date());
-      setReviews((current) => [
-        {
-          id: crypto.randomUUID(),
-          booking: editor.booking,
-          rating,
-          comment,
-          createdAt,
-          reply: null,
-        },
-        ...current,
-      ]);
-      setBookings((current) =>
-        current.filter(
-          (booking) => booking.reservationId !== editor.booking.reservationId,
-        ),
-      );
+  const eligibleQuery = useQuery({
+    queryKey: queryKeys.reviews.eligible({
+      page: tab === 'available' ? page : 1,
+      pageSize: REVIEW_PAGE_SIZE,
+    }),
+    queryFn: () =>
+      getEligibleReviews(fetchWithAuth, tab === 'available' ? page : 1),
+    enabled: user?.accountType === 'USER',
+    retry: false,
+  });
+  const bookings: ReviewBooking[] = (eligibleQuery.data?.items ?? []).map(
+    (item) => ({
+      reservationId: item.reservationId,
+      photographerName: item.photographer?.nickname ?? '작가 정보 없음',
+      quoteName: item.quoteName ?? '견적 정보 없음',
+      shootDate: item.shootAt,
+    }),
+  );
+  const query = useQuery({
+    queryKey: queryKeys.reviews.me({
+      page: tab === 'written' ? page : 1,
+      pageSize: REVIEW_PAGE_SIZE,
+    }),
+    queryFn: () => getMyReviews(fetchWithAuth, tab === 'written' ? page : 1),
+    enabled: user?.accountType === 'USER',
+    retry: false,
+  });
+  const activeQuery = tab === 'available' ? eligibleQuery : query;
+  const reviews: MyReview[] = (query.data?.items ?? []).map((review) => ({
+    id: review.reviewId,
+    booking: {
+      reservationId: review.reservationId ?? '',
+      photographerName: review.photographer?.nickname ?? '작가 정보 없음',
+      quoteName: '',
+      shootDate: '',
+    },
+    rating: review.rating,
+    comment: review.comment,
+    createdAt: review.createdAt,
+    reply: review.reply,
+  }));
+  const save = useMutation({
+    mutationFn: ({ rating, comment }: { rating: number; comment: string }) => {
+      if (!editor) throw new Error('작성 중인 리뷰가 없습니다.');
+      return saveMyReview(fetchWithAuth, {
+        rating,
+        comment,
+        ...(editor.review
+          ? { reviewId: editor.review.id }
+          : { reservationId: editor.booking.reservationId }),
+      });
+    },
+    onSuccess: () => {
+      setEditor(null);
       setTab('written');
-    }
-    setEditor(null);
-  }
+      setPage(1);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+      showToast('리뷰를 저장했어요.');
+    },
+    onError: () =>
+      showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error'),
+  });
+  const remove = useMutation({
+    mutationFn: async (reviewId: string) => {
+      await fetchWithAuth(`/me/reviews/${reviewId}`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+      setDeleting(null);
+      if (reviews.length === 1 && page > 1) setPage(page - 1);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+      showToast('리뷰를 삭제했어요.');
+    },
+    onError: () =>
+      showToast('리뷰를 삭제하지 못했어요. 다시 시도해 주세요.', 'error'),
+  });
 
   return (
     <>
@@ -79,13 +130,50 @@ export default function MyReviews() {
         aria-label="리뷰 분류"
         className={styles.tabs}
         value={tab}
-        onValueChange={setTab}
+        onValueChange={(value) => {
+          setTab(value);
+          setPage(1);
+        }}
         items={[
-          { value: 'available', label: '작성 가능', count: bookings.length },
-          { value: 'written', label: '작성한 리뷰', count: reviews.length },
+          {
+            value: 'available',
+            label: '작성 가능',
+            count: eligibleQuery.data?.totalCount,
+          },
+          {
+            value: 'written',
+            label: '작성한 리뷰',
+            count: query.data?.totalCount,
+          },
         ]}
       />
-      {tab === 'available' ? (
+      {activeQuery.isPending ? (
+        <StateMessage
+          className={styles.empty}
+          title="리뷰를 불러오는 중이에요"
+          role="status"
+        />
+      ) : activeQuery.isError ? (
+        <StateMessage
+          className={styles.empty}
+          title="리뷰를 불러오지 못했어요"
+          role="alert"
+          button={{
+            label: '다시 시도',
+            onClick: () => {
+              void activeQuery.refetch();
+            },
+            disabled: activeQuery.isFetching,
+          }}
+        />
+      ) : activeQuery.data?.totalCount &&
+        activeQuery.data.items.length === 0 ? (
+        <StateMessage
+          className={styles.empty}
+          title="현재 페이지에 표시할 리뷰가 없어요"
+          button={{ label: '첫 페이지로', onClick: () => setPage(1) }}
+        />
+      ) : tab === 'available' ? (
         bookings.length ? (
           <ul
             className={styles.bookings}
@@ -181,32 +269,55 @@ export default function MyReviews() {
           description="촬영 후기를 남겨 보세요"
         />
       )}
+      {!activeQuery.isError &&
+        activeQuery.data &&
+        activeQuery.data.totalPages > 1 && (
+          <div className={styles.pagination}>
+            <Pagination
+              currentPage={page}
+              totalPages={activeQuery.data.totalPages}
+              onPageChange={setPage}
+              aria-label="리뷰 목록 페이지 이동"
+            />
+          </div>
+        )}
       {editor && (
         <ReviewEditor
           editor={editor}
-          onClose={() => setEditor(null)}
-          onSave={saveReview}
+          onClose={() => {
+            if (!save.isPending) setEditor(null);
+          }}
+          pending={save.isPending}
+          onSave={(rating, comment) => {
+            if (!save.isPending) save.mutate({ rating, comment });
+          }}
         />
       )}
       <Modal
         open={deleting !== null}
-        onClose={() => setDeleting(null)}
+        onClose={() => {
+          if (!remove.isPending) setDeleting(null);
+        }}
+        closeOnEscape={!remove.isPending}
+        closeOnBackdrop={!remove.isPending}
         variant="confirm"
         title="리뷰를 삭제할까요?"
         description="삭제한 리뷰는 다시 작성할 수 없고, 작가 답글도 함께 삭제돼요."
         className={styles.confirm}
         footer={
           <>
-            <Button variant="outline" onClick={() => setDeleting(null)}>
+            <Button
+              variant="outline"
+              disabled={remove.isPending}
+              onClick={() => setDeleting(null)}
+            >
               취소
             </Button>
             <Button
               variant="danger"
+              disabled={remove.isPending}
               onClick={() => {
-                setReviews((current) =>
-                  current.filter((review) => review.id !== deleting?.id),
-                );
-                setDeleting(null);
+                if (deleting && !remove.isPending) remove.mutate(deleting.id);
               }}
             >
               삭제
@@ -222,8 +333,10 @@ function ReviewEditor({
   editor,
   onClose,
   onSave,
+  pending,
 }: {
   editor: Editor;
+  pending: boolean;
   onClose: () => void;
   onSave: (rating: number, comment: string) => void;
 }) {
@@ -233,16 +346,26 @@ function ReviewEditor({
   const displayedRating = rating === 0 ? (hoverRating ?? 0) : rating;
   const [comment, setComment] = useState(editor.review?.comment ?? '');
   const canSubmit =
-    rating > 0 && comment.trim().length > 0 && comment.length <= 200;
+    !pending &&
+    rating > 0 &&
+    comment.trim().length > 0 &&
+    comment.length <= 200;
   return (
     <Modal
       open
       onClose={onClose}
+      closeOnEscape={!pending}
+      closeOnBackdrop={!pending}
       title={editor.review ? '리뷰 수정' : '리뷰 쓰기'}
       className={styles.modal}
       footer={
         <>
-          <Button variant="outline" size="lg" onClick={onClose}>
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={pending}
+            onClick={onClose}
+          >
             취소
           </Button>
           <Button type="submit" size="lg" form={id} disabled={!canSubmit}>
@@ -252,6 +375,7 @@ function ReviewEditor({
       }
     >
       <form
+        aria-busy={pending}
         id={id}
         className={styles.form}
         onSubmit={(event) => {
@@ -263,11 +387,14 @@ function ReviewEditor({
           <span className={styles.thumbnail} aria-hidden="true" />
           <div className={styles.bookingText}>
             <p className={styles.bookingName}>
-              {editor.booking.photographerName} · {editor.booking.quoteName}
+              {editor.booking.photographerName}
+              {editor.booking.quoteName && ` · ${editor.booking.quoteName}`}
             </p>
-            <p className={styles.date}>
-              {formatShootDate(editor.booking.shootDate)}
-            </p>
+            {editor.booking.shootDate && (
+              <p className={styles.date}>
+                {formatShootDate(editor.booking.shootDate)}
+              </p>
+            )}
           </div>
         </div>
         <fieldset className={styles.ratingField}>
@@ -285,6 +412,7 @@ function ReviewEditor({
                 }}
               >
                 <input
+                  disabled={pending}
                   type="radio"
                   name={`${id}-rating`}
                   value={score}
@@ -309,6 +437,7 @@ function ReviewEditor({
               if (textarea.value.length > 200) textarea.value = value;
               setComment(value);
             }}
+            disabled={pending}
             maxLength={200}
             placeholder="촬영 분위기, 결과물 만족도 등을 자유롭게 남겨 주세요."
             aria-describedby={`${id}-count`}
