@@ -16,24 +16,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getMe, logoutSession } from '@/features/auth/api';
 import { authFetch } from '@/features/auth/authFetch';
 import { refreshSession } from '@/features/auth/refresh';
-import type { AuthUser } from '@/features/auth/types';
+import type {
+  AuthUser,
+  FetchWithAuth,
+  FetchWithAuthOptions,
+} from '@/features/auth/types';
 import { apiFetch } from '@/lib/api';
 
 // 인증 상태를 구분하는 타입 정의
 type AuthStatus =
   'initializing' | 'authenticated' | 'unauthenticated' | 'error';
-
-// 공통 인증 요청 옵션 정의
-type FetchWithAuthOptions = {
-  optionalAuth?: boolean;
-};
-
-// 공통 인증 요청 함수 타입 정의
-type FetchWithAuth = <T>(
-  path: string,
-  options?: RequestInit,
-  config?: FetchWithAuthOptions,
-) => Promise<T | undefined>;
 
 // 인증 Context에서 공유할 값의 타입 정의
 type AuthContextValue = {
@@ -68,6 +60,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 로그인 계정 변경과 토큰 재발급을 구분함
   const sessionVersionRef = useRef(0);
+  const refreshScopeRef = useRef<object>({});
+
+  const createTokenRefresher = useCallback((requestToken: string) => {
+    const scope = refreshScopeRef.current;
+    return () => {
+      if (refreshScopeRef.current !== scope) {
+        throw new Error('요청 중 인증 상태가 변경되었습니다.');
+      }
+      // 이전 토큰의 401이 늦게 도착했다면 이미 갱신된 토큰을 재사용함
+      const currentToken = accessTokenRef.current;
+      if (currentToken && currentToken !== requestToken) {
+        return Promise.resolve(currentToken);
+      }
+      return refreshSession(scope);
+    };
+  }, []);
 
   // 토큰 변경 시 Ref와 State를 함께 갱신함
   const setAccessToken = useCallback((token: string | null) => {
@@ -79,8 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Access Token으로 사용자 정보를 조회함
   const fetchUser = useCallback(
     async (token: string) => {
-      // 사용자 정보 조회 시점의 인증 버전을 저장함
-      let requestVersion = authVersionRef.current;
+      // 같은 세션의 토큰 갱신과 계정 전환을 구분함
+      const requestSessionVersion = sessionVersionRef.current;
+      let requestToken = token;
 
       try {
         const userData = await authFetch<AuthUser>(
@@ -88,20 +97,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           { method: 'GET' },
           {
             accessToken: token,
+            refreshToken: createTokenRefresher(token),
             onTokenRefresh: (newToken) => {
               // 이전 요청이 최신 인증 정보를 덮어쓰지 않도록 방지함
-              if (authVersionRef.current !== requestVersion) return;
-
-              setAccessToken(newToken);
-
-              // 정상적인 토큰 재발급은 현재 요청의 버전에 반영함
-              requestVersion = authVersionRef.current;
+              if (sessionVersionRef.current !== requestSessionVersion) {
+                throw new Error('요청 중 인증 상태가 변경되었습니다.');
+              }
+              requestToken = newToken;
+              if (accessTokenRef.current !== newToken) {
+                setAccessToken(newToken);
+              }
             },
           },
         );
 
         // 인증 정보가 변경되었다면 이전 조회 결과를 무시함
-        if (authVersionRef.current !== requestVersion) return;
+        if (sessionVersionRef.current !== requestSessionVersion) return;
 
         if (!userData) {
           throw new Error('사용자 정보를 불러오지 못했습니다.');
@@ -111,10 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthStatus('authenticated');
       } catch (error) {
         // 인증 정보가 변경되었다면 이전 요청의 오류를 무시함
-        if (authVersionRef.current !== requestVersion) return;
+        if (sessionVersionRef.current !== requestSessionVersion) return;
 
         // 인증이 유효하지 않은 경우에만 인증 정보를 초기화함
-        if (error instanceof Error && error.message === 'API 요청 실패: 401') {
+        if (
+          error instanceof Error &&
+          error.message === 'API 요청 실패: 401' &&
+          accessTokenRef.current === requestToken
+        ) {
           setAccessToken(null);
           setUser(null);
           setAuthStatus('unauthenticated');
@@ -126,13 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [setAccessToken, queryClient],
+    [setAccessToken, queryClient, createTokenRefresher],
   );
 
   // 인증 정보와 React Query 캐시를 초기화함
   const clearAuth = useCallback(() => {
     // 기존 세션에서 시작한 요청을 무효화함
     sessionVersionRef.current += 1;
+    refreshScopeRef.current = {};
 
     setAccessToken(null);
     setUser(null);
@@ -169,22 +185,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 요청 시작 시점의 로그인 세션을 저장함
       const requestSessionVersion = sessionVersionRef.current;
 
-      // Refresh 성공 여부를 구분함
-      let refreshSucceeded = false;
+      // 갱신 후 재요청을 포함하여 이 요청에서 사용하는 토큰을 추적함
+      let requestToken = token;
 
       try {
         // 인증 API 요청 및 토큰 재발급을 처리함
         const result = await authFetch<T>(path, options, {
           accessToken: token,
+          refreshToken: createTokenRefresher(token),
 
           onTokenRefresh: (newToken) => {
-            // Refresh 요청 성공 여부를 기록함
-            refreshSucceeded = true;
-
             // 다른 계정으로 변경되었다면 이전 요청을 중단함
             if (sessionVersionRef.current !== requestSessionVersion) {
               throw new Error('요청 중 인증 상태가 변경되었습니다.');
             }
+
+            requestToken = newToken;
 
             // 갱신된 Access Token을 Context에 반영함
             if (accessTokenRef.current !== newToken) {
@@ -200,13 +216,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return result;
       } catch (error) {
-        // Refresh 자체가 401로 실패한 경우에만 인증을 초기화함
+        // 갱신 실패 또는 재요청의 401은 해당 세션·토큰이 여전히 현재 것일 때만 초기화함
         if (
-          !refreshSucceeded &&
           error instanceof Error &&
           error.message === 'API 요청 실패: 401' &&
           sessionVersionRef.current === requestSessionVersion &&
-          accessTokenRef.current === token
+          accessTokenRef.current === requestToken
         ) {
           clearAuth();
         }
@@ -214,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [setAccessToken, clearAuth],
+    [setAccessToken, clearAuth, createTokenRefresher],
   );
 
   // 현재 로그인한 사용자의 최신 정보를 다시 조회함
@@ -246,16 +261,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (token: string) => {
       // 기존 세션의 비동기 요청을 무효화함
       sessionVersionRef.current += 1;
+      refreshScopeRef.current = {};
 
       queryClient.clear();
       setAccessToken(token);
       setUser(null);
       setAuthStatus('initializing');
+      const requestSessionVersion = sessionVersionRef.current;
 
       try {
         await fetchUser(token);
       } catch (error) {
-        clearAuth();
+        if (sessionVersionRef.current === requestSessionVersion) {
+          clearAuth();
+        }
         throw error;
       }
     },
@@ -264,8 +283,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 서버 로그아웃 성공 후 인증 정보를 초기화함
   const logout = useCallback(async () => {
+    const requestSessionVersion = sessionVersionRef.current;
     await logoutSession();
-    clearAuth();
+    // 이전 계정의 로그아웃 응답으로 새 로그인 상태를 초기화하지 않음
+    if (sessionVersionRef.current === requestSessionVersion) {
+      clearAuth();
+    }
   }, [clearAuth]);
 
   // 앱 실행 시 Refresh Token으로 로그인 상태를 복구함
@@ -275,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function restoreSession() {
       try {
-        const token = await refreshSession();
+        const token = await refreshSession(refreshScopeRef.current);
 
         // 이전 세션 복구가 취소되었다면 사용자 정보 조회를 중단함
         if (cancelled || authVersionRef.current !== restoreVersion) return;

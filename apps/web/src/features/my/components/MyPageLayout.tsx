@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import PageContainer from '@/components/layout/PageContainer';
 import StateMessage from '@/components/ui/StateMessage';
-import AuthGuard from '@/features/auth/components/AuthGuard';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import type { AuthUser } from '@/features/auth/types';
 import styles from './MyPageLayout.module.css';
 
@@ -27,11 +27,9 @@ export function useMyPageAccount() {
 
 /** 메뉴와 제목은 레이아웃에서, 각 기능의 콘텐츠와 데이터는 페이지에서 관리*/
 export default function MyPageLayout({ children }: { children: ReactNode }) {
-  return (
-    <AuthGuard loginDescription="로그인 후 마이페이지를 이용할 수 있어요.">
-      {(user) => <MyPageContent user={user}>{children}</MyPageContent>}
-    </AuthGuard>
-  );
+  const { user } = useAuth();
+  if (!user) return null;
+  return <MyPageContent user={user}>{children}</MyPageContent>;
 }
 
 function MyPageContent({
