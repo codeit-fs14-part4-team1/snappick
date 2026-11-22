@@ -1,5 +1,6 @@
 import type { Category, Style, Region } from '@snappick/shared';
 import type { FeedSort } from '@/features/feed/types';
+import type { ReservationListParams } from '@/features/reservation/types';
 
 //도메인을 리터럴 유니온 타입으로 관리
 export const QUERY_DOMAINS = [
@@ -95,14 +96,6 @@ const normalizePageFilters = ({
   page,
   pageSize,
 });
-
-//예약 내역의 탭(임시지정)
-type ReservationListStatus =
-  'scheduled' | 'inProgress' | 'completed' | 'canceled';
-
-type ReservationListFilters = PageFilters & {
-  status: ReservationListStatus;
-};
 
 export const queryKeys = {
   photos: {
@@ -211,10 +204,11 @@ export const queryKeys = {
   reservations: {
     all: createQueryRoot('reservations'),
 
-    list: (filters: ReservationListFilters) =>
+    // 예약 목록의 API 필터와 페이지네이션 조건을 캐시 키에 반영함
+    list: (filters: ReservationListParams = {}) =>
       createQueryKey('reservations', 'list', {
         ...normalizePageFilters(filters),
-        status: filters.status,
+        type: filters.type ?? 'ALL',
       }),
 
     //상세에서 작가 정보를 제외한 모든 정보를 캐시

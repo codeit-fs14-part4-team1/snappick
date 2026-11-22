@@ -51,7 +51,7 @@
 .reviewItem {
   min-width: 0;
   padding: 24px 0;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* 리뷰 작성자와 작성일 배치 */
@@ -101,7 +101,7 @@
   margin-top: 12px;
   padding: 16px 20px;
   border-radius: 12px;
-  background-color: var(--color-bg-subtle, #f5f5f5);
+  background-color: var(--color-bg-subtle);
 }
 
 /* 답글 제목과 작성일 배치 */
@@ -205,7 +205,7 @@
   min-height: 118px;
   padding: 20px 16px;
   border-radius: 12px;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-subtle);
   text-align: center;
 }
 
@@ -242,7 +242,7 @@
   padding: 8px 14px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background-color: #fff;
+  background-color: var(--color-bg-base);
   color: var(--color-text-primary);
   font-size: 14px;
   font-weight: 600;
@@ -251,7 +251,7 @@
 
 /* 답글 작성 버튼 마우스 호버 */
 .replyWriteButton:hover {
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-subtle);
 }
 
 /* 답글 작성 및 수정 입력 영역 표시 */
@@ -264,7 +264,7 @@
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background-color: #fff;
+  background-color: var(--color-bg-base);
 }
 
 /* 답글 작성 영역에서는 부모의 상단 여백만 사용함 */
@@ -321,7 +321,7 @@
   padding: 6px 12px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  background-color: #fff;
+  background-color: var(--color-bg-base);
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 600;
@@ -335,7 +335,7 @@
   border: none;
   border-radius: 6px;
   background-color: var(--color-text-primary);
-  color: #fff;
+  color: var(--color-bg-base);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
