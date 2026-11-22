@@ -8,7 +8,7 @@ import type { PhotoLikeResponse } from '@/features/feed/types';
 import { useToast } from '@/components/ui/ToastProvider';
 import { invalidateLikedPhotos, updatePhotoLikeCache } from '../likeCache';
 
-type UsePhotoLikeParams = { photoId: string; liked: boolean };
+export type UsePhotoLikeParams = { photoId: string; liked: boolean };
 const LIKE_DEBOUNCE_MS = 300;
 
 export function usePhotoLike({ photoId, liked }: UsePhotoLikeParams) {

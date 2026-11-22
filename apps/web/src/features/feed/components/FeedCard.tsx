@@ -4,10 +4,7 @@ import Image from 'next/image';
 import type { FeedPhoto } from '../types';
 import styles from './FeedCard.module.css';
 import HeartIcon from '@/components/ui/HeartIcon';
-import { getViewerKind } from '../viewerKind';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import { usePhotoLike } from '@/features/photos/hooks/usePhotoLike';
-import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
+import { usePhotoLikeAction } from '@/features/photos/hooks/usePhotoLikeAction';
 
 type FeedCardProps = {
   photo: FeedPhoto;
@@ -15,19 +12,7 @@ type FeedCardProps = {
 };
 
 export default function FeedCard({ photo, onOpen }: FeedCardProps) {
-  const { authStatus, user } = useAuth();
-  const { openGuestLoginModal } = useGuestLoginModal();
-  const { toggleLike } = usePhotoLike(photo);
-  const viewerKind = getViewerKind(authStatus, user);
-
-  function handleLikeClick() {
-    if (viewerKind === 'pending') return;
-    if (viewerKind === 'guest') {
-      openGuestLoginModal();
-      return;
-    }
-    if (viewerKind === 'user') toggleLike();
-  }
+  const { viewerKind, handleLikeClick } = usePhotoLikeAction(photo);
 
   return (
     <article className={styles.card}>
