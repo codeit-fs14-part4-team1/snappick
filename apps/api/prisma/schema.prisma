@@ -92,6 +92,8 @@ model users {
   payment          payments[]
   review           reviews[]
   reservation      reservations[]
+  interaction      user_interactions[]
+  feature          user_features?
 }
 
 // photographers
@@ -118,6 +120,8 @@ model photographers {
   reviews             reviews[]
   representativePhoto representative_photos?
   reviewSummary       review_summaries?
+  interaction         user_interactions[]
+  feature             photographer_features?
 }
 
 // reservations
@@ -270,6 +274,9 @@ model photos {
   photoKeyword        photo_keywords[]
   photoLike           photo_likes[]
   representativePhoto representative_photos[]
+  interaction         user_interactions[]
+  feature             photo_features?
+  valueScore          photo_value_scores?
 
   @@index([photographer_id])
 }
@@ -548,4 +555,183 @@ model review_summaries {
   updated_at DateTime @updatedAt
 
   photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
+}
+
+// 추천 LLM 알고리즘 전용 테이블
+// feature 값은 LLM 응답 그대로 문자열로 저장
+
+// LLM 분석 시도 결과
+enum FeatureAnalysisResult {
+  OK
+  REFUSED
+  INVALID
+  ERROR
+}
+
+// 추천 입력으로 쓰는 사용자 행동 (가중치는 코드에서 type별로 관리)
+enum InteractionType {
+  LIKE
+  UNLIKE
+  SAVE
+  UNSAVE
+  QUOTE
+  RESERVE
+  REVIEW
+}
+
+// 사용자 행동 기록: 추가만 하고 수정·삭제하지 않는다
+// 기존 테이블(photo_likes 등)은 현재 상태, 이 테이블은 추천 입력용 이력
+model user_interactions {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  user_id         String          @db.Uuid
+  type            InteractionType
+  photo_id        String?         @db.Uuid // 사진 단위 행동 (LIKE, UNLIKE)
+  photographer_id String?         @db.Uuid // 작가 단위 행동 (SAVE, QUOTE, RESERVE, REVIEW)
+  rating          Int? // REVIEW일 때 평점
+  created_at      DateTime        @default(now())
+
+  user         users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  photo        photos?        @relation(fields: [photo_id], references: [id], onDelete: SetNull)
+  photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, created_at])
+}
+
+// 사진 LLM 분석 결과 (사진 1장당 1행)
+model photo_features {
+  photo_id String @id @db.Uuid
+
+  // 마지막으로 성공한 분석 (실패 중이면 null)
+  subject         String?
+  place           String?
+  time            String?
+  weather         String?
+  light_source    String?
+  light_direction String?
+  exposure        String?
+  color           String?
+  shot_size       String?
+  angle           String?
+  people_count    String?
+  pose            String?
+  gaze            String?
+  mood            String?
+  summary         String?
+  model           String? // 실제로 응답한 모델, 혹시 모델을 변경하는 등의 상황을 역 트래킹하기 위한 컬럼
+  prompt_version  String? // 해당 컬럼도 동일. Prompt를 수정했을 시 
+  analyzed_at     DateTime?
+
+  // 사진 벡터 e: 위 feature로 조립한 글을 임베딩 (배열은 nullable 불가 → 빈 배열 = 임베딩 전)
+  embedding       Float[]   @default([])
+  embedding_model String? // 사용자 벡터 h와 같은 모델이어야 비교 가능
+  embedded_at     DateTime?
+  cluster_id      Int? // h가 없는 사용자(비회원·작가·이력 없음)에게 군집별로 골고루 노출할 때 사용
+
+  // 마지막 시도
+  last_attempt_result FeatureAnalysisResult?
+  last_attempt_at     DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
+}
+
+// 작가 LLM 분석 결과 (작가 1명당 1행, 작가가 올린 사진들의 photo_features를 LLM으로 요약)
+// user_features를 만들 때 SAVE, QUOTE, RESERVE, REVIEW 행동의 입력으로 사용 (Verbalizer 텍스트용이라 임베딩 없음)
+model photographer_features {
+  photographer_id String @id @db.Uuid
+
+  // 마지막으로 성공한 분석 (photo_features와 같은 feature 구성)
+  subject         String?
+  place           String?
+  time            String?
+  weather         String?
+  light_source    String?
+  light_direction String?
+  exposure        String?
+  color           String?
+  shot_size       String?
+  angle           String?
+  people_count    String?
+  pose            String?
+  gaze            String?
+  mood            String?
+  summary         String? // 작가 스타일 요약
+  model           String?
+  prompt_version  String?
+  analyzed_at     DateTime?
+
+  // 재생성: 작가가 올린 사진의 캡션 분석이 끝난 뒤 실행
+  // 반영된 마지막 사진 분석 시각 (실패 후 재시도 때 photo_features.analyzed_at 최신값과 비교해 누락 확인)
+  source_photo_analyzed_at DateTime?
+
+  // 마지막 시도
+  last_attempt_result FeatureAnalysisResult?
+  last_attempt_at     DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  photographer photographers @relation(fields: [photographer_id], references: [id], onDelete: Cascade)
+}
+
+// 사용자 LLM 분석 결과 (사용자 1명당 1행, photo_features와 같은 feature 구성)
+model user_features {
+  user_id String @id @db.Uuid
+
+  // 마지막으로 성공한 분석
+  subject         String?
+  place           String?
+  time            String?
+  weather         String?
+  light_source    String?
+  light_direction String?
+  exposure        String?
+  color           String?
+  shot_size       String?
+  angle           String?
+  people_count    String?
+  pose            String?
+  gaze            String?
+  mood            String?
+  summary         String? // 취향 요약
+  model           String?
+  prompt_version  String?
+  analyzed_at     DateTime?
+
+  // 다시 분석할지 판단하는 기준: user_interaction 테이블의 최신 이력보다 이전에 생성되었다면 LLM 재생성
+  source_interaction_at DateTime?
+
+  // 사용자 벡터 h: 위 feature로 조립한 글을 임베딩 (photo_features와 같은 조립 방식·모델)
+  embedding       Float[]   @default([])
+  embedding_model String?
+  embedded_at     DateTime? // h 버전 (피드 seed에 넣어 스크롤 중 같은 h로 정렬)
+
+  // 직전 h: 스크롤 도중 h가 갱신돼도 seed의 이전 버전으로 순서를 재현
+  previous_embedding   Float[]   @default([])
+  previous_embedded_at DateTime?
+
+  // 마지막 시도
+  last_attempt_result FeatureAnalysisResult?
+  last_attempt_at     DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// 사진 가치 점수 (사진 1장당 1행, 하루 1번 배치로 전체 재계산, 피드 요청 때는 읽기만)
+// 합계 하나가 아니라 재료를 칸별로 저장: 프리셋 비율 w는 요청 시점에 곱한다
+model photo_value_scores {
+  photo_id String @id @db.Uuid
+
+  photo_score         Float   @default(0) // 이 사진이 받은 좋아요 (시간 감쇠)
+  photographer_score  Float   @default(0) // 이 사진 작가의 저장·견적·예약 + 리뷰 평점 보정 (시간 감쇠)
+  is_new_photographer Boolean @default(false) // 새 작가 여부 (예: 가입 14일 이내)
+
+  updated_at DateTime @updatedAt // 마지막 계산 시각
+
+  photo photos @relation(fields: [photo_id], references: [id], onDelete: Cascade)
 }
