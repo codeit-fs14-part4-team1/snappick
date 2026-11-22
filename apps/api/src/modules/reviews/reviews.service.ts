@@ -155,7 +155,12 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       select: {
         id: true,
         reservation_id: true,
-        reservation: { select: { shoot_at: true } },
+        reservation: {
+          select: {
+            shoot_at: true,
+            quote: { select: { quote_name: true } },
+          },
+        },
         rating: true,
         comment: true,
         created_at: true,
@@ -173,6 +178,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       reviewId: review.id,
       reservationId: review.reservation_id,
       shootAt: review.reservation?.shoot_at ?? null,
+      quoteName: review.reservation?.quote?.quote_name ?? null,
       rating: review.rating,
       comment: review.comment,
       createdAt: review.created_at,

@@ -25,6 +25,7 @@ export type ReviewResponse = {
   reviewId: string;
   reservationId: string | null;
   shootAt: string | null;
+  quoteName: string | null;
   rating: number;
   comment: string;
   createdAt: string;
