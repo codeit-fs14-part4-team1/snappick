@@ -9,20 +9,18 @@ import Pagination from '@/components/ui/Pagination';
 import StateMessage from '@/components/ui/StateMessage';
 import ReservationCard from './ReservationCard';
 
-import UserReservationTabs, {
-  type UserReservationTab,
-} from './UserReservationTabs';
+import ReservationTabs, { type ReservationTab } from './ReservationTabs';
 
 // 한 페이지에 표시할 예약 개수를 정의
 const PAGE_SIZE = 10;
 
 // 예약 상태별 전체 건수를 조회하고 탭에 표시함
-function UserReservationTabsWithCounts({
+function ReservationTabsWithCounts({
   selectedTab,
   onTabChange,
 }: {
-  selectedTab: UserReservationTab;
-  onTabChange: (tab: UserReservationTab) => void;
+  selectedTab: ReservationTab;
+  onTabChange: (tab: ReservationTab) => void;
 }) {
   // 예정 예약의 전체 건수를 조회함
   const { data: scheduledData } = useMyReservations({
@@ -53,7 +51,7 @@ function UserReservationTabsWithCounts({
   });
 
   // 조회에 성공한 예약 상태의 전체 건수만 전달함
-  const counts: Partial<Record<UserReservationTab, number>> = {};
+  const counts: Partial<Record<ReservationTab, number>> = {};
 
   if (scheduledData) {
     counts.scheduled = scheduledData.totalCount;
@@ -72,7 +70,7 @@ function UserReservationTabsWithCounts({
   }
 
   return (
-    <UserReservationTabs
+    <ReservationTabs
       selectedTab={selectedTab}
       onTabChange={onTabChange}
       counts={counts}
@@ -81,11 +79,12 @@ function UserReservationTabsWithCounts({
 }
 
 // 일반 사용자의 예약 목록을 조회하고 표시
-function UserReservationContent({
+function ReservationContent({
   selectedTab,
 }: {
-  selectedTab: UserReservationTab | null;
+  selectedTab: ReservationTab | null;
 }) {
+  const { accountType } = useMyPageAccount();
   const [page, setPage] = useState(1);
 
   // 선택한 탭을 서버에서 지원하는 예약 필터로 변환함
@@ -141,6 +140,11 @@ function UserReservationContent({
 
     if (selectedTab === 'inProgress') {
       return <StateMessage title="진행 중인 건이 없어요." />;
+    }
+
+    // 사진작가 계정은 일반 사용자용 결제 안내를 표시하지 않음
+    if (accountType === 'PHOTOGRAPHER') {
+      return <StateMessage title="예정 된 내역이 없어요." />;
     }
 
     return (
@@ -202,28 +206,28 @@ function UserReservationContent({
 }
 
 // 일반 사용자에게만 예약 목록을 표시함
-export default function UserReservationList() {
+export default function ReservationList() {
   const { accountType } = useMyPageAccount();
 
   // 예정 탭을 기본 선택 상태로 설정함
-  const [selectedTab, setSelectedTab] =
-    useState<UserReservationTab>('scheduled');
+  const [selectedTab, setSelectedTab] = useState<ReservationTab>('scheduled');
 
-  if (accountType !== 'USER') {
+  // 일반 사용자와 사진작가 계정에서 예약 목록을 표시함
+  if (accountType !== 'USER' && accountType !== 'PHOTOGRAPHER') {
     return null;
   }
 
   return (
     <section aria-label="내 예약 목록">
       {/* 예약 상태 탭과 실제 예약 건수를 표시함 */}
-      <UserReservationTabsWithCounts
+      <ReservationTabsWithCounts
         selectedTab={selectedTab}
         onTabChange={setSelectedTab}
       />
 
       {/* 선택한 탭의 예약 목록을 실제 API 데이터로 표시함 */}
       <div style={{ marginTop: 20 }}>
-        <UserReservationContent key={selectedTab} selectedTab={selectedTab} />
+        <ReservationContent key={selectedTab} selectedTab={selectedTab} />
       </div>
     </section>
   );

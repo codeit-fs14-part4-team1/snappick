@@ -96,7 +96,7 @@ export default function ReservationCard({ reservation }: ReservationCardProps) {
           <span className={styles.avatarFallback} aria-hidden="true" />
         )}
         <strong className={styles.counterpartName}>
-          {counterpart?.nickname ?? '사진작가 정보 없음'}
+          {counterpart?.nickname ?? '상대방 정보 없음'}
         </strong>
       </div>
 
