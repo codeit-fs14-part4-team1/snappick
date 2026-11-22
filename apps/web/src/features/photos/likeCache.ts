@@ -9,6 +9,7 @@ import { queryKeys } from '@/lib/queryKeys';
 
 type LikeState = { liked: boolean; likeCount: number };
 type LikeItem = LikeState & { photoId: string };
+type LikedListItem = { photoId: string; liked?: boolean };
 
 export type LikeUpdate = (current: LikeState) => LikeState;
 
@@ -30,6 +31,31 @@ function updateInfiniteList(
           if (item.photoId !== photoId) return item;
           changed = true;
           return { ...item, ...update(item) };
+        }),
+      }));
+      return changed ? { ...old, pages } : old;
+    },
+  );
+}
+
+//좋아요 목록: likeCount가 없어서 liked만 바꿈 (liked 없으면 좋아요 상태)
+function updateLikedList(
+  queryClient: QueryClient,
+  photoId: string,
+  update: LikeUpdate,
+) {
+  queryClient.setQueriesData<InfiniteData<{ items: LikedListItem[] }>>(
+    { queryKey: queryKeys.photos.likedAll() },
+    (old) => {
+      if (!old) return old;
+      let changed = false;
+      const pages = old.pages.map((page) => ({
+        ...page,
+        items: page.items.map((item) => {
+          if (item.photoId !== photoId) return item;
+          changed = true;
+          const next = update({ liked: item.liked ?? true, likeCount: 0 });
+          return { ...item, liked: next.liked };
         }),
       }));
       return changed ? { ...old, pages } : old;
@@ -66,7 +92,7 @@ export function updatePhotoLikeCache(
     photoId,
     update,
   );
-  updateInfiniteList(queryClient, queryKeys.photos.likedAll(), photoId, update);
+  updateLikedList(queryClient, photoId, update);
   updateDetail(queryClient, photoId, viewerId, update);
 }
 
