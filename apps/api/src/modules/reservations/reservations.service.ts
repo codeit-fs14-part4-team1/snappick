@@ -667,6 +667,13 @@ export async function getReservation(
         location: true,
         total_amount: true,
         created_at: true,
+        reservation_cancel_request: {
+          orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: {
+            status: true,
+          },
+        },
       },
     }),
   ]);
@@ -683,6 +690,8 @@ export async function getReservation(
           profileImageUrl: toImageUrl(other.profile_image_url),
         },
         status: reservation.status,
+        cancelRequestStatus:
+          reservation.reservation_cancel_request[0]?.status ?? null,
         shootAt: reservation.shoot_at,
         location: reservation.location,
         totalAmount: reservation.total_amount,

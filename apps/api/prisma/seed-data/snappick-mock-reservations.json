@@ -1,0 +1,101 @@
+{
+  "userId": "00000000-0000-4000-8000-b00300000901",
+  "photographerId": "00000000-0000-4000-8000-b00200000101",
+  "userAuthAccountId": "00000000-0000-4000-8000-b00100000901",
+  "reservations": [
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000101",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000201",
+      "status": "CONFIRMED",
+      "quoteName": "서울숲 커플 스냅 · 기본 2시간",
+      "shootAt": "2026-12-10T14:00:00+09:00",
+      "location": "서울숲",
+      "totalAmount": 150000,
+      "durationMinutes": 120,
+      "photoCount": 40,
+      "includesOriginal": true
+    },
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000102",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000202",
+      "status": "CONFIRMED",
+      "quoteName": "연남동 프로필 스냅 · 라이트",
+      "shootAt": "2026-12-15T16:00:00+09:00",
+      "location": "서울 연남동",
+      "totalAmount": 180000,
+      "durationMinutes": 90,
+      "photoCount": 30,
+      "includesOriginal": false,
+      "cancelRequest": {
+        "id": "9c1e6000-43a5-4d11-8c00-000000000302",
+        "status": "PENDING",
+        "reason": "개인 일정이 변경되어 예약 취소를 요청합니다."
+      }
+    },
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000103",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000203",
+      "status": "SHOOT_COMPLETED",
+      "quoteName": "한강 야외 스냅 · 베이직",
+      "shootAt": "2026-11-12T14:00:00+09:00",
+      "location": "여의도 한강공원",
+      "totalAmount": 180000,
+      "durationMinutes": 120,
+      "photoCount": 40,
+      "includesOriginal": true
+    },
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000104",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000204",
+      "status": "DELIVERED",
+      "quoteName": "제주 감성 스냅 · 프리미엄",
+      "shootAt": "2026-11-15T13:00:00+09:00",
+      "location": "제주 애월",
+      "totalAmount": 250000,
+      "durationMinutes": 180,
+      "photoCount": 60,
+      "includesOriginal": true,
+      "deliverable": {
+        "id": "9c1e6000-43a5-4d11-8c00-000000000404",
+        "link": "https://example.com/snappick-test/delivered",
+        "expirationPeriod": "2027-02-15T23:59:00+09:00",
+        "notice": "보정본 60장 및 원본 파일을 포함합니다."
+      }
+    },
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000105",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000205",
+      "status": "PURCHASE_CONFIRMED",
+      "quoteName": "웨딩 스냅 · 스탠다드",
+      "shootAt": "2026-11-08T11:00:00+09:00",
+      "location": "서울 올림픽공원",
+      "totalAmount": 300000,
+      "durationMinutes": 180,
+      "photoCount": 70,
+      "includesOriginal": true,
+      "deliverable": {
+        "id": "9c1e6000-43a5-4d11-8c00-000000000405",
+        "link": "https://example.com/snappick-test/completed",
+        "expirationPeriod": "2027-02-08T23:59:00+09:00",
+        "notice": "최종 보정본 70장과 원본 파일을 전달했습니다."
+      }
+    },
+    {
+      "id": "9c1e6000-43a5-4d11-8c00-000000000106",
+      "quoteId": "9c1e6000-43a5-4d11-8c00-000000000206",
+      "status": "CANCELED",
+      "quoteName": "스튜디오 프로필 스냅 · 베이직",
+      "shootAt": "2026-12-20T15:00:00+09:00",
+      "location": "서울 성수동",
+      "totalAmount": 120000,
+      "durationMinutes": 60,
+      "photoCount": 20,
+      "includesOriginal": false,
+      "cancelRequest": {
+        "id": "9c1e6000-43a5-4d11-8c00-000000000306",
+        "status": "ACCEPTED",
+        "reason": "예약 일정 조정이 어려워 취소를 요청했습니다."
+      }
+    }
+  ]
+}

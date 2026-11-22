@@ -9,7 +9,7 @@
   width: 100%;
   margin-top: 48px;
   border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-base, #fff);
+  background-color: var(--color-bg-base);
 }
 
 /* 개별 탭 항목 */

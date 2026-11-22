@@ -1,0 +1,75 @@
+/* 예약 상태 탭 목록을 가로로 배치함 */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
+
+/* 가로 스크롤바를 화면에서 숨김 */
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* 예약 상태 탭의 기본 스타일 */
+.tab {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 선택된 탭의 글자색과 굵기를 변경함 */
+.tab[aria-pressed='true'] {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+/* 선택된 탭 하단에 밑줄을 표시함 */
+.tab[aria-pressed='true']::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--color-text-primary);
+  content: '';
+}
+
+/* 탭에 키보드 포커스가 있을 때 표시함 */
+.tab:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* 비활성화된 탭을 구분함 */
+.tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 탭에 표시되는 예약 건수 */
+.count {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+}
