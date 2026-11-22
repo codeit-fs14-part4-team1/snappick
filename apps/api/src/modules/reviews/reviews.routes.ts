@@ -4,6 +4,7 @@ import {
   requireAccountType,
 } from '../../middlewares/authenticate.js';
 import {
+  getEligibleReviewsHandler,
   getMyReviewsHandler,
   getPhotographerReviewsHandler,
   createReviewHandler,
@@ -22,6 +23,13 @@ photographerReviewsRouter.get(
 );
 
 export const myReviewsRouter: Router = Router();
+
+myReviewsRouter.get(
+  '/reviews/eligible',
+  authenticate,
+  requireAccountType('USER'),
+  getEligibleReviewsHandler,
+);
 
 myReviewsRouter.get(
   '/reviews',
