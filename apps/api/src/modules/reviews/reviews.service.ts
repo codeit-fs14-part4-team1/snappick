@@ -155,6 +155,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       select: {
         id: true,
         reservation_id: true,
+        reservation: { select: { shoot_at: true } },
         rating: true,
         comment: true,
         created_at: true,
@@ -171,6 +172,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
     items: rows.map((review) => ({
       reviewId: review.id,
       reservationId: review.reservation_id,
+      shootAt: review.reservation?.shoot_at ?? null,
       rating: review.rating,
       comment: review.comment,
       createdAt: review.created_at,

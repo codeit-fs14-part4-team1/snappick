@@ -82,7 +82,7 @@ export default function MyReviews() {
       reservationId: review.reservationId ?? '',
       photographerName: review.photographer?.nickname ?? '작가 정보 없음',
       quoteName: '',
-      shootDate: '',
+      shootDate: review.shootAt ?? '',
     },
     rating: review.rating,
     comment: review.comment,

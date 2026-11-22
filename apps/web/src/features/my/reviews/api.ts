@@ -24,6 +24,7 @@ export type EligibleReviewResponse = {
 export type ReviewResponse = {
   reviewId: string;
   reservationId: string | null;
+  shootAt: string | null;
   rating: number;
   comment: string;
   createdAt: string;
