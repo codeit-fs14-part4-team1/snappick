@@ -98,6 +98,12 @@
   text-align: center;
 }
 
+.addressError {
+  color: var(--color-danger);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 767px) {
   .footer {
     flex-direction: column;

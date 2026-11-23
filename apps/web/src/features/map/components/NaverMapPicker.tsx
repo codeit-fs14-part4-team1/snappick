@@ -40,6 +40,7 @@ export default function NaverMapPicker({
   );
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<PickedLocation | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   // 모달이 열린 뒤 확정된 크기와 반응형 크기 변경을 지도에 반영합니다.
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function NaverMapPicker({
   // 응답을 기다리는 동안 이전 좌표가 전송되지 않도록 선택 버튼을 비활성화하기 위함
   function beginRequest() {
     setPicked(null);
+    setSelectionError(null);
     return ++requestSeq.current;
   }
 
@@ -116,8 +118,18 @@ export default function NaverMapPicker({
         // 실패 응답에는 v2가 없을 수 있어 status를 먼저 확인한다
         const found =
           status === maps.Service.Status.OK ? response?.v2?.address : undefined;
-        const address = found ? found.roadAddress || found.jibunAddress : '';
-        setPicked({ address: address || '주소를 찾을 수 없는 위치', lat, lng });
+        const address = (
+          found?.roadAddress ||
+          found?.jibunAddress ||
+          ''
+        ).trim();
+        if (!address) {
+          setSelectionError(
+            '주소를 조회하지 못했어요. 지도를 다시 클릭하거나 주소를 검색해 주세요.',
+          );
+          return;
+        }
+        setPicked({ address, lat, lng });
       },
     );
   }
@@ -150,9 +162,8 @@ export default function NaverMapPicker({
           ? response?.v2?.addresses?.[0]
           : undefined;
       if (!first) {
-        setError(null);
-        window.alert(
-          '검색 결과가 없어요. 도로명이나 지번 주소로 검색해 주세요.',
+        setSelectionError(
+          '주소를 찾지 못했어요. 도로명이나 지번 주소로 다시 검색해 주세요.',
         );
         return;
       }
@@ -217,8 +228,12 @@ export default function NaverMapPicker({
       )}
 
       <div className={styles.footer}>
-        <p className={styles.address}>
-          {picked?.address ||
+        <p
+          className={`${styles.address} ${selectionError ? styles.addressError : ''}`}
+          aria-live="polite"
+        >
+          {selectionError ||
+            picked?.address ||
             (!onSelect &&
               '지도를 클릭하거나 주소를 검색해 위치를 골라 주세요.')}
         </p>
