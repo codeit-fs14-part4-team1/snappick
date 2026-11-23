@@ -23,6 +23,21 @@ import styles from './NaverMapPicker.module.css';
 const DEFAULT_CENTER = { lat: 37.5666, lng: 126.9784 };
 const DEFAULT_ZOOM = 15;
 
+function isValidCoordinate(lat: number, lng: number) {
+  return (
+    Number.isFinite(lat) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    Number.isFinite(lng) &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function getAddress(roadAddress?: string, jibunAddress?: string) {
+  return roadAddress?.trim() || jibunAddress?.trim() || '';
+}
+
 /**
  * 지도 팝업 (/map-picker)
  * 검색하거나 지도를 클릭해 위치를 고르고, 선택하면 연 창(opener)으로 보내고 닫는다
@@ -105,8 +120,12 @@ export default function NaverMapPicker({
     (lat: number, lng: number, knownAddress?: string) => {
       const maps = window.naver?.maps;
       if (!maps || !map.current) return;
-      const position = new maps.LatLng(lat, lng);
       const seq = beginRequest();
+      if (!isValidCoordinate(lat, lng)) {
+        setSelectionError('위치를 확인하지 못했어요. 다시 선택해 주세요.');
+        return;
+      }
+      const position = new maps.LatLng(lat, lng);
 
       if (marker.current) {
         marker.current.setPosition(position);
@@ -114,8 +133,9 @@ export default function NaverMapPicker({
         marker.current = new maps.Marker({ position, map: map.current });
       }
 
-      if (knownAddress) {
-        setPicked({ address: knownAddress, lat, lng });
+      const address = knownAddress?.trim();
+      if (address) {
+        setPicked({ address, lat, lng });
         return;
       }
       maps.Service.reverseGeocode(
@@ -127,11 +147,7 @@ export default function NaverMapPicker({
             status === maps.Service.Status.OK
               ? response?.v2?.address
               : undefined;
-          const address = (
-            found?.roadAddress ||
-            found?.jibunAddress ||
-            ''
-          ).trim();
+          const address = getAddress(found?.roadAddress, found?.jibunAddress);
           if (!address) {
             setSelectionError(
               '주소를 조회하지 못했어요. 지도를 다시 클릭하거나 주소를 검색해 주세요.',
@@ -193,8 +209,21 @@ export default function NaverMapPicker({
       }
       const lat = Number(first.y);
       const lng = Number(first.x);
+      const address = getAddress(first.roadAddress, first.jibunAddress);
+      // 빈 좌표 문자열은 Number 변환 시 0이 되므로 변환 전 값도 확인합니다.
+      if (
+        !first.y?.trim() ||
+        !first.x?.trim() ||
+        !isValidCoordinate(lat, lng) ||
+        !address
+      ) {
+        setSelectionError(
+          '검색된 위치를 확인하지 못했어요. 주소를 다시 검색해 주세요.',
+        );
+        return;
+      }
       map.current?.setCenter(new maps.LatLng(lat, lng));
-      pickCoord(lat, lng, first.roadAddress || first.jibunAddress);
+      pickCoord(lat, lng, address);
     });
   }
 
