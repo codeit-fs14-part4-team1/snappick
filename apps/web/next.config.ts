@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       new URL('http://localhost:3000/mock/**'),
+      new URL('http://localhost:3000/photos/**'),
       new URL('https://snappick-alpha.vercel.app/mock/**'),
       //staging 이미지 CDN (mock · photos · profiles)
       new URL('https://d33h37hxjt8j2m.cloudfront.net/**'),

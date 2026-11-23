@@ -131,6 +131,8 @@ export const queryKeys = {
     liked: (limit = DEFAULT_LIMIT) =>
       createQueryKey('photos', 'infinite', 'liked', { limit }),
 
+    //사진 하나 무효화 - 공개 상세(viewerId 무관) + 수정용 상세 함께
+    detailAll: (photoId: string) => createQueryKey('photos', 'detail', photoId),
     //클릭한 사진 하나에 대한 정보 - Like정보
     detail: (photoId: string, viewerId: ViewerId) =>
       createQueryKey('photos', 'detail', photoId, { viewerId }),

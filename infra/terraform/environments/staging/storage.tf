@@ -34,3 +34,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "images" {
     }
   }
 }
+
+# 브라우저가 presigned URL로 직접 PUT하려면 필요하다 (② 업로드)
+resource "aws_s3_bucket_cors_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  cors_rule {
+    allowed_methods = ["PUT"]
+    allowed_headers = ["content-type"]
+    allowed_origins = [
+      "http://localhost:3000",
+      "https://snappick-alpha.vercel.app",
+    ]
+    max_age_seconds = 3000
+  }
+}

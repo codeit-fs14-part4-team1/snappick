@@ -40,6 +40,8 @@ import PhotographerReviews, {
 } from '@/features/profile/components/PhotographerReviews';
 
 import PhotographerPreparing from '@/features/profile/components/PhotographerPreparing';
+import PhotoUploadModal from '@/features/photos-upload/components/PhotoUploadModal';
+import PhotoManageModal from '@/features/photos-upload/components/PhotoManageModal';
 import styles from './PhotographerProfileEdit.module.css';
 
 // 변경된 정책에 따라 프로필 필수 항목 5개를 정의함
@@ -155,6 +157,10 @@ export default function PhotographerProfilePage() {
 
   // 기본 정보 수정 모달의 열림 상태를 관리함
   const [isBasicInfoModalOpen, setIsBasicInfoModalOpen] = useState(false);
+
+  // 포트폴리오 사진 올리기 · 관리 모달의 열림 상태를 관리함
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 
   // 수정 취소 시 모두 버릴 수 있도록 변경 사항을 서버와 분리해 관리함
   const [editDraft, setEditDraft] = useState<ProfileEditDraft | null>(null);
@@ -746,7 +752,24 @@ export default function PhotographerProfilePage() {
           onLoadMore={() => void photosQuery.fetchNextPage()}
           isSelf={photographer.isSelf}
           isEditing={isEditingProfile && photographer.isSelf}
+          onManagePhotos={() => setIsManageModalOpen(true)}
+          onUploadPhotos={() => setIsUploadModalOpen(true)}
         />
+      )}
+
+      {/* 작가 본인일 때만 포트폴리오 사진 올리기 · 관리 모달을 둠 (열림은 open으로) */}
+      {photographer.isSelf && (
+        <>
+          <PhotoUploadModal
+            open={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+          />
+          <PhotoManageModal
+            open={isManageModalOpen}
+            onClose={() => setIsManageModalOpen(false)}
+            photographerId={photographer.id}
+          />
+        </>
       )}
 
       {/* 실제 촬영 상품 목록 표시 */}

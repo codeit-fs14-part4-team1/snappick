@@ -1,0 +1,208 @@
+.uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.uploadsTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-top: 8px;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.count {
+  color: var(--color-accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 120px);
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 1199px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .grid {
+    gap: 8px;
+  }
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+  overflow: hidden;
+  list-style: none;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(to bottom, rgb(0 0 0 / 28%), transparent 38%),
+    linear-gradient(to top, rgb(0 0 0 / 28%), transparent 38%);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+  pointer-events: none;
+}
+
+.overlay,
+.doneBadge,
+.failedBadge,
+.removeButton {
+  z-index: 1;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile[data-status='uploading'] .overlay {
+  background: rgb(0 0 0 / 35%);
+}
+
+.tile[data-status='failed'] {
+  border: 2px solid var(--color-danger);
+}
+
+.tile[data-status='failed'] .overlay {
+  background: rgb(0 0 0 / 45%);
+}
+
+.percent {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.track {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 70%);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-accent);
+  transition: width 0.2s ease;
+}
+
+.doneBadge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+  border: 0.5px solid var(--color-bg-base);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.failedBadge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.retryButton {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.retryIcon {
+  transform: translateY(1px);
+}
+
+.removeButton {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0.5px solid rgb(255 255 255 / 55%);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 55%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tile[data-status='failed'] .removeButton {
+  top: 4px;
+  right: 4px;
+}
+
+.retryButton:focus-visible,
+.removeButton:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}

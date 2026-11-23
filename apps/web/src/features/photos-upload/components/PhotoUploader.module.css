@@ -1,0 +1,141 @@
+.uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+}
+
+.policyList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.policyList li::before {
+  content: '· ';
+}
+
+@media (max-width: 767px) {
+  .policyList {
+    font-size: 12px;
+    line-height: 18px;
+  }
+}
+
+.agree {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.checkboxInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.checkbox {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-base);
+  color: transparent;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.checkboxInput:checked + .checkbox {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+}
+
+.checkboxInput:focus-visible + .checkbox {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selectRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.limit {
+  margin: 0 0 0 auto;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.limitCurrent {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.policyError {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.checkboxInput[aria-invalid='true']:not(:checked) + .checkbox {
+  border-color: var(--color-danger);
+}
+
+.reject {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
