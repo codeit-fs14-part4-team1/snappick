@@ -115,7 +115,7 @@ resource "aws_iam_role_policy_attachment" "beanstalk_managed_updates" {
   role       = aws_iam_role.beanstalk_service.name
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 }
-
+# EB 배포 파일 버킷 이름 (github_deploy 권한용)
 locals {
   eb_bucket = "elasticbeanstalk-ap-southeast-2-${data.aws_caller_identity.current.account_id}"
 }
