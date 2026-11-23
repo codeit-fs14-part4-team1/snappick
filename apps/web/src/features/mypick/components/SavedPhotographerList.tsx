@@ -32,7 +32,7 @@ export default function SavedPhotographerList() {
   }
 
   //에러
-  if (isError) {
+  if (isError && !data) {
     return (
       <StateMessage
         title="작가를 불러오는 데 실패했습니다."

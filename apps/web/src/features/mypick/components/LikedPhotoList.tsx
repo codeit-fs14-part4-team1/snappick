@@ -31,7 +31,7 @@ export default function LikedPhotoList() {
     return <StateMessage title="사진을 불러오는 중입니다..." role="status" />;
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <StateMessage
         title="사진을 불러오는 데 실패했습니다."
