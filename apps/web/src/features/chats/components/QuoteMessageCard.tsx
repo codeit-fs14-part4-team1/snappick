@@ -49,7 +49,7 @@ export default function QuoteMessageCard({
       )}
       <div
         id={detailsId}
-        className={styles.content}
+        className={styles.quoteDetailsLayout}
         hidden={!isLatest && !expanded}
       >
         <header className={styles.heading}>
@@ -125,22 +125,17 @@ export default function QuoteMessageCard({
         )}
         {received && !isReserved && (
           <div className={styles.payment}>
-            <Button
-              fullWidth
-              disabled={!isLatest || !onPay}
-              onClick={onPay}
-              aria-describedby={
-                !isLatest ? `quote-${savedQuote.id}-payment-notice` : undefined
-              }
-            >
-              결제하기
-            </Button>
+            {isLatest && (
+              <Button fullWidth disabled={!onPay} onClick={onPay}>
+                결제하기
+              </Button>
+            )}
             {!isLatest && (
               <p
                 id={`quote-${savedQuote.id}-payment-notice`}
                 className={styles.paymentNotice}
               >
-                재견적이 도착해서 이 견적은 결제할 수 없어요.
+                결제는 최신 견적에서 진행해 주세요
               </p>
             )}
           </div>

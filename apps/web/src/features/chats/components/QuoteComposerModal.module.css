@@ -233,14 +233,6 @@
   line-height: 22px;
 }
 
-.noticeHeading > span {
-  color: var(--color-text-tertiary);
-}
-
-.mobileNotice {
-  display: none;
-}
-
 .notice p,
 .notice ul {
   margin: 8px 0 0;
@@ -275,13 +267,6 @@
 }
 
 @media (max-width: 1199px) {
-  .mobileNotice {
-    display: inline;
-  }
-
-  .desktopNotice {
-    display: none;
-  }
   .modal {
     width: 680px;
   }
@@ -302,7 +287,6 @@
   }
 
   .notice {
-    min-height: 113px;
     padding-block: 14px;
   }
 
@@ -342,7 +326,6 @@
   }
 
   .notice {
-    min-height: 133px;
     padding: 12px 16px;
     font-size: 13px;
   }

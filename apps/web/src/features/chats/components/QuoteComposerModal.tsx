@@ -71,8 +71,7 @@ function QuoteDialog({
     duration.trim() !== '' &&
     Number.isFinite(minutesValue) &&
     Math.abs(minutesValue - minutes) <= 0.000001 &&
-    minutes >= 60 &&
-    minutes <= 2880;
+    minutes > 0;
   const count = photoCount === '' ? null : Number(photoCount);
   const validName = name.length > 0 && name.length <= 30;
   const validDate =
@@ -149,7 +148,7 @@ function QuoteDialog({
             return;
           }
           if (!validDuration) {
-            setError('촬영 시간은 1~48시간 범위의 분 단위로 입력해 주세요.');
+            setError('촬영 시간은 0분보다 큰 분 단위로 입력해 주세요.');
             return;
           }
           if (!validNumbers) {
@@ -363,11 +362,7 @@ function QuoteDialog({
           </div>
           <div className={styles.notice}>
             <div className={styles.noticeHeading}>
-              <strong className={styles.desktopNotice}>공통 안내사항</strong>
-              <strong className={styles.mobileNotice}>
-                공통 안내사항 · 자동 첨부
-              </strong>
-              <span className={styles.mobileNotice}>미리보기</span>
+              <strong>공통 안내사항</strong>
             </div>
             {commonNotice.trim() ? (
               <QuoteNoticeList text={commonNotice} />
