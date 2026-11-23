@@ -24,6 +24,7 @@ import PhotoEditor from './PhotoEditor';
 import type { EditorPreview } from './PhotoEditor';
 import type { PhotoListItem } from './PhotoList';
 import uploadStyles from './PhotoUploadModal.module.css';
+import StateMessage from '@/components/ui/StateMessage';
 
 type PhotoManageModalProps = {
   open: boolean;
@@ -99,10 +100,13 @@ export default function PhotoManageModal({
 
   const {
     data,
+    isPending,
+    isError,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
     fetchNextPage,
+    refetch,
   } = usePhotographerPhotos(open ? photographerId : undefined);
   const allPhotos = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -320,30 +324,44 @@ export default function PhotoManageModal({
         title="포트폴리오 사진 관리"
         className={`${uploadStyles.surface} ${uploadStyles.step2}`}
       >
-        <PhotoEditor
-          photos={listItems}
-          selectedId={selected?.photoId ?? null}
-          onSelect={setSelectedId}
-          onRemove={handleRemove}
-          loadMore={{
-            hasNextPage,
-            isFetchingNextPage,
-            isError: isFetchNextPageError,
-            onLoadMore: fetchNextPage,
-          }}
-          preview={preview}
-          detail={selectedDetail}
-          detailError={detailQuery.isError}
-          onRepresentativeChange={handleRepresentativeChange}
-          onChange={handleChange}
-          onSubmit={() => save()}
-          submitLabel="업데이트하기"
-          submittingLabel="업데이트 중…"
-          submitDisabled={!isDirty || hasMissingRequired}
-          isSubmitting={isSaving}
-        />
+        {isPending ? (
+          <StateMessage
+            title="로딩 중"
+            description="사진을 불러오는 중이에요."
+            role="status"
+          />
+        ) : isError && !data ? (
+          <StateMessage
+            title="사진을 불러오지 못했어요."
+            description="잠시 후 다시 시도해 주세요."
+            button={{ label: '다시 시도', onClick: () => refetch() }}
+            role="alert"
+          />
+        ) : (
+          <PhotoEditor
+            photos={listItems}
+            selectedId={selected?.photoId ?? null}
+            onSelect={setSelectedId}
+            onRemove={handleRemove}
+            loadMore={{
+              hasNextPage,
+              isFetchingNextPage,
+              isError: isFetchNextPageError,
+              onLoadMore: fetchNextPage,
+            }}
+            preview={preview}
+            detail={selectedDetail}
+            detailError={detailQuery.isError}
+            onRepresentativeChange={handleRepresentativeChange}
+            onChange={handleChange}
+            onSubmit={() => save()}
+            submitLabel="업데이트하기"
+            submittingLabel="업데이트 중…"
+            submitDisabled={!isDirty || hasMissingRequired}
+            isSubmitting={isSaving}
+          />
+        )}
       </Modal>
-
       {/* 아래 모달은 형제로 둬야 Esc·Tab이 그 안에서만 동작 */}
       <Modal
         open={confirmOpen}
