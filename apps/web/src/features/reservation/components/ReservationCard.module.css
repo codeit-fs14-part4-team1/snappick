@@ -1,0 +1,137 @@
+/* 예약 목록의 개별 카드 */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 20px 52px 20px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background-color: var(--color-bg-base);
+}
+
+/* 예약 상태 배지 영역 */
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+/* 촬영일까지 남은 날짜 */
+.dDay {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* 예약명 */
+.title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+/* 촬영 일정, 장소 및 금액 */
+.details {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 예약 상대방 정보 */
+.counterpart {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 상대방 프로필 이미지 */
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 프로필 이미지가 없는 경우 */
+.avatarFallback {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #d9d9d9;
+}
+
+/* 상대방 활동명 */
+.counterpartName {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 예약 상세 이동 화살표 */
+.detailArrow {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* 태블릿 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .card {
+    padding-right: 52px;
+  }
+
+  .detailArrow {
+    right: 20px;
+  }
+}
+
+/* 모바일 */
+@media (max-width: 767px) {
+  .card {
+    padding: 16px 44px 16px 16px;
+    border-radius: 12px;
+  }
+
+  .title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .details {
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .detailArrow {
+    right: 16px;
+  }
+}

@@ -1,4 +1,4 @@
-import type { useAuth } from '@/features/auth/context/AuthContext';
+import type { FetchWithAuth } from '@/features/auth/types';
 import type {
   PhotographerProfile,
   PhotographerProductsResponse,
@@ -11,8 +11,6 @@ import type {
   PhotographerProduct,
   UpdatePhotographerProductInput,
 } from './types';
-
-type FetchWithAuth = ReturnType<typeof useAuth>['fetchWithAuth'];
 
 // 공개 작가 프로필을 조회함
 export async function getPhotographerProfile(
