@@ -29,7 +29,11 @@ export type ReviewResponse = {
   rating: number;
   comment: string;
   createdAt: string;
-  photographer: { nickname: string; profileImageUrl: string | null } | null;
+  photographer: {
+    photographerId: string;
+    nickname: string;
+    profileImageUrl: string | null;
+  } | null;
   reply: { comment: string; createdAt: string } | null;
 };
 
@@ -61,7 +65,7 @@ export async function saveMyReview(
   ),
 ) {
   const editing = 'reviewId' in input;
-  const result = await fetchWithAuth<unknown>(
+  const result = await fetchWithAuth<{ photographerId: string | null }>(
     editing ? `/me/reviews/${input.reviewId}` : '/me/reviews',
     {
       method: editing ? 'PATCH' : 'POST',

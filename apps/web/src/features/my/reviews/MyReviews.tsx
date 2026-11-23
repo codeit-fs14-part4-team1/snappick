@@ -61,6 +61,7 @@ export default function MyReviews() {
   const bookings: ReviewBooking[] = (eligibleQuery.data?.items ?? []).map(
     (item) => ({
       reservationId: item.reservationId,
+      photographerId: item.photographer?.photographerId,
       photographerName: item.photographer?.nickname ?? '작가 정보 없음',
       quoteName: item.quoteName ?? '견적 정보 없음',
       shootDate: item.shootAt,
@@ -80,6 +81,7 @@ export default function MyReviews() {
     id: review.reviewId,
     booking: {
       reservationId: review.reservationId ?? '',
+      photographerId: review.photographer?.photographerId,
       photographerName: review.photographer?.nickname ?? '작가 정보 없음',
       quoteName: review.quoteName ?? '',
       shootDate: review.shootAt ?? '',
@@ -89,6 +91,20 @@ export default function MyReviews() {
     createdAt: review.createdAt,
     reply: review.reply,
   }));
+  function invalidateReviewQueries(photographerId?: string | null) {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+    if (!photographerId) return;
+    void queryClient.invalidateQueries({
+      // 조회 사용자에 관계없이 해당 작가의 프로필 캐시를 갱신합니다.
+      queryKey: queryKeys.photographers
+        .detail(photographerId, null)
+        .slice(0, 3),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ['photographer-review-summary', photographerId],
+    });
+  }
+
   const save = useMutation({
     mutationFn: ({ rating, comment }: { rating: number; comment: string }) => {
       if (!editor) throw new Error('작성 중인 리뷰가 없습니다.');
@@ -100,24 +116,24 @@ export default function MyReviews() {
           : { reservationId: editor.booking.reservationId }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setEditor(null);
       setTab('written');
       setPage(1);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+      invalidateReviewQueries(result.photographerId);
       showToast('리뷰를 저장했어요.');
     },
     onError: () =>
       showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error'),
   });
   const remove = useMutation({
-    mutationFn: async (reviewId: string) => {
-      await fetchWithAuth(`/me/reviews/${reviewId}`, { method: 'DELETE' });
+    mutationFn: async (review: MyReview) => {
+      await fetchWithAuth(`/me/reviews/${review.id}`, { method: 'DELETE' });
     },
-    onSuccess: () => {
+    onSuccess: (_result, review) => {
       setDeleting(null);
       if (reviews.length === 1 && page > 1) setPage(page - 1);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+      invalidateReviewQueries(review.booking.photographerId);
       showToast('리뷰를 삭제했어요.');
     },
     onError: () =>
@@ -317,7 +333,7 @@ export default function MyReviews() {
               variant="danger"
               disabled={remove.isPending}
               onClick={() => {
-                if (deleting && !remove.isPending) remove.mutate(deleting.id);
+                if (deleting && !remove.isPending) remove.mutate(deleting);
               }}
             >
               삭제

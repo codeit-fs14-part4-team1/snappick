@@ -1,4 +1,5 @@
 export type ReviewBooking = {
+  photographerId?: string;
   reservationId: string;
   photographerName: string;
   quoteName: string;
