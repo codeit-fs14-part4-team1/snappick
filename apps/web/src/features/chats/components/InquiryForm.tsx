@@ -123,7 +123,7 @@ export default function InquiryForm({
       <fieldset disabled={pending} className={styles.fields}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>촬영 일정</span>
-          <SchedulePicker referenceDate={referenceDate} />
+          <SchedulePicker referenceDate={referenceDate} presentation="modal" />
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>촬영 장소</span>

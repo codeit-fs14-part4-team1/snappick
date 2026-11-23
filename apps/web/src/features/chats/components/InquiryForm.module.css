@@ -175,14 +175,6 @@
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.locationPopup {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.locationPopup .selectSchedule {
-  margin-top: 0;
-}
 .month button {
   width: 32px;
   height: 32px;

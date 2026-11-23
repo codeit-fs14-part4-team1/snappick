@@ -1,0 +1,13 @@
+.modal {
+  width: 420px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.content > button {
+  margin-top: 0;
+}
