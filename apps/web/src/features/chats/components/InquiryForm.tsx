@@ -63,7 +63,6 @@ export default function InquiryForm({
     } else if (concept.length < 5) {
       setConcept([...concept, value]);
     } else {
-      setError('스타일은 최대 5개까지 선택할 수 있어요.');
       return;
     }
     setError('');
@@ -135,7 +134,7 @@ export default function InquiryForm({
           <LocationPicker />
         </div>
         <fieldset className={styles.choices}>
-          <legend>콘셉트·스타일 (여러 개 선택)</legend>
+          <legend>콘셉트·스타일 (최대 5개 선택 가능)</legend>
           <div className={styles.chips}>
             {Object.values(Style).map((value) => (
               <button
