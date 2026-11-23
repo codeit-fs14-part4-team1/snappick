@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import NaverMapPicker from '@/features/map/components/NaverMapPicker';
 import SchedulePicker from './SchedulePicker';
 import TimePicker from './TimePicker';
 import QuoteNoticeList from './QuoteNoticeList';
@@ -53,9 +54,17 @@ function QuoteDialog({
   const [date, setDate] = useState(initialQuote?.date ?? '');
   const [startTime, setStartTime] = useState(initialQuote?.startTime ?? '');
   const [location, setLocation] = useState(initialQuote?.location ?? '');
+  const [locationLat, setLocationLat] = useState(
+    initialQuote?.locationLat ?? null,
+  );
+  const [locationLng, setLocationLng] = useState(
+    initialQuote?.locationLng ?? null,
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const submitting = useRef(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const openMapPicker = () => setMapOpen(true);
   const selectedProduct = initialQuote
     ? undefined
     : products.find((product) => product.id === productId);
@@ -79,7 +88,16 @@ function QuoteDialog({
     Number.isFinite(Date.parse(`${date}T00:00:00Z`)) &&
     new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
   const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(startTime);
-  const validLocation = location.trim().length > 0 && location.length <= 50;
+  const validLocation =
+    location.trim().length > 0 &&
+    locationLat !== null &&
+    Number.isFinite(locationLat) &&
+    locationLat >= -90 &&
+    locationLat <= 90 &&
+    locationLng !== null &&
+    Number.isFinite(locationLng) &&
+    locationLng >= -180 &&
+    locationLng <= 180;
   const validNumbers =
     /^\d+$/.test(price) &&
     isValidInteger(amount) &&
@@ -144,7 +162,7 @@ function QuoteDialog({
             return;
           }
           if (!validLocation) {
-            setError('촬영 장소를 입력해 주세요.');
+            setError('지도에서 촬영 장소를 선택해 주세요.');
             return;
           }
           if (!validDuration) {
@@ -171,6 +189,8 @@ function QuoteDialog({
               date,
               startTime,
               location: location.trim(),
+              locationLat,
+              locationLng,
               photoCount: count,
               includesOriginal,
               additionalNotice:
@@ -298,10 +318,16 @@ function QuoteDialog({
               <input
                 name="location"
                 value={location}
-                onChange={(event) => setLocation(event.target.value)}
+                readOnly
+                onClick={openMapPicker}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openMapPicker();
+                  }
+                }}
                 required
-                maxLength={50}
-                placeholder="예) 서울숲 (성수동)"
+                placeholder="클릭해서 지도에서 촬영 장소를 선택해 주세요"
               />
             </label>
           </div>
@@ -389,6 +415,27 @@ function QuoteDialog({
           </Button>
         </div>
       </form>
+      {mapOpen && (
+        <Modal
+          open
+          title="촬영 장소 선택"
+          className={styles.mapModal}
+          onClose={() => setMapOpen(false)}
+        >
+          <p className={styles.intro}>
+            지도를 클릭하거나 주소를 검색해 위치를 골라 주세요.
+          </p>
+          <NaverMapPicker
+            onSelect={(picked) => {
+              setLocation(picked.address);
+              setLocationLat(picked.lat);
+              setLocationLng(picked.lng);
+              setError('');
+              setMapOpen(false);
+            }}
+          />
+        </Modal>
+      )}
     </Modal>
   );
 }

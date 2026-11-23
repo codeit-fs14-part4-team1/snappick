@@ -21,7 +21,12 @@ const DEFAULT_ZOOM = 15;
  * 지도 팝업 (/map-picker)
  * 검색하거나 지도를 클릭해 위치를 고르고, 선택하면 연 창(opener)으로 보내고 닫는다
  */
-export default function NaverMapPicker() {
+export default function NaverMapPicker({
+  onSelect,
+}: {
+  /** 전달하면 팝업을 닫는 대신 선택한 위치를 호출부에 전달합니다. */
+  onSelect?: (location: PickedLocation) => void;
+}) {
   const mapElement = useRef<HTMLDivElement>(null);
   const map = useRef<NaverMap | null>(null);
   const marker = useRef<NaverMarker | null>(null);
@@ -35,6 +40,39 @@ export default function NaverMapPicker() {
   );
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<PickedLocation | null>(null);
+
+  // 모달이 열린 뒤 확정된 크기와 반응형 크기 변경을 지도에 반영합니다.
+  useEffect(() => {
+    const element = mapElement.current;
+    if (!ready || !element) return;
+
+    let frame = 0;
+    let previousWidth = 0;
+    let previousHeight = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const width = element.clientWidth;
+        const height = element.clientHeight;
+        if (
+          width === 0 ||
+          height === 0 ||
+          (width === previousWidth && height === previousHeight)
+        ) {
+          return;
+        }
+        map.current?.setSize({ width, height });
+        previousWidth = width;
+        previousHeight = height;
+      });
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [ready]);
 
   // 클라이언트 ID·서비스 URL 인증 실패 시 네이버 지도 script가 호출한다
   useEffect(() => {
@@ -127,6 +165,10 @@ export default function NaverMapPicker() {
 
   function confirm() {
     if (!picked) return;
+    if (onSelect) {
+      onSelect(picked);
+      return;
+    }
     if (!window.opener) {
       window.alert(
         '위치를 받을 창이 없어요. 견적 작성 화면에서 다시 열어 주세요.',
@@ -142,7 +184,7 @@ export default function NaverMapPicker() {
   }
 
   return (
-    <div className={styles.picker}>
+    <div className={`${styles.picker} ${onSelect ? styles.embedded : ''}`}>
       {NAVER_MAP_CLIENT_ID && (
         <Script
           src={naverMapScriptUrl(NAVER_MAP_CLIENT_ID)}
@@ -176,9 +218,9 @@ export default function NaverMapPicker() {
 
       <div className={styles.footer}>
         <p className={styles.address}>
-          {picked
-            ? picked.address
-            : '지도를 클릭하거나 주소를 검색해 위치를 골라 주세요.'}
+          {picked?.address ||
+            (!onSelect &&
+              '지도를 클릭하거나 주소를 검색해 위치를 골라 주세요.')}
         </p>
         <button
           type="button"

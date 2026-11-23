@@ -20,6 +20,8 @@ export type QuoteDraft = {
   date: string;
   startTime: string;
   location: string;
+  locationLat: number | null;
+  locationLng: number | null;
   photoCount: number | null;
   includesOriginal: boolean;
   additionalNotice: string | null;
@@ -39,6 +41,8 @@ export type Quote = {
   quoteName: string;
   shootAt: string;
   location: string;
+  locationLat: number;
+  locationLng: number;
   durationMinutes: number;
   price: number;
   photoCount: number | null;
@@ -56,6 +60,8 @@ export type CreateQuoteInput = {
   quoteName: string;
   shootAt: string;
   location: string;
+  locationLat: number;
+  locationLng: number;
   durationMinutes: number;
   price: number;
   photoCount?: number | null;
@@ -75,6 +81,8 @@ export function toQuoteDraft(quote: Quote): QuoteDraft {
     date: local.slice(0, 10),
     startTime: local.slice(11, 16),
     location: quote.location,
+    locationLat: quote.locationLat ?? null,
+    locationLng: quote.locationLng ?? null,
     photoCount: quote.photoCount,
     includesOriginal: quote.includesOriginal,
     additionalNotice: quote.additionalNotice,
@@ -88,6 +96,8 @@ export function createQuoteInput(
   shootingCaseId?: string,
   expectedVersion?: number,
 ): CreateQuoteInput {
+  if (draft.locationLat === null || draft.locationLng === null)
+    throw new Error('지도에서 촬영 장소를 선택해 주세요.');
   return {
     chatRoomId: roomId,
     ...(shootingCaseId && { shootingCaseId }),
@@ -99,6 +109,8 @@ export function createQuoteInput(
       `${draft.date}T${draft.startTime}:00+09:00`,
     ).toISOString(),
     location: draft.location,
+    locationLat: draft.locationLat,
+    locationLng: draft.locationLng,
     durationMinutes: draft.durationMinutes,
     price: draft.price,
     photoCount: draft.photoCount,

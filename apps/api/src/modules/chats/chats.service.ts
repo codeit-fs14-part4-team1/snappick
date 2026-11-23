@@ -423,6 +423,8 @@ export async function getMessages(
           quoteName: message.quote.quote_name,
           shootAt: message.quote.shoot_at,
           location: message.quote.location,
+          locationLat: message.quote.location_lat,
+          locationLng: message.quote.location_lng,
           durationMinutes: message.quote.duration_minutes,
           price: message.quote.price,
           photoCount: message.quote.photo_count,

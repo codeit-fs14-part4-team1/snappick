@@ -10,9 +10,27 @@
 
 .search {
   display: flex;
+  min-width: 0;
+  flex-shrink: 0;
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid #e5e5e5;
+}
+
+.embedded {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: min(540px, 60dvh);
+  min-height: 280px;
+}
+
+.embedded .search {
+  padding-inline: 0;
+  padding-top: 0;
 }
 
 .searchInput {
@@ -25,6 +43,7 @@
 }
 
 .button {
+  flex-shrink: 0;
   padding: 10px 16px;
   border: 0;
   border-radius: 8px;
@@ -41,11 +60,16 @@
 
 .map {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .footer {
   display: flex;
+  min-width: 0;
+  flex-shrink: 0;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -55,8 +79,13 @@
 .address {
   flex: 1;
   min-width: 0;
+  min-height: 22px;
   margin: 0;
+  color: var(--color-text-primary);
   font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -67,4 +96,17 @@
   padding: 24px;
   font-size: 14px;
   text-align: center;
+}
+
+@media (max-width: 767px) {
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .address {
+    flex: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }

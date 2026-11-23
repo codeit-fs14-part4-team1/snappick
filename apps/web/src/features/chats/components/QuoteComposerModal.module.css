@@ -3,6 +3,11 @@
   width: 720px;
 }
 
+.mapModal {
+  --modal-gap: 8px;
+  width: 720px;
+}
+
 .modal > header {
   height: 30px;
 }
@@ -11,6 +16,10 @@
   margin: 0 0 30px;
   color: var(--color-text-secondary);
   font-weight: 400;
+}
+
+.mapModal .intro {
+  margin-bottom: 12px;
 }
 
 .form,
