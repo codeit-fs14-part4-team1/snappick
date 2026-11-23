@@ -37,7 +37,8 @@ export type NaverMap = {
 };
 export type NaverMarker = { setPosition(position: NaverLatLng): void };
 
-type ServiceResponse<T> = { v2: T };
+// 실패 응답에는 v2가 없을 수 있다 (status 확인 후 접근)
+type ServiceResponse<T> = { v2?: T };
 type ReverseGeocodeResult = {
   address: { roadAddress: string; jibunAddress: string };
 };

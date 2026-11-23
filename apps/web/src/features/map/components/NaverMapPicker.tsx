@@ -47,12 +47,19 @@ export default function NaverMapPicker() {
     };
   }, []);
 
+  // 새 위치 요청 시작: 요청 번호를 올리고 이전 선택을 먼저 비운다
+  // 응답을 기다리는 동안 이전 좌표가 전송되지 않도록 선택 버튼을 비활성화하기 위함
+  function beginRequest() {
+    setPicked(null);
+    return ++requestSeq.current;
+  }
+
   // 좌표의 주소를 찾아 선택 위치로 둔다
   function pickCoord(lat: number, lng: number, knownAddress?: string) {
     const maps = window.naver?.maps;
     if (!maps || !map.current) return;
     const position = new maps.LatLng(lat, lng);
-    const seq = ++requestSeq.current;
+    const seq = beginRequest();
 
     if (marker.current) {
       marker.current.setPosition(position);
@@ -64,17 +71,14 @@ export default function NaverMapPicker() {
       setPicked({ address: knownAddress, lat, lng });
       return;
     }
-    // 주소를 받기 전에는 이전 선택이 전송되지 않도록 비운다 (선택 버튼 비활성)
-    setPicked(null);
     maps.Service.reverseGeocode(
       { coords: position, orders: 'roadaddr,addr' },
       (status, response) => {
         if (seq !== requestSeq.current) return;
-        const found = response.v2.address;
-        const address =
-          status === maps.Service.Status.OK
-            ? found.roadAddress || found.jibunAddress
-            : '';
+        // 실패 응답에는 v2가 없을 수 있어 status를 먼저 확인한다
+        const found =
+          status === maps.Service.Status.OK ? response?.v2?.address : undefined;
+        const address = found ? found.roadAddress || found.jibunAddress : '';
         setPicked({ address: address || '주소를 찾을 수 없는 위치', lat, lng });
       },
     );
@@ -98,14 +102,17 @@ export default function NaverMapPicker() {
     const maps = window.naver?.maps;
     const keyword = query.trim();
     if (!maps || !map.current || !keyword) return;
-    const seq = ++requestSeq.current;
+    const seq = beginRequest();
 
     maps.Service.geocode({ query: keyword }, (status, response) => {
       if (seq !== requestSeq.current) return;
-      const first = response.v2.addresses[0];
-      if (status !== maps.Service.Status.OK || !first) {
+      // 실패 응답에는 v2가 없을 수 있어 status를 먼저 확인한다
+      const first =
+        status === maps.Service.Status.OK
+          ? response?.v2?.addresses?.[0]
+          : undefined;
+      if (!first) {
         setError(null);
-        setPicked(null);
         window.alert(
           '검색 결과가 없어요. 도로명이나 지번 주소로 검색해 주세요.',
         );
