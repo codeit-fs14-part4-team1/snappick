@@ -1,7 +1,13 @@
 'use client';
 
 import Script from 'next/script';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import {
   MAP_PICKER_MESSAGE,
   NAVER_MAP_CLIENT_ID,
@@ -88,53 +94,58 @@ export default function NaverMapPicker({
 
   // 새 위치 요청 시작: 요청 번호를 올리고 이전 선택을 먼저 비운다
   // 응답을 기다리는 동안 이전 좌표가 전송되지 않도록 선택 버튼을 비활성화하기 위함
-  function beginRequest() {
+  const beginRequest = useCallback(() => {
     setPicked(null);
     setSelectionError(null);
     return ++requestSeq.current;
-  }
+  }, []);
 
   // 좌표의 주소를 찾아 선택 위치로 둔다
-  function pickCoord(lat: number, lng: number, knownAddress?: string) {
-    const maps = window.naver?.maps;
-    if (!maps || !map.current) return;
-    const position = new maps.LatLng(lat, lng);
-    const seq = beginRequest();
+  const pickCoord = useCallback(
+    (lat: number, lng: number, knownAddress?: string) => {
+      const maps = window.naver?.maps;
+      if (!maps || !map.current) return;
+      const position = new maps.LatLng(lat, lng);
+      const seq = beginRequest();
 
-    if (marker.current) {
-      marker.current.setPosition(position);
-    } else {
-      marker.current = new maps.Marker({ position, map: map.current });
-    }
+      if (marker.current) {
+        marker.current.setPosition(position);
+      } else {
+        marker.current = new maps.Marker({ position, map: map.current });
+      }
 
-    if (knownAddress) {
-      setPicked({ address: knownAddress, lat, lng });
-      return;
-    }
-    maps.Service.reverseGeocode(
-      { coords: position, orders: 'roadaddr,addr' },
-      (status, response) => {
-        if (seq !== requestSeq.current) return;
-        // 실패 응답에는 v2가 없을 수 있어 status를 먼저 확인한다
-        const found =
-          status === maps.Service.Status.OK ? response?.v2?.address : undefined;
-        const address = (
-          found?.roadAddress ||
-          found?.jibunAddress ||
-          ''
-        ).trim();
-        if (!address) {
-          setSelectionError(
-            '주소를 조회하지 못했어요. 지도를 다시 클릭하거나 주소를 검색해 주세요.',
-          );
-          return;
-        }
-        setPicked({ address, lat, lng });
-      },
-    );
-  }
+      if (knownAddress) {
+        setPicked({ address: knownAddress, lat, lng });
+        return;
+      }
+      maps.Service.reverseGeocode(
+        { coords: position, orders: 'roadaddr,addr' },
+        (status, response) => {
+          if (seq !== requestSeq.current) return;
+          // 실패 응답에는 v2가 없을 수 있어 status를 먼저 확인한다
+          const found =
+            status === maps.Service.Status.OK
+              ? response?.v2?.address
+              : undefined;
+          const address = (
+            found?.roadAddress ||
+            found?.jibunAddress ||
+            ''
+          ).trim();
+          if (!address) {
+            setSelectionError(
+              '주소를 조회하지 못했어요. 지도를 다시 클릭하거나 주소를 검색해 주세요.',
+            );
+            return;
+          }
+          setPicked({ address, lat, lng });
+        },
+      );
+    },
+    [beginRequest],
+  );
 
-  function initMap() {
+  const initMap = useCallback(() => {
     const maps = window.naver?.maps;
     if (!maps || !mapElement.current || map.current) return;
     map.current = new maps.Map(mapElement.current, {
@@ -145,7 +156,20 @@ export default function NaverMapPicker({
       pickCoord(event.coord.lat(), event.coord.lng()),
     );
     setReady(true);
-  }
+  }, [pickCoord]);
+
+  useEffect(() => {
+    // SDK가 이미 로드된 경우와 Strict Mode 재설정에서도 초기화합니다.
+    const frame = requestAnimationFrame(initMap);
+    return () => {
+      cancelAnimationFrame(frame);
+      // 닫기 전에 시작한 주소 조회 응답은 무시합니다.
+      requestSeq.current += 1;
+      map.current?.destroy();
+      map.current = null;
+      marker.current = null;
+    };
+  }, [initMap]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
