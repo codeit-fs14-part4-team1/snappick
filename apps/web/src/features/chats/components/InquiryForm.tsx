@@ -27,9 +27,9 @@ export function InquiryPrompt({
   return (
     <div className={styles.resume}>
       <div>
-        <h3 className={styles.resumeTitle}>촬영 정보를 건너뛰었어요</h3>
+        <p className={styles.resumeTitle}>촬영 정보 작성을 건너뛰었어요</p>
         <p className={styles.resumeDescription}>
-          촬영 정보를 남겨주시면 더 정확하게 상담할 수 있어요.
+          촬영 정보를 남기면 상담에 도움이 돼요.
         </p>
       </div>
       <Button
