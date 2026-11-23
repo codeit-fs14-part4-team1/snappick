@@ -48,9 +48,9 @@ export type PatchCancelReservationInput = z.infer<
 
 export const getReservationSchema = z.object({
   type: z
-    .enum(['ALL', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'], {
+    .enum(['ALL', 'UPCOMING', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'], {
       error:
-        'type은 반드시 ALL, IN_PROGRESS, COMPLETED, CANCELED 중 하나여야 합니다.',
+        'type은 반드시 ALL, UPCOMING, IN_PROGRESS, COMPLETED, CANCELED 중 하나여야 합니다.',
     })
     .default('ALL'),
   page: z.coerce

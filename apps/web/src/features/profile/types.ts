@@ -107,9 +107,38 @@ export type PhotographerReviewsResponse = {
   totalPages: number;
 };
 
+// GET /photographers/{photographerId}/reviews/summary
+
+// AI 리뷰 요약의 생성 및 조회 상태를 정의
+export type PhotographerReviewSummaryStatus =
+  'READY' | 'UPDATING' | 'NOT_ENOUGH' | 'UNAVAILABLE';
+
+// AI 리뷰 요약의 주요 키워드와 해당 키워드를 언급한 리뷰 수를 정의
+export type PhotographerReviewSummaryHighlight = {
+  label: string;
+  count: number;
+};
+
+// AI 리뷰 요약에서 반복적으로 언급된 아쉬운 점과 해당 리뷰 수를 정의
+export type PhotographerReviewSummaryCaution = {
+  text: string;
+  count: number;
+};
+
+// 사진작가 AI 리뷰 요약 API 응답 타입을 정의
+export type PhotographerReviewSummaryResponse = {
+  photographerId: string;
+  status: PhotographerReviewSummaryStatus;
+  summary: string | null;
+  highlights: PhotographerReviewSummaryHighlight[];
+  caution: PhotographerReviewSummaryCaution | null;
+  sourceReviewCount: number;
+  generatedAt: string | null;
+};
+
 // GET /photographers/me/readiness
 
-// 사진작가 프로필 준비 상태 응답 타입 정의
+// 사진작가 프로필 준비 상태 응답 타입을 정의함
 export type PhotographerReadinessResponse = {
   isReady: boolean;
   checks: Record<string, boolean>;

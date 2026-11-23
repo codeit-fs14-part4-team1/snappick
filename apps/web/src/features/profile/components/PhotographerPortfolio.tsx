@@ -23,7 +23,15 @@ type PhotographerPortfolioProps = {
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
   isSelf?: boolean;
-  isReady?: boolean;
+
+  // 프로필 수정 모드 여부를 전달함
+  isEditing?: boolean;
+
+  // 사진 관리 모달을 열기 위한 콜백을 정의함
+  onManagePhotos?: () => void;
+
+  // 사진 업로드 모달을 열기 위한 콜백을 정의함
+  onUploadPhotos?: () => void;
 };
 
 // 실제 표시 비율에 맞는 Masonry 계산용 크기 반환
@@ -58,7 +66,9 @@ export default function PhotographerPortfolio({
   isFetchingNextPage = false,
   onLoadMore,
   isSelf = false,
-  isReady = true,
+  isEditing = false,
+  onManagePhotos,
+  onUploadPhotos,
 }: PhotographerPortfolioProps) {
   // 원본 사진과 배치용 크기를 함께 구성
   const masonryPhotos = photos.map((photo, index) => ({
@@ -73,14 +83,37 @@ export default function PhotographerPortfolio({
       aria-labelledby="portfolio-title"
       className={styles.portfolio}
     >
-      {/* 포트폴리오 제목 표시 */}
-      <h2 id="portfolio-title" className={styles.title}>
-        포트폴리오
-      </h2>
+      {/* 포트폴리오 제목과 편집 모드의 관리 버튼을 표시함 */}
+      <div className={styles.header}>
+        <h2 id="portfolio-title" className={styles.title}>
+          포트폴리오
+        </h2>
 
-      {/* 사진이 없는 경우 본인 미설정 상태와 공개 상태를 구분함 */}
+        {/* 작가 본인이 프로필 수정 중일 때만 관리 버튼을 표시함 */}
+        {isSelf && isEditing && (
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={onManagePhotos}
+            >
+              사진 관리
+            </button>
+
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={onUploadPhotos}
+            >
+              + 사진 올리기
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 사진이 없는 경우 작가 본인 여부에 따라 안내를 구분함 */}
       {photos.length === 0 ? (
-        isSelf && !isReady ? (
+        isSelf ? (
           // 작가 본인 미설정 상태의 포트폴리오 등록 안내
           <div className={styles.emptyStateOwn}>
             <p className={styles.emptyStateOwnTitle}>아직 올린 사진이 없어요</p>

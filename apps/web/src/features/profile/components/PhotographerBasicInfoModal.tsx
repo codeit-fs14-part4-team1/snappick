@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Category, Region } from '@snappick/shared';
 
@@ -8,24 +8,36 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
 
-import { useUpdatePhotographerProfile } from '@/features/profile/hooks/useUpdatePhotographerProfile';
-
 import { CategoryLabel, RegionLabel } from '@/constants/enum-labels';
-import type { PhotographerProfile } from '@/features/profile/types';
+import type {
+  PhotographerProfile,
+  UpdatePhotographerProfileInput,
+} from '@/features/profile/types';
 
 import styles from './PhotographerBasicInfoModal.module.css';
+
+// 서버에서 허용하는 프로필 이미지 최대 크기를 5MB로 정의함
+const PROFILE_IMAGE_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // 기본 정보 수정 모달에서 사용할 Props 정의
 type PhotographerBasicInfoModalProps = {
   open: boolean;
   onClose: () => void;
   photographer: PhotographerProfile;
+
+  // 프로필 변경 사항을 서버에 저장 중인지 확인함
+  isSavingEdit?: boolean;
+
+  // 기본 정보와 선택한 이미지를 서버에 저장하지 않고 임시 상태에 반영함
+  onApply: (input: UpdatePhotographerProfileInput, imageFile?: File) => void;
 };
 
 export default function PhotographerBasicInfoModal({
   open,
   onClose,
   photographer,
+  onApply,
+  isSavingEdit = false,
 }: PhotographerBasicInfoModalProps) {
   // 입력 폼과 각 입력 요소의 고유 ID를 생성함
   const formId = useId();
@@ -33,8 +45,17 @@ export default function PhotographerBasicInfoModal({
   // 입력값 초기화를 위해 폼 요소를 참조함
   const formRef = useRef<HTMLFormElement>(null);
 
-  // 사진작가 기본 정보 수정 요청 상태를 관리함
-  const updateProfileMutation = useUpdatePhotographerProfile();
+  // 프로필 이미지 파일 선택창을 열기 위해 input 요소를 참조함
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // 이미지 미리보기에 사용하는 임시 URL을 관리함
+  const imagePreviewUrlRef = useRef<string | null>(null);
+
+  // 선택한 프로필 이미지 파일과 미리보기 URL을 관리함
+  const [selectedImage, setSelectedImage] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
 
   // 입력값 오류와 저장 결과를 안내하는 Toast를 사용함
   const { showToast } = useToast();
@@ -56,6 +77,76 @@ export default function PhotographerBasicInfoModal({
   const [draftRegions, setDraftRegions] = useState(() => [
     ...photographer.regions,
   ]);
+
+  // 컴포넌트가 제거될 때 이미지 미리보기 URL을 해제함
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrlRef.current) {
+        URL.revokeObjectURL(imagePreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  // 선택한 프로필 이미지와 미리보기 상태를 초기화함
+  const resetSelectedImage = () => {
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+      imagePreviewUrlRef.current = null;
+    }
+
+    setSelectedImage(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  // 이미지 파일의 형식을 확인하고 미리보기를 생성함
+  const handleSelectImage = (file: File | undefined) => {
+    // 서버 저장 중에는 새로운 이미지 선택을 처리하지 않음
+    if (isSavingEdit || !file) {
+      return;
+    }
+
+    // JPG, PNG, WebP 형식의 이미지 파일만 허용함
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      resetSelectedImage();
+
+      showToast('JPG, PNG, WebP 이미지 파일만 선택할 수 있어요.', 'error');
+      return;
+    }
+
+    // 빈 이미지 파일은 선택할 수 없도록 처리함
+    if (file.size === 0) {
+      resetSelectedImage();
+      showToast('빈 이미지 파일은 선택할 수 없어요.', 'error');
+      return;
+    }
+
+    // 서버의 업로드 제한과 동일하게 5MB 초과 파일을 차단함
+    if (file.size > PROFILE_IMAGE_MAX_FILE_SIZE) {
+      resetSelectedImage();
+      showToast('프로필 이미지는 5MB 이하만 업로드할 수 있어요.', 'error');
+      return;
+    }
+
+    // 이전에 생성한 이미지 미리보기 URL을 해제함
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+    }
+
+    // 선택한 이미지의 미리보기 URL을 생성함
+    const previewUrl = URL.createObjectURL(file);
+
+    imagePreviewUrlRef.current = previewUrl;
+
+    setSelectedImage({
+      file,
+      previewUrl,
+    });
+  };
 
   // 팝오버를 열 때 현재 선택된 지역을 임시 상태에 복사함
   const handleOpenRegionPicker = () => {
@@ -90,7 +181,13 @@ export default function PhotographerBasicInfoModal({
 
   // 모달을 닫을 때 저장하지 않은 입력값과 선택 상태를 초기화함
   const handleClose = () => {
+    // 서버 저장 중에는 모달 닫기 요청을 처리하지 않음
+    if (isSavingEdit) return;
+
     formRef.current?.reset();
+
+    // 선택한 프로필 이미지와 미리보기 상태를 초기화함
+    resetSelectedImage();
 
     setSelectedRegions([...photographer.regions]);
     setDraftRegions([...photographer.regions]);
@@ -100,10 +197,8 @@ export default function PhotographerBasicInfoModal({
     onClose();
   };
 
-  // 저장 중에는 사용자가 모달을 닫지 못하도록 처리함
+  // 모달을 닫으면 아직 적용하지 않은 입력 내용만 초기화함
   const handleRequestClose = () => {
-    if (updateProfileMutation.isPending) return;
-
     handleClose();
   };
 
@@ -115,25 +210,25 @@ export default function PhotographerBasicInfoModal({
       className={styles.modalSurface}
       footer={
         <>
-          {/* 저장 중에는 취소 버튼을 비활성화함 */}
+          {/* 모달의 취소는 적용하지 않은 입력값만 폐기함 */}
           <Button
             variant="outline"
             size="lg"
             onClick={handleRequestClose}
-            disabled={updateProfileMutation.isPending}
+            disabled={isSavingEdit}
           >
             취소
           </Button>
 
-          {/* 프로필 저장 중에는 중복 요청을 방지함 */}
+          {/* 최종 서버 저장 전 화면에 입력값을 임시 적용함 */}
           <Button
             type="submit"
             form={formId}
             variant="primary"
             size="lg"
-            disabled={updateProfileMutation.isPending}
+            disabled={isSavingEdit}
           >
-            {updateProfileMutation.isPending ? '저장 중...' : '저장하기'}
+            적용
           </Button>
         </>
       }
@@ -143,12 +238,11 @@ export default function PhotographerBasicInfoModal({
         ref={formRef}
         id={formId}
         className={styles.form}
-        aria-busy={updateProfileMutation.isPending}
         onSubmit={(event) => {
           event.preventDefault();
 
-          // 저장 요청이 진행 중이면 중복 제출을 방지함
-          if (updateProfileMutation.isPending) return;
+          // 서버 저장 중에는 기본 정보 변경 사항을 임시 적용하지 않음
+          if (isSavingEdit) return;
 
           // 폼에 입력한 기본 정보 값을 가져옴
           const formData = new FormData(event.currentTarget);
@@ -188,32 +282,24 @@ export default function PhotographerBasicInfoModal({
             return;
           }
 
-          // 입력값을 서버 요청 형식으로 변환하여 프로필 수정을 요청함
-          updateProfileMutation.mutate(
+          // 최종 수정 완료를 누르기 전에는 PATCH 요청을 실행하지 않음
+          onApply(
             {
               nickname,
-              // 입력한 경력이 있을 때만 PATCH 요청에 포함함
               ...(careerYears !== undefined ? { career: careerYears } : {}),
               introduction: introduction === '' ? null : introduction,
               regions: selectedRegions,
               categories: selectedCategories,
             },
-            {
-              // 프로필 수정 성공 시 안내를 표시하고 모달을 닫음
-              onSuccess: () => {
-                showToast('프로필 정보를 수정했어요.');
-                onClose();
-              },
-
-              // 프로필 수정 실패 시 오류를 안내하고 입력값을 유지함
-              onError: () => {
-                showToast(
-                  '프로필 정보를 수정하지 못했어요. 다시 시도해 주세요.',
-                  'error',
-                );
-              },
-            },
+            selectedImage?.file,
           );
+
+          // 선택한 이미지와 기본 정보가 임시 상태에 반영되었음을 안내함
+          showToast(
+            '기본 정보를 임시 적용했어요. 수정 완료를 눌러 저장해 주세요.',
+          );
+
+          onClose();
         }}
       >
         {/* 현재 등록된 프로필 이미지와 이미지 변경 영역을 표시함 */}
@@ -223,12 +309,18 @@ export default function PhotographerBasicInfoModal({
           </span>
 
           <div className={styles.profileImageRow}>
-            {/* 등록된 이미지가 있으면 표시하고 없으면 기본 이미지를 표시함 */}
+            {/* 새로 선택한 이미지를 우선 표시하고 없으면 기존 이미지를 표시함 */}
             <div className={styles.profileImagePreview}>
-              {photographer.profileImageUrl ? (
+              {selectedImage?.previewUrl || photographer.profileImageUrl ? (
                 <Image
-                  src={photographer.profileImageUrl}
-                  alt={`${photographer.nickname} 프로필 이미지`}
+                  src={
+                    selectedImage?.previewUrl ?? photographer.profileImageUrl!
+                  }
+                  alt={
+                    selectedImage
+                      ? '선택한 프로필 이미지 미리보기'
+                      : `${photographer.nickname} 프로필 이미지`
+                  }
                   fill
                   sizes="96px"
                   unoptimized
@@ -244,10 +336,24 @@ export default function PhotographerBasicInfoModal({
 
             {/* 이미지 변경 버튼과 지원 형식을 표시함 */}
             <div className={styles.profileImageActions}>
+              {/* 이미지 변경 버튼에서 사용할 파일 선택창을 숨겨서 제공함 */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                disabled={isSavingEdit}
+                onChange={(event) =>
+                  handleSelectImage(event.currentTarget.files?.[0])
+                }
+              />
+
+              {/* 이미지 변경 버튼을 누르면 파일 선택창을 표시함 */}
               <button
                 type="button"
                 className={styles.imageChangeButton}
-                disabled
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isSavingEdit}
               >
                 이미지 변경
               </button>
@@ -273,6 +379,7 @@ export default function PhotographerBasicInfoModal({
               defaultValue={photographer.nickname}
               minLength={2}
               maxLength={20}
+              disabled={isSavingEdit}
               required
             />
           </div>
@@ -294,6 +401,7 @@ export default function PhotographerBasicInfoModal({
                 min={0}
                 max={80}
                 step={1}
+                disabled={isSavingEdit}
                 required
                 aria-describedby={`${formId}-career-unit`}
               />
@@ -318,6 +426,7 @@ export default function PhotographerBasicInfoModal({
             defaultValue={photographer.introduction ?? ''}
             maxLength={1000}
             rows={5}
+            disabled={isSavingEdit}
           />
         </div>
 
@@ -342,6 +451,7 @@ export default function PhotographerBasicInfoModal({
                 aria-expanded={isRegionPickerOpen}
                 aria-controls={`${formId}-region-picker`}
                 onClick={handleOpenRegionPicker}
+                disabled={isSavingEdit}
               >
                 + 지역 추가
               </button>
@@ -375,6 +485,7 @@ export default function PhotographerBasicInfoModal({
                         className={styles.regionCheckbox}
                         checked={draftRegions.includes(region)}
                         onChange={() => handleToggleDraftRegion(region)}
+                        disabled={isSavingEdit}
                       />
 
                       <span>{RegionLabel[region]}</span>
@@ -388,6 +499,7 @@ export default function PhotographerBasicInfoModal({
                     type="button"
                     className={styles.regionResetButton}
                     onClick={handleResetDraftRegions}
+                    disabled={isSavingEdit}
                   >
                     초기화
                   </button>
@@ -396,6 +508,7 @@ export default function PhotographerBasicInfoModal({
                     type="button"
                     className={styles.regionApplyButton}
                     onClick={handleApplyRegions}
+                    disabled={isSavingEdit}
                   >
                     적용
                   </button>
@@ -433,6 +546,7 @@ export default function PhotographerBasicInfoModal({
                         : [...prev, category],
                     )
                   }
+                  disabled={isSavingEdit}
                 >
                   {CategoryLabel[category]}
                 </button>

@@ -1,7 +1,6 @@
-import { refreshSession } from './refresh';
-
 type AuthFetchOptions = {
   accessToken: string;
+  refreshToken: () => Promise<string>;
   onTokenRefresh: (token: string) => void;
 };
 
@@ -32,7 +31,7 @@ export async function authFetch<T>(
 
   // Access Token이 만료되면 한 번만 재발급을 시도함
   if (response.status === 401) {
-    const newToken = await refreshSession();
+    const newToken = await auth.refreshToken();
 
     auth.onTokenRefresh(newToken);
     response = await request(newToken);
