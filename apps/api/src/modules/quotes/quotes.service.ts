@@ -161,6 +161,8 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         version: nextVersion,
         shoot_at: new Date(input.shootAt),
         location: input.location,
+        location_lat: input.locationLat,
+        location_lng: input.locationLng,
         duration_minutes: input.durationMinutes,
         price: input.price,
         photo_count: input.photoCount ?? null,
