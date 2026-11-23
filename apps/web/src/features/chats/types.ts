@@ -1,4 +1,5 @@
 import type { Category, MessageType, Region, Style } from '@snappick/shared';
+import type { Quote } from './quote';
 
 /** POST /chats/:chatRoomId/messages의 INITIAL_REQUEST payload. 빈 필드는 생략합니다. */
 export type InquiryPayload = {
@@ -64,7 +65,7 @@ export type ChatMessage = {
   messageType: MessageType;
   content: string;
   payload: unknown;
-  quote: unknown;
+  quote: Quote | null;
   reservation: unknown;
   readAt: string | null;
   createdAt: string;

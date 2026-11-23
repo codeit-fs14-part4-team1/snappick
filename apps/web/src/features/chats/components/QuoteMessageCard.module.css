@@ -1,0 +1,155 @@
+.card {
+  display: flex;
+  width: 340px;
+  max-width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.content[hidden] {
+  display: none;
+}
+
+.previousNotice {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heading > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.heading > strong {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.price {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: stretch;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.details > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.details dt {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.details dd {
+  min-width: 0;
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+}
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-bg-subtle);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.notices h3 {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.notices p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.sentAt {
+  display: block;
+  align-self: stretch;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+}
+
+.payment {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.paymentNotice {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
