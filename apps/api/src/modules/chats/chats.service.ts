@@ -314,7 +314,7 @@ export async function sendMessage(
     const sender =
       accountId === userAccountId ? chatRoom.user : chatRoom.photographer;
 
-    await createMessageNotification(
+    const notification = await createMessageNotification(
       {
         recipientAccountId,
         chatRoomId,
@@ -323,7 +323,7 @@ export async function sendMessage(
       tx,
     );
 
-    return savedMessage;
+    return { message: savedMessage, notification };
   });
   return message;
 }
