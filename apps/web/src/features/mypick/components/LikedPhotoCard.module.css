@@ -1,0 +1,89 @@
+.card {
+  position: relative;
+  margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--color-bg-subtle);
+  transition: opacity 0.3s ease;
+}
+
+.unliked .image {
+  opacity: 0.4;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 12px;
+}
+
+.like {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 18px;
+  background: var(--color-bg-base);
+  color: var(--color-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.cancelText {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    max-width 0.2s ease,
+    margin-left 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.like:focus-visible .cancelText {
+  max-width: 40px;
+  margin-left: 4px;
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .like:hover .cancelText {
+    max-width: 40px;
+    margin-left: 4px;
+    opacity: 1;
+  }
+}
+
+.like:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.heart {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: auto;
+  color: var(--color-text-tertiary);
+}
+
+.like[aria-pressed='true'] .heart {
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image,
+  .cancelText {
+    transition: none;
+  }
+}

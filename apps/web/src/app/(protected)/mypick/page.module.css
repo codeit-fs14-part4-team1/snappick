@@ -1,0 +1,35 @@
+.page {
+  padding-top: 56px;
+  padding-bottom: 80px;
+}
+
+.title {
+  margin: 0 0 24px;
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+@media (max-width: 1199px) {
+  .page {
+    padding-top: 32px;
+  }
+
+  .title {
+    font-size: 22px;
+    line-height: 30px;
+  }
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding-top: 24px;
+  }
+
+  .title {
+    margin-bottom: 20px;
+    font-size: 20px;
+    line-height: 28px;
+  }
+}

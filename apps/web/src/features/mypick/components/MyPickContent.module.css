@@ -1,0 +1,9 @@
+.tabs {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 767px) {
+  .tabs {
+    margin-bottom: 16px;
+  }
+}
