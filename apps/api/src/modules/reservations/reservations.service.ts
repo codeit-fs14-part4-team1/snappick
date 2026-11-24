@@ -12,6 +12,7 @@ import type {
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import {
+  cancelShootReminders,
   createNotification,
   notificationMessages,
   scheduleShootReminders,
@@ -387,6 +388,7 @@ export async function createCancelReservation(
         user: {
           select: {
             auth_account_id: true,
+            nickname: true,
           },
         },
         status: true,
@@ -470,6 +472,38 @@ export async function createCancelReservation(
           status: 'CANCELED',
         },
       });
+      // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
+      await cancelShootReminders(reservationId, tx);
+
+      // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
+      const accountIds = [
+        reservation.user?.auth_account_id,
+        reservation.photographer?.auth_account_id,
+      ].filter((id): id is string => !!id);
+
+      for (const accountId of accountIds) {
+        await createNotification(
+          {
+            accountId,
+            type: 'RESERVATION_CANCELED',
+            targetId: reservationId,
+            message: notificationMessages.reservationCanceled(),
+          },
+          tx,
+        );
+      }
+    } else if (reservation.photographer) {
+      await createNotification(
+        {
+          accountId: reservation.photographer.auth_account_id,
+          type: 'CANCEL_REQUESTED',
+          targetId: reservationId,
+          message: notificationMessages.cancelRequested(
+            reservation.user?.nickname ?? '사용자',
+          ),
+        },
+        tx,
+      );
     }
 
     let systemMessage: chat_messages | null = null;
