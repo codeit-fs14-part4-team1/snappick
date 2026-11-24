@@ -99,7 +99,7 @@ export async function sendMessageHandler(req: Request, res: Response) {
 
   const input = result.data;
 
-  const message = await sendMessage(
+  const { message, notification } = await sendMessage(
     auth.accountId,
     params.chatRoomId,
     input.content,
@@ -124,6 +124,12 @@ export async function sendMessageHandler(req: Request, res: Response) {
 
   // 해당 방에 입장한 모든 연결에 새 메시지 전달
   io.to(`chat:${params.chatRoomId}`).emit('message:new', messageData);
+
+  if (notification) {
+    io.to(`account:${notification.auth_account_id}`).emit('notification:new', {
+      notificationId: notification.id,
+    });
+  }
 
   res.status(201).json(messageData);
 }
@@ -220,7 +226,7 @@ export async function markChatAsReadHandler(req: Request, res: Response) {
 
   const input = result.data;
 
-  const readResult = await markChatAsRead(
+  const { readResult, readNotificationCount } = await markChatAsRead(
     auth.accountId,
     params.chatRoomId,
     input.lastReadMessageId,
@@ -234,5 +240,11 @@ export async function markChatAsReadHandler(req: Request, res: Response) {
       ...readResult,
     });
   }
+
+  if (readNotificationCount > 0) {
+    const io: Server = req.app.get('io');
+    io.to(`account:${auth.accountId}`).emit('notification:read');
+  }
+
   res.status(200).json(readResult);
 }
