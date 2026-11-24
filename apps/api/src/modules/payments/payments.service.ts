@@ -288,6 +288,7 @@ export async function confirmPayment(
       paymentId: payment.id,
       status: 'SUCCEEDED',
       reservationId: reservation.id,
+      notifications: [],
     };
   }
 
@@ -557,6 +558,7 @@ export async function confirmPayment(
             paymentId: payment.id,
             status: 'SUCCEEDED',
             reservationId: reservation.id,
+            notifications: [],
           };
         }
       }
@@ -580,6 +582,7 @@ export async function confirmPayment(
       paymentId: payment.id,
       status: 'SUCCEEDED',
       reservationId: reservation.reservationId,
+      notifications: reservation.notifications,
     };
   });
 }

@@ -6,6 +6,8 @@ import {
   preparePaymentSchema,
 } from './payments.schema.js';
 import { confirmPayment, preparePayment } from './payments.service.js';
+import type { Server } from 'socket.io';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 export async function preparePaymentHandler(req: Request, res: Response) {
   const auth = getAuth(req);
@@ -20,7 +22,12 @@ export async function confirmPaymentHandler(req: Request, res: Response) {
   const auth = getAuth(req);
   const input = confirmPaymentSchema.parse(req.body);
 
-  const result = await confirmPayment(auth.accountId, input);
+  const { notifications, ...result } = await confirmPayment(
+    auth.accountId,
+    input,
+  );
 
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
   res.status(200).json(result);
 }

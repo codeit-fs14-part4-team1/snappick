@@ -23,6 +23,7 @@ import {
   createDeliverable,
   patchDeliverable,
 } from './reservations.service.js';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 async function requireUserId(req: Request): Promise<string> {
   const { userId } = await resolveViewer(getAuth(req));
@@ -34,9 +35,13 @@ async function requireUserId(req: Request): Promise<string> {
 
 export async function createReservationHandler(req: Request, res: Response) {
   const input = createReservationSchema.parse(req.body);
-  res
-    .status(201)
-    .json(await createReservation(await requireUserId(req), input));
+  const { notifications, ...result } = await createReservation(
+    await requireUserId(req),
+    input,
+  );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
+  res.status(201).json(result);
 }
 
 export async function getReservationDetailHandler(req: Request, res: Response) {
@@ -60,15 +65,15 @@ export async function createCancelReservationHandler(
   if (!requester.userId && !requester.photographerId) {
     throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
   }
-  const { systemMessage, ...result } = await createCancelReservation(
-    { ...requester, accountId: auth.accountId },
-    reservationId,
-    reason,
-  );
-
+  const { notifications, systemMessage, ...result } =
+    await createCancelReservation(
+      { ...requester, accountId: auth.accountId },
+      reservationId,
+      reason,
+    );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
   if (systemMessage) {
-    const io: Server = req.app.get('io');
-
     io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
       id: systemMessage.id,
       chatRoomId: systemMessage.chat_room_id,
@@ -95,16 +100,16 @@ export async function patchCancelReservationHandler(
   );
   const input = patchCancelReservationSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  const { systemMessage, ...result } = await patchCancelReservation(
-    photographerId,
-    reservationId,
-    cancelRequestId,
-    input,
-  );
-
+  const { notifications, systemMessage, ...result } =
+    await patchCancelReservation(
+      photographerId,
+      reservationId,
+      cancelRequestId,
+      input,
+    );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
   if (systemMessage) {
-    const io: Server = req.app.get('io');
-
     io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
       id: systemMessage.id,
       chatRoomId: systemMessage.chat_room_id,
@@ -144,9 +149,14 @@ export async function createDeliverableHandler(req: Request, res: Response) {
   const { reservationId } = reservationParamsSchema.parse(req.params);
   const input = createDeliverableSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  res
-    .status(201)
-    .json(await createDeliverable(photographerId, reservationId, input));
+  const { notifications, ...result } = await createDeliverable(
+    photographerId,
+    reservationId,
+    input,
+  );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
+  res.status(201).json(result);
 }
 
 export async function patchDeliverableHandler(req: Request, res: Response) {

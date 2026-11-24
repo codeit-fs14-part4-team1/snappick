@@ -8,6 +8,10 @@ import type {
   UpdateReviewInput,
   CreateReplyInput,
 } from './reviews.schema.js';
+import {
+  createNotification,
+  notificationMessages,
+} from '../notifications/notifications.create.js';
 
 const replySelect = {
   id: true,
@@ -201,7 +205,13 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
 export async function createReview(userId: string, input: CreateReviewInput) {
   const reservation = await prisma.reservations.findUnique({
     where: { id: input.reservationId },
-    select: { user_id: true, photographer_id: true, status: true },
+    select: {
+      user_id: true,
+      photographer_id: true,
+      status: true,
+      user: { select: { nickname: true } },
+      photographer: { select: { auth_account_id: true } },
+    },
   });
 
   if (!reservation || reservation.user_id !== userId) {
@@ -216,7 +226,9 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     );
   }
 
-  if (!reservation.photographer_id) {
+  // 트랜잭션 콜백 안에서도 null이 아닌 값으로 쓰도록 변수에 담는다
+  const { photographer_id: photographerId, photographer } = reservation;
+  if (!photographerId || !photographer) {
     throw new HttpError(
       409,
       'PHOTOGRAPHER_UNAVAILABLE',
@@ -225,23 +237,40 @@ export async function createReview(userId: string, input: CreateReviewInput) {
   }
 
   try {
-    const review = await prisma.reviews.create({
-      data: {
-        reservation_id: input.reservationId,
-        user_id: userId,
-        photographer_id: reservation.photographer_id,
-        rating: input.rating,
-        comment: input.comment,
-      },
-      select: {
-        id: true,
-        reservation_id: true,
-        photographer_id: true,
-        rating: true,
-        comment: true,
-        created_at: true,
-        updated_at: true,
-      },
+    // 리뷰가 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
+    const { review, notification } = await prisma.$transaction(async (tx) => {
+      const created = await tx.reviews.create({
+        data: {
+          reservation_id: input.reservationId,
+          user_id: userId,
+          photographer_id: photographerId,
+          rating: input.rating,
+          comment: input.comment,
+        },
+        select: {
+          id: true,
+          reservation_id: true,
+          photographer_id: true,
+          rating: true,
+          comment: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      const notification = await createNotification(
+        {
+          accountId: photographer.auth_account_id,
+          type: 'NEW_REVIEW',
+          targetId: photographerId,
+          message: notificationMessages.newReview(
+            reservation.user?.nickname ?? '사용자',
+          ),
+        },
+        tx,
+      );
+
+      return { review: created, notification };
     });
 
     return {
@@ -252,6 +281,8 @@ export async function createReview(userId: string, input: CreateReviewInput) {
       comment: review.comment,
       createdAt: review.created_at,
       updatedAt: review.updated_at,
+      // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+      notification,
     };
   } catch (error) {
     if (
