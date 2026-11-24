@@ -124,7 +124,7 @@ export async function readMessageNotifications(
   const { count } = await db.notifications.updateMany({
     where: {
       auth_account_id: accountId,
-      type: 'NEW_MESSAGE',
+      type: { in: ['NEW_MESSAGE', 'NEW_INQUIRY', 'NEW_QUOTE'] },
       target_id: chatRoomId,
       read_at: null,
     },

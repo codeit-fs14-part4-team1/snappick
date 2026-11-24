@@ -1,6 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { CreateQuoteInput } from './quotes.schema.js';
+import {
+  createNotification,
+  notificationMessages,
+} from '../notifications/notifications.create.js';
 
 export async function createQuote(accountId: string, input: CreateQuoteInput) {
   const chatRoom = await prisma.chat_rooms.findUnique({
@@ -17,6 +21,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         select: {
           id: true,
           auth_account_id: true,
+          nickname: true,
         },
       },
     },
@@ -229,9 +234,20 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       },
     });
 
+    const notification = await createNotification(
+      {
+        accountId: recipientAccountId,
+        type: 'NEW_QUOTE',
+        targetId: input.chatRoomId,
+        message: notificationMessages.newQuote(photographer.nickname),
+      },
+      tx,
+    );
+
     return {
       quote,
       message,
+      notification,
     };
   });
 }

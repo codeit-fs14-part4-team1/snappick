@@ -10,8 +10,11 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   const input = createQuoteSchema.parse(req.body);
 
-  // 견적과 채팅 메시지 저장
-  const { quote, message } = await createQuote(auth.accountId, input);
+  // 견적과 채팅 메시지, 알림 저장
+  const { quote, message, notification } = await createQuote(
+    auth.accountId,
+    input,
+  );
 
   // 견적 응답 데이터 구성
   const quoteData = {
@@ -52,6 +55,10 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const io: Server = req.app.get('io');
 
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
+
+  io.to(`account:${notification.auth_account_id}`).emit('notification:new', {
+    notificationId: notification.id,
+  });
 
   res.status(201).json(quoteData);
 }
