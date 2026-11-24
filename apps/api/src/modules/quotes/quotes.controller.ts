@@ -4,6 +4,7 @@ import type { Server } from 'socket.io';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { createQuoteSchema, quoteIdParamsSchema } from './quotes.schema.js';
 import { createQuote, getQuote } from './quotes.service.js';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 export async function createQuoteHandler(req: Request, res: Response) {
   const auth = getAuth(req);
@@ -56,9 +57,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
 
-  io.to(`account:${notification.auth_account_id}`).emit('notification:new', {
-    notificationId: notification.id,
-  });
+  emitNotification(io, [notification]);
 
   res.status(201).json(quoteData);
 }
