@@ -146,6 +146,9 @@ model reservations {
   created_at      DateTime          @default(now())
   updated_at      DateTime          @updatedAt
 
+  // 구매 확정 시각 (유저가 직접 확정하거나 자동 확정된 시각, 확정 전이면 null)
+  purchase_confirmed_at DateTime?
+
   user         users?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
   photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)

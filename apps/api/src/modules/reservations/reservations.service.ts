@@ -109,7 +109,7 @@ export async function advanceReservationStatuses(now: Date) {
         lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
       },
     },
-    data: { status: 'PURCHASE_CONFIRMED' },
+    data: { status: 'PURCHASE_CONFIRMED', purchase_confirmed_at: now },
   });
 
   return {
@@ -283,6 +283,8 @@ export async function getReservationDetail(
       location: true,
       total_amount: true,
       created_at: true,
+      purchase_confirmed_at: true,
+      deliverable: { select: { created_at: true } },
       quote: {
         select: {
           quote_name: true,
@@ -373,6 +375,9 @@ export async function getReservationDetail(
         }
       : null,
     createdAt: reservation.created_at,
+    // 결과물 최초 전달 시각 (결과물을 수정해도 바뀌지 않는다)
+    deliveredAt: reservation.deliverable?.created_at ?? null,
+    purchaseConfirmedAt: reservation.purchase_confirmed_at,
   };
 
   const cancel = {
@@ -1020,14 +1025,17 @@ export async function confirmPurchase(userId: string, reservationId: string) {
 
     const confirmed = await tx.reservations.update({
       where: { id: reservationId },
-      data: { status: 'PURCHASE_CONFIRMED' },
-      select: { id: true, status: true, updated_at: true },
+      data: {
+        status: 'PURCHASE_CONFIRMED',
+        purchase_confirmed_at: new Date(),
+      },
+      select: { id: true, status: true, purchase_confirmed_at: true },
     });
 
     return {
       reservationId: confirmed.id,
       status: confirmed.status,
-      updatedAt: confirmed.updated_at,
+      purchaseConfirmedAt: confirmed.purchase_confirmed_at,
     };
   });
 }

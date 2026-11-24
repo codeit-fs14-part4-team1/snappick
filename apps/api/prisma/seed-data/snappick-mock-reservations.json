@@ -83,11 +83,14 @@
       "durationMinutes": 180,
       "photoCount": 70,
       "includesOriginal": true,
+      "createdAt": "2026-11-01T10:00:00+09:00",
+      "purchaseConfirmedAt": "2026-11-18T20:00:00+09:00",
       "deliverable": {
         "id": "9c1e6000-43a5-4d11-8c00-000000000405",
         "link": "https://example.com/snappick-test/completed",
         "expirationPeriod": "2027-02-08T23:59:00+09:00",
-        "notice": "최종 보정본 70장과 원본 파일을 전달했습니다."
+        "notice": "최종 보정본 70장과 원본 파일을 전달했습니다.",
+        "createdAt": "2026-11-14T18:00:00+09:00"
       }
     },
     {
