@@ -952,23 +952,26 @@ export async function createDeliverable(
     });
 
     const userAccountId = reservation.user?.auth_account_id;
-    if (userAccountId) {
-      await createNotification(
-        {
-          accountId: userAccountId,
-          type: 'DELIVERY_COMPLETED',
-          targetId: reservationId,
-          message: notificationMessages.deliveryCompleted(
-            reservation.photographer?.nickname ?? '작가',
+    const notifications = userAccountId
+      ? [
+          await createNotification(
+            {
+              accountId: userAccountId,
+              type: 'DELIVERY_COMPLETED',
+              targetId: reservationId,
+              message: notificationMessages.deliveryCompleted(
+                reservation.photographer?.nickname ?? '작가',
+              ),
+            },
+            tx,
           ),
-        },
-        tx,
-      );
-    }
+        ]
+      : [];
 
     return {
       ...toDeliverableResponse(deliverable),
       reservationStatus: 'DELIVERED' as const,
+      notifications,
     };
   });
 }

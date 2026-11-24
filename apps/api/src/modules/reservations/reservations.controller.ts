@@ -23,6 +23,7 @@ import {
   createDeliverable,
   patchDeliverable,
 } from './reservations.service.js';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 async function requireUserId(req: Request): Promise<string> {
   const { userId } = await resolveViewer(getAuth(req));
@@ -144,9 +145,14 @@ export async function createDeliverableHandler(req: Request, res: Response) {
   const { reservationId } = reservationParamsSchema.parse(req.params);
   const input = createDeliverableSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  res
-    .status(201)
-    .json(await createDeliverable(photographerId, reservationId, input));
+  const { notifications, ...result } = await createDeliverable(
+    photographerId,
+    reservationId,
+    input,
+  );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
+  res.status(201).json(result);
 }
 
 export async function patchDeliverableHandler(req: Request, res: Response) {
