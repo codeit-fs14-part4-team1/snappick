@@ -174,7 +174,8 @@ model reservation_cancel_requests {
   id                      String       @id @default(uuid(7)) @db.Uuid
   reservation_id          String       @db.Uuid
   requested_by_account_id String       @db.Uuid
-  reason                  String
+  reason                  String // 취소를 요청한 사람(유저 또는 작가)의 사유
+  accept_reason           String? // 작가가 유저의 취소 요청을 수락할 때의 사유
   status                  CancelStatus
   processed_at            DateTime?
   created_at              DateTime     @default(now())

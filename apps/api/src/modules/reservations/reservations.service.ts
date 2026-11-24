@@ -311,7 +311,9 @@ export async function getReservationDetail(
           id: true,
           status: true,
           reason: true,
+          accept_reason: true,
           requested_by_account_id: true,
+          auth_account: { select: { account_type: true } },
           created_at: true,
           processed_at: true,
         },
@@ -338,6 +340,8 @@ export async function getReservationDetail(
   }
 
   const latest = reservation.reservation_cancel_request[0] ?? null;
+  // 유저가 요청한 취소인지, 작가가 직접 취소한 것인지에 따라 reason의 작성자가 다르다
+  const canceledByUser = latest?.auth_account.account_type === 'USER';
 
   const base = {
     reservationId: reservation.id,
@@ -385,7 +389,8 @@ export async function getReservationDetail(
     cancelRequest: latest && {
       cancelRequestId: latest.id,
       status: latest.status,
-      reason: latest.reason,
+      userReason: canceledByUser ? latest.reason : null,
+      photographerReason: canceledByUser ? latest.accept_reason : latest.reason,
       requestedByMe: latest.requested_by_account_id === accountId,
       requestedAt: latest.created_at,
       processedAt: latest.processed_at,
@@ -646,8 +651,18 @@ export async function patchCancelReservation(
 
     const processed = await tx.reservation_cancel_requests.update({
       where: { id: cancelRequest.id },
-      data: { status: input.status, processed_at: new Date() },
-      select: { id: true, status: true, processed_at: true },
+      data: {
+        status: input.status,
+        accept_reason: input.status === 'ACCEPTED' ? input.reason : null,
+        processed_at: new Date(),
+      },
+      select: {
+        id: true,
+        status: true,
+        reason: true,
+        accept_reason: true,
+        processed_at: true,
+      },
     });
 
     const updatedReservation = accepted
@@ -694,6 +709,8 @@ export async function patchCancelReservation(
     return {
       cancelRequestId: processed.id,
       status: processed.status,
+      userReason: processed.reason,
+      photographerReason: processed.accept_reason,
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
       systemMessage,

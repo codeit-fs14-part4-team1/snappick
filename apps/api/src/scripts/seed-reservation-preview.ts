@@ -30,6 +30,8 @@ type PreviewReservation = {
     id: string;
     status: 'PENDING' | 'ACCEPTED';
     reason: string;
+    // 작가가 수락할 때의 사유 (ACCEPTED일 때만)
+    acceptReason?: string;
   };
   deliverable?: {
     id: string;
@@ -284,6 +286,7 @@ async function main() {
               reservation_id: reservation.id,
               requested_by_account_id: data.userAuthAccountId,
               reason: cancel.reason,
+              accept_reason: cancel.acceptReason ?? null,
               status: cancel.status,
               processed_at: cancel.status === 'ACCEPTED' ? new Date() : null,
             },
