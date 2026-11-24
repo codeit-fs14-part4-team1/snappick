@@ -258,6 +258,11 @@ export async function getReservationDetail(
       created_at: true,
       quote: {
         select: {
+          quote_name: true,
+          includes_original: true,
+          additional_notice: true,
+          common_notice: true,
+          chat_room_id: true,
           duration_minutes: true,
           photo_count: true,
           location_lat: true,
@@ -281,6 +286,14 @@ export async function getReservationDetail(
           processed_at: true,
         },
       },
+      payment: {
+        select: {
+          id: true,
+          payment_method: true,
+          pg_provider: true,
+          paid_at: true,
+        },
+      },
     },
   });
 
@@ -298,6 +311,15 @@ export async function getReservationDetail(
 
   const base = {
     reservationId: reservation.id,
+    quote: reservation.quote
+      ? {
+          name: reservation.quote?.quote_name,
+          includesOriginal: reservation.quote?.includes_original,
+          additionalNotice: reservation.quote?.additional_notice,
+          commonNotice: reservation.quote?.common_notice,
+          chatRoomId: reservation.quote?.chat_room_id,
+        }
+      : null,
     status: reservation.status,
     shootAt: reservation.shoot_at,
     location: reservation.location,
@@ -312,6 +334,13 @@ export async function getReservationDetail(
     photoCount: reservation.quote?.photo_count ?? null,
     deliveryDueDate: toDeliveryDueDate(reservation.shoot_at),
     totalAmount: reservation.total_amount,
+    payment: reservation.payment
+      ? {
+          paymentMethod: reservation.payment.payment_method,
+          paymentProvider: reservation.payment.pg_provider,
+          paidAt: reservation.payment.paid_at,
+        }
+      : null,
     createdAt: reservation.created_at,
   };
 
