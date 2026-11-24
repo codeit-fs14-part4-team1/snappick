@@ -75,9 +75,18 @@ function toReservationNumber(reservationId: string, createdAt: Date): string {
   return `SP-${date}-${time}-${code}`;
 }
 
+// 기준 시각이 속한 날의 00시 (한국 시간)
+function kstDayStart(now: Date): Date {
+  const kst = new Date(now.getTime() + KST_OFFSET_MS);
+  return new Date(
+    Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) -
+      KST_OFFSET_MS,
+  );
+}
+
 /**
  * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
- * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
+ * - CONFIRMED → SHOOT_COMPLETED: 촬영일 다음 날 00시(한국 시간)가 되면
  * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
  *   DELIVERED는 작가가 결과물을 전달할 때만 바뀐다 (시간 경과로 자동 전환하지 않는다)
  *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
@@ -89,7 +98,7 @@ function toReservationNumber(reservationId: string, createdAt: Date): string {
  */
 export async function advanceReservationStatuses(now: Date) {
   const shootCompleted = await prisma.reservations.updateMany({
-    where: { status: 'CONFIRMED', shoot_at: { lte: now } },
+    where: { status: 'CONFIRMED', shoot_at: { lt: kstDayStart(now) } },
     data: { status: 'SHOOT_COMPLETED' },
   });
 
