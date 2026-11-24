@@ -58,6 +58,24 @@ function toDeliveryDueDate(shootAt: Date): string {
 }
 
 /**
+ * 화면에 표시하는 예약번호: SP-YYMMDD-HHMMSS-XXXX (예약 생성 시각, 한국 시간)
+ * XXXX는 UUID 끝 5자리(20비트)를 32진수 4자리로 바꾼 값
+ * 저장하지 않는 표시용 값이라 중복을 보장하지 않으므로 예약을 찾을 때는 reservationId를 쓴다
+ */
+function toReservationNumber(reservationId: string, createdAt: Date): string {
+  const [date, time] = new Date(createdAt.getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .slice(2, 19)
+    .replace(/[-:]/g, '')
+    .split('T');
+  const code = Number.parseInt(reservationId.slice(-5), 16)
+    .toString(32)
+    .toUpperCase()
+    .padStart(4, '0');
+  return `SP-${date}-${time}-${code}`;
+}
+
+/**
  * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
  * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
  * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
@@ -311,6 +329,10 @@ export async function getReservationDetail(
 
   const base = {
     reservationId: reservation.id,
+    reservationNumber: toReservationNumber(
+      reservation.id,
+      reservation.created_at,
+    ),
     quote: reservation.quote
       ? {
           name: reservation.quote?.quote_name,
