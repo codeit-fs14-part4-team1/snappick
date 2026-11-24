@@ -61,15 +61,15 @@ export async function createCancelReservationHandler(
   if (!requester.userId && !requester.photographerId) {
     throw new HttpError(401, 'UNAUTHORIZED', '인증이 필요합니다.');
   }
-  const { systemMessage, ...result } = await createCancelReservation(
-    { ...requester, accountId: auth.accountId },
-    reservationId,
-    reason,
-  );
-
+  const { notifications, systemMessage, ...result } =
+    await createCancelReservation(
+      { ...requester, accountId: auth.accountId },
+      reservationId,
+      reason,
+    );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
   if (systemMessage) {
-    const io: Server = req.app.get('io');
-
     io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
       id: systemMessage.id,
       chatRoomId: systemMessage.chat_room_id,
@@ -96,16 +96,16 @@ export async function patchCancelReservationHandler(
   );
   const input = patchCancelReservationSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  const { systemMessage, ...result } = await patchCancelReservation(
-    photographerId,
-    reservationId,
-    cancelRequestId,
-    input,
-  );
-
+  const { notifications, systemMessage, ...result } =
+    await patchCancelReservation(
+      photographerId,
+      reservationId,
+      cancelRequestId,
+      input,
+    );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
   if (systemMessage) {
-    const io: Server = req.app.get('io');
-
     io.to(`chat:${systemMessage.chat_room_id}`).emit('message:new', {
       id: systemMessage.id,
       chatRoomId: systemMessage.chat_room_id,

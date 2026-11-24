@@ -1,6 +1,9 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
-import type { chat_messages } from '../../generated/prisma/client.js';
+import type {
+  chat_messages,
+  notifications,
+} from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
@@ -465,6 +468,9 @@ export async function createCancelReservation(
       },
     });
 
+    // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+    const notifications: notifications[] = [];
+
     if (cancelRequest.status === 'ACCEPTED') {
       await tx.reservations.update({
         where: { id: reservationId },
@@ -482,27 +488,31 @@ export async function createCancelReservation(
       ].filter((id): id is string => !!id);
 
       for (const accountId of accountIds) {
-        await createNotification(
-          {
-            accountId,
-            type: 'RESERVATION_CANCELED',
-            targetId: reservationId,
-            message: notificationMessages.reservationCanceled(),
-          },
-          tx,
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CANCELED',
+              targetId: reservationId,
+              message: notificationMessages.reservationCanceled(),
+            },
+            tx,
+          ),
         );
       }
     } else if (reservation.photographer) {
-      await createNotification(
-        {
-          accountId: reservation.photographer.auth_account_id,
-          type: 'CANCEL_REQUESTED',
-          targetId: reservationId,
-          message: notificationMessages.cancelRequested(
-            reservation.user?.nickname ?? '사용자',
-          ),
-        },
-        tx,
+      notifications.push(
+        await createNotification(
+          {
+            accountId: reservation.photographer.auth_account_id,
+            type: 'CANCEL_REQUESTED',
+            targetId: reservationId,
+            message: notificationMessages.cancelRequested(
+              reservation.user?.nickname ?? '사용자',
+            ),
+          },
+          tx,
+        ),
       );
     }
 
@@ -551,6 +561,7 @@ export async function createCancelReservation(
       requestedAt: cancelRequest.created_at,
       processedAt: cancelRequest.processed_at,
       systemMessage,
+      notifications,
     };
   });
 }
@@ -642,6 +653,9 @@ export async function patchCancelReservation(
         })
       : { status: reservation.status };
 
+    // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+    const notifications: notifications[] = [];
+
     if (accepted) {
       // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
       await cancelShootReminders(reservationId, tx);
@@ -653,25 +667,29 @@ export async function patchCancelReservation(
       ].filter((id): id is string => !!id);
 
       for (const accountId of accountIds) {
-        await createNotification(
-          {
-            accountId,
-            type: 'RESERVATION_CANCELED',
-            targetId: reservationId,
-            message: notificationMessages.reservationCanceled(),
-          },
-          tx,
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CANCELED',
+              targetId: reservationId,
+              message: notificationMessages.reservationCanceled(),
+            },
+            tx,
+          ),
         );
       }
     } else if (reservation.user) {
-      await createNotification(
-        {
-          accountId: reservation.user.auth_account_id,
-          type: 'CANCEL_REJECTED',
-          targetId: reservationId,
-          message: notificationMessages.cancelRejected(),
-        },
-        tx,
+      notifications.push(
+        await createNotification(
+          {
+            accountId: reservation.user.auth_account_id,
+            type: 'CANCEL_REJECTED',
+            targetId: reservationId,
+            message: notificationMessages.cancelRejected(),
+          },
+          tx,
+        ),
       );
     }
 
@@ -714,6 +732,7 @@ export async function patchCancelReservation(
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
       systemMessage,
+      notifications,
     };
   });
 }
