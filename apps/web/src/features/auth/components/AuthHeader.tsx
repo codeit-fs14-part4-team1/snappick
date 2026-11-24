@@ -55,6 +55,7 @@ export default function AuthHeader() {
     }
 
     socket.on('notification:new', refreshUnread);
+    socket.on('notification:read', refreshUnread);
     socket.on('connect', refreshUnread);
 
     const retryDelays = [1000, 2000, 4000];
@@ -102,6 +103,7 @@ export default function AuthHeader() {
       active = false;
       clearTimeout(retryTimer);
       socket.off('notification:new', refreshUnread);
+      socket.off('notification:read', refreshUnread);
       socket.off('connect', refreshUnread);
       socket.off('auth:expired', recoverAuthentication);
       socket.off('connect_error', handleConnectError);

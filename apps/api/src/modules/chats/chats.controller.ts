@@ -226,7 +226,7 @@ export async function markChatAsReadHandler(req: Request, res: Response) {
 
   const input = result.data;
 
-  const readResult = await markChatAsRead(
+  const { readResult, readNotificationCount } = await markChatAsRead(
     auth.accountId,
     params.chatRoomId,
     input.lastReadMessageId,
@@ -240,5 +240,11 @@ export async function markChatAsReadHandler(req: Request, res: Response) {
       ...readResult,
     });
   }
+
+  if (readNotificationCount > 0) {
+    const io: Server = req.app.get('io');
+    io.to(`account:${auth.accountId}`).emit('notification:read');
+  }
+
   res.status(200).json(readResult);
 }

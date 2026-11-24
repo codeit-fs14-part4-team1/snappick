@@ -640,14 +640,17 @@ export async function markChatAsRead(
       select: { id: true },
     });
 
-    if (!remainingUnread) {
-      await readMessageNotifications(accountId, chatRoomId, tx);
-    }
+    const readNotificationCount = remainingUnread
+      ? 0
+      : await readMessageNotifications(accountId, chatRoomId, tx);
 
     return {
-      lastReadMessageId,
-      updatedCount: updated.count,
-      readAt,
+      readResult: {
+        lastReadMessageId,
+        updatedCount: updated.count,
+        readAt,
+      },
+      readNotificationCount,
     };
   });
 }
