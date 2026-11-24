@@ -192,15 +192,18 @@ export async function createReservation(
         },
       });
 
+      const notifications: notifications[] = [];
       for (const accountId of accountIds) {
-        await createNotification(
-          {
-            accountId,
-            type: 'RESERVATION_CONFIRMED',
-            targetId: created.id,
-            message: notificationMessages.reservationConfirmed(),
-          },
-          tx,
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CONFIRMED',
+              targetId: created.id,
+              message: notificationMessages.reservationConfirmed(),
+            },
+            tx,
+          ),
         );
       }
 
@@ -213,10 +216,10 @@ export async function createReservation(
         tx,
       );
 
-      return created;
+      return { reservation: created, notifications };
     };
 
-    const reservation = db
+    const { reservation, notifications } = db
       ? await createReservationRecords(db)
       : await prisma.$transaction(createReservationRecords);
 
@@ -228,6 +231,8 @@ export async function createReservation(
       location: reservation.location,
       totalAmount: reservation.total_amount,
       paymentProvider: payment.pg_provider,
+      // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+      notifications,
     };
   } catch (error) {
     if (db) {

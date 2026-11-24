@@ -35,9 +35,13 @@ async function requireUserId(req: Request): Promise<string> {
 
 export async function createReservationHandler(req: Request, res: Response) {
   const input = createReservationSchema.parse(req.body);
-  res
-    .status(201)
-    .json(await createReservation(await requireUserId(req), input));
+  const { notifications, ...result } = await createReservation(
+    await requireUserId(req),
+    input,
+  );
+  const io: Server = req.app.get('io');
+  emitNotification(io, notifications);
+  res.status(201).json(result);
 }
 
 export async function getReservationDetailHandler(req: Request, res: Response) {
