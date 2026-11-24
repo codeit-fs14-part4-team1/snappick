@@ -38,7 +38,19 @@ export async function authFetch<T>(
   }
 
   if (!response.ok) {
-    throw new Error(`API 요청 실패: ${response.status}`);
+    const body: unknown = await response.json().catch(() => null);
+    const code =
+      body &&
+      typeof body === 'object' &&
+      'code' in body &&
+      typeof body.code === 'string'
+        ? body.code
+        : undefined;
+    // 기존 상태 코드 비교는 유지하면서 기능별 오류 분기를 지원합니다.
+    throw Object.assign(new Error(`API 요청 실패: ${response.status}`), {
+      status: response.status,
+      code,
+    });
   }
 
   if (response.status === 204) {

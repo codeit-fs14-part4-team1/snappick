@@ -415,6 +415,7 @@ export async function getMessages(
     include: {
       quote: {
         include: {
+          reservation: { select: { id: true, status: true } },
           shooting_case: {
             select: {
               quotes: {
@@ -448,6 +449,8 @@ export async function getMessages(
           isLatest:
             message.quote.shooting_case.quotes[0]?.id === message.quote.id,
           quoteName: message.quote.quote_name,
+          reservationStatus: message.quote.reservation?.status ?? null,
+          reservationId: message.quote.reservation?.id ?? null,
           shootAt: message.quote.shoot_at,
           location: message.quote.location,
           locationLat: message.quote.location_lat,

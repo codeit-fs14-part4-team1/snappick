@@ -40,11 +40,7 @@ export default function ConnectedQuoteComposer({
   const loading = initialQuote
     ? quote.isPending
     : profile.isPending || products.isPending;
-  // TODO(결제 API 연동): 견적 상세의 reservationStatus 연결 후 예약 완료 견적의 수정 진입 제한을 검증합니다.
-  if (
-    quote.data?.reservationStatus &&
-    quote.data.reservationStatus !== 'CANCELED'
-  ) {
+  if (quote.data?.reservationStatus) {
     return (
       <Modal open title="견적 수정" onClose={onClose}>
         <p role="alert">예약이 확정된 견적은 수정할 수 없어요.</p>

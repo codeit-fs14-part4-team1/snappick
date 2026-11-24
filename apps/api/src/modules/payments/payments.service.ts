@@ -292,6 +292,14 @@ export async function confirmPayment(
     };
   }
 
+  if (payment.status === 'FAILED') {
+    throw new HttpError(
+      409,
+      'PAYMENT_RETRY_REQUIRED',
+      '실패한 결제입니다. 결제 페이지에서 다시 시작해 주세요.',
+    );
+  }
+
   const tossSecretKey = process.env.TOSS_SECRET_KEY;
 
   if (!tossSecretKey?.startsWith('test_')) {

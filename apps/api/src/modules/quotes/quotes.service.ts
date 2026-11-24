@@ -260,6 +260,7 @@ export async function getQuote(accountId: string, quoteId: string) {
       id: quoteId,
     },
     include: {
+      reservation: { select: { id: true, status: true } },
       shooting_case: {
         select: {
           quotes: {

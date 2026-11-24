@@ -6,6 +6,7 @@ import ScrollToEdgeButton from '@/components/ui/ScrollToEdgeButton';
 import ChatAvatar from './ChatAvatar';
 import InquiryCard from './InquiryCard';
 import QuoteMessageCard from './QuoteMessageCard';
+import ReservationConfirmCard from './ReservationConfirmCard';
 import type { Quote } from '../quote';
 import type { ChatMessageItem } from '../types';
 import { useChatScroll } from '../useChatScroll';
@@ -243,6 +244,24 @@ export default function ChatMessageList({
                       </div>
                     )}
                   </li>
+                  {message.quote?.reservationId &&
+                    message.quote.reservationStatus &&
+                    message.quote.reservationStatus !== 'CANCELED' &&
+                    messages.findIndex(
+                      (item) =>
+                        item.quote?.reservationId ===
+                        message.quote?.reservationId,
+                    ) === index && (
+                      <li
+                        className={styles.message}
+                        data-mine={!message.isMine}
+                      >
+                        <ReservationConfirmCard
+                          quote={message.quote}
+                          now={now}
+                        />
+                      </li>
+                    )}
                 </Fragment>
               );
             })}
