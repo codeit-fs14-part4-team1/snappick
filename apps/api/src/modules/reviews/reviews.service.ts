@@ -238,7 +238,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
 
   try {
     // 리뷰가 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
-    const review = await prisma.$transaction(async (tx) => {
+    const { review, notification } = await prisma.$transaction(async (tx) => {
       const created = await tx.reviews.create({
         data: {
           reservation_id: input.reservationId,
@@ -258,7 +258,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         },
       });
 
-      await createNotification(
+      const notification = await createNotification(
         {
           accountId: photographer.auth_account_id,
           type: 'NEW_REVIEW',
@@ -270,7 +270,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         tx,
       );
 
-      return created;
+      return { review: created, notification };
     });
 
     return {
@@ -281,6 +281,8 @@ export async function createReview(userId: string, input: CreateReviewInput) {
       comment: review.comment,
       createdAt: review.created_at,
       updatedAt: review.updated_at,
+      // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+      notification,
     };
   } catch (error) {
     if (
