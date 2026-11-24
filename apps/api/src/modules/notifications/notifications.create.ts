@@ -32,7 +32,7 @@ export const notificationMessages = {
   shootToday: () => '오늘 촬영이 있어요.',
   deliveryCompleted: (photographerName: string) =>
     `${photographerName}님이 결과물을 보냈어요.`,
-  newReview: () => '새 리뷰가 등록됐어요.',
+  newReview: (userName: string) => `${userName}님이 리뷰를 남겼어요.`,
   cancelRequested: (userName: string) =>
     `${userName}님이 예약 취소를 요청했어요.`,
   cancelRejected: () => '예약 취소 요청이 반려됐어요.',
