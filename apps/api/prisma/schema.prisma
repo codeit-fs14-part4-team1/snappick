@@ -431,6 +431,8 @@ model quotes {
   version           Int
   shoot_at          DateTime
   location          String
+  location_lat      Float // 위도 (네이버 지도에서 고른 촬영 장소)
+  location_lng      Float // 경도
   duration_minutes  Int
   price             Int
   photo_count       Int?

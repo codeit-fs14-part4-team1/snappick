@@ -1,0 +1,166 @@
+.card {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+.cover {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--color-bg-subtle);
+}
+
+.coverImage {
+  object-fit: cover;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--color-bg-subtle);
+}
+
+.avatarImage {
+  object-fit: cover;
+}
+
+.nickname {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.save {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 18px;
+  background: var(--color-bg-base);
+  color: var(--color-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.bookmark {
+  display: block;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.cancelText {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    max-width 0.2s ease,
+    margin-left 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.save:focus-visible .cancelText {
+  max-width: 40px;
+  margin-left: 4px;
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .save:hover .cancelText {
+    max-width: 40px;
+    margin-left: 4px;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cancelText {
+    transition: none;
+  }
+}
+
+.save:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.save:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@media (max-width: 767px) {
+  .cover {
+    aspect-ratio: 165 / 148;
+  }
+
+  .avatar {
+    display: none;
+  }
+}

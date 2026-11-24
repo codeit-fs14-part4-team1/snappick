@@ -95,6 +95,52 @@ export async function getPhotographerReviews(
   };
 }
 
+// GET /me/reviews/eligible
+export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
+  const where = {
+    user_id: userId,
+    status: 'PURCHASE_CONFIRMED',
+    photographer_id: { not: null },
+    // 삭제한 리뷰도 예약과의 관계가 남으므로 재작성 대상에서 제외됩니다.
+    review: { is: null },
+  } satisfies Prisma.reservationsWhereInput;
+
+  const [totalCount, rows] = await Promise.all([
+    prisma.reservations.count({ where }),
+    prisma.reservations.findMany({
+      where,
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        shoot_at: true,
+        quote: { select: { quote_name: true } },
+        photographer: {
+          select: { id: true, nickname: true, profile_image_url: true },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    items: rows.map((reservation) => ({
+      reservationId: reservation.id,
+      quoteName: reservation.quote?.quote_name ?? null,
+      shootAt: reservation.shoot_at,
+      photographer: reservation.photographer && {
+        photographerId: reservation.photographer.id,
+        nickname: reservation.photographer.nickname,
+        profileImageUrl: toImageUrl(reservation.photographer.profile_image_url),
+      },
+    })),
+    page: query.page,
+    pageSize: query.pageSize,
+    totalCount,
+    totalPages: Math.ceil(totalCount / query.pageSize),
+  };
+}
+
 // GET /me/reviews
 export async function getMyReviews(userId: string, query: ReviewsQuery) {
   const where = { user_id: userId, deleted_at: null };
@@ -109,6 +155,12 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       select: {
         id: true,
         reservation_id: true,
+        reservation: {
+          select: {
+            shoot_at: true,
+            quote: { select: { quote_name: true } },
+          },
+        },
         rating: true,
         comment: true,
         created_at: true,
@@ -125,6 +177,8 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
     items: rows.map((review) => ({
       reviewId: review.id,
       reservationId: review.reservation_id,
+      shootAt: review.reservation?.shoot_at ?? null,
+      quoteName: review.reservation?.quote?.quote_name ?? null,
       rating: review.rating,
       comment: review.comment,
       createdAt: review.created_at,

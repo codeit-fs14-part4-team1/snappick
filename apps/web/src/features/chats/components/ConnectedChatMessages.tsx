@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import type { ChatRoomSummary, ChatViewerRole } from '../types';
 import { getChatGreeting, getPartnerName } from '../utils';
@@ -10,6 +11,10 @@ import ChatMessageList from './ChatMessageList';
 import ChatMessageComposer from './ChatMessageComposer';
 import InquiryForm, { InquiryPrompt } from './InquiryForm';
 import useSendChatMessage from '../useSendChatMessage';
+import useSendQuote from '../useSendQuote';
+import type { Quote } from '../quote';
+import QuoteActionMenu from './QuoteActionMenu';
+import ConnectedQuoteComposer from './ConnectedQuoteComposer';
 import { useConnectedChatRooms } from './ConnectedChatsLayout';
 import styles from './ChatsLayout.module.css';
 
@@ -70,7 +75,16 @@ function ChatMessagesContent({
   query: ReturnType<typeof useChatMessages>;
   isRealtimeConnected: boolean;
 }) {
+  const router = useRouter();
   const markVisibleMessageRead = useReadChatMessages(room.id);
+  const quoteMutation = useSendQuote(room.id, room.partner.id);
+  const [quoteSelection, setQuoteSelection] = useState<'new' | Quote | null>(
+    null,
+  );
+  const [scrollQuoteId, setScrollQuoteId] = useState<string>();
+  const quoteMessageId = query.messages.find(
+    (message) => message.quote?.id === scrollQuoteId,
+  )?.id;
   const { sendMessage, sendInquiry, isSending, sentMessageId } =
     useSendChatMessage(room.id);
   // 첫 조회 후 초기 상태를 정하고, 작가의 답장이 와도 작성 중인 폼은 유지합니다.
@@ -107,7 +121,20 @@ function ChatMessagesContent({
       <ChatMessageList
         startAtTop={showInquiryForm}
         onVisibleMessage={markVisibleMessageRead}
-        scrollToMessageId={sentMessageId}
+        scrollToMessageId={scrollQuoteId ? quoteMessageId : sentMessageId}
+        onEditQuote={
+          viewerRole === 'photographer' && !room.partner.isWithdrawn
+            ? setQuoteSelection
+            : undefined
+        }
+        onPayQuote={
+          viewerRole === 'user' && !room.partner.isWithdrawn
+            ? (quote) =>
+                router.push(
+                  `/payments?${new URLSearchParams({ quoteId: quote.id })}`,
+                )
+            : undefined
+        }
         messages={query.messages}
         partnerName={getPartnerName(room.partner)}
         partnerImageUrl={room.partner.profileImageUrl}
@@ -169,10 +196,50 @@ function ChatMessagesContent({
       <ChatMessageComposer
         viewerRole={viewerRole}
         isWithdrawn={room.partner.isWithdrawn}
-        isSending={isSending}
+        isSending={isSending || quoteMutation.isSending}
         isBlocked={showInquiryForm}
-        onSend={sendMessage}
+        onSend={async (content) => {
+          await sendMessage(content);
+          setScrollQuoteId(undefined);
+        }}
+        quoteAction={
+          viewerRole === 'photographer' && !room.partner.isWithdrawn ? (
+            <QuoteActionMenu
+              disabled={isSending || quoteMutation.isSending}
+              onSelect={() => setQuoteSelection('new')}
+            />
+          ) : undefined
+        }
       />
+      {viewerRole === 'photographer' && quoteSelection && (
+        <ConnectedQuoteComposer
+          initialQuote={quoteSelection === 'new' ? undefined : quoteSelection}
+          superseded={
+            quoteSelection !== 'new' &&
+            query.messages.some(
+              (message) =>
+                message.quote?.shootingCaseId ===
+                  quoteSelection.shootingCaseId &&
+                (message.quote.version > quoteSelection.version ||
+                  (message.quote.id === quoteSelection.id &&
+                    !message.quote.isLatest)),
+            )
+          }
+          onClose={() => setQuoteSelection(null)}
+          onSubmit={async (draft) => {
+            const quote = await quoteMutation.sendQuote({
+              draft,
+              shootingCaseId:
+                quoteSelection === 'new'
+                  ? undefined
+                  : quoteSelection.shootingCaseId,
+              expectedVersion:
+                quoteSelection === 'new' ? undefined : quoteSelection.version,
+            });
+            setScrollQuoteId(quote.id);
+          }}
+        />
+      )}
     </>
   );
 }

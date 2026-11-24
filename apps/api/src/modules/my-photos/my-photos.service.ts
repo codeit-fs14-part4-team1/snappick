@@ -1,3 +1,4 @@
+import { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../lib/prisma.js';
 import { removeFiles } from '../../lib/storage/index.js';
 import { toImageUrl } from '../../utils/asset-url.js';
@@ -13,6 +14,45 @@ import type { PhotoBatchBody } from './my-photos.schema.js';
 const photoNotFound = () =>
   new HttpError(404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없어요.');
 const forbidden = () => new HttpError(403, 'FORBIDDEN', '권한이 없어요.');
+
+type BatchAction = 'DELETE' | 'UPDATE' | 'REPRESENTATIVE';
+type BatchFailure = {
+  action: BatchAction;
+  photoId: string;
+  code: string;
+  message: string;
+};
+
+// DB 오류를 응답용 사유로 바꾼다. DB 원문 메시지는 응답에 넣지 않고 로그에만 남긴다
+const CONNECTION_ERROR_CODES = ['P1001', 'P1002', 'P1017', 'P2024'];
+function toFailureReason(
+  error: unknown,
+): Pick<BatchFailure, 'code' | 'message'> {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2034') {
+      return {
+        code: 'WRITE_CONFLICT',
+        message: '다른 요청과 겹쳐서 처리하지 못했어요. 다시 시도해 주세요.',
+      };
+    }
+    if (CONNECTION_ERROR_CODES.includes(error.code)) {
+      return {
+        code: 'DB_UNAVAILABLE',
+        message: '잠시 연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.',
+      };
+    }
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return {
+      code: 'DB_UNAVAILABLE',
+      message: '잠시 연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.',
+    };
+  }
+  return {
+    code: 'INTERNAL_ERROR',
+    message: '처리 중 오류가 났어요. 다시 시도해 주세요.',
+  };
+}
 
 /**
  * 사진 수정용 정보 (GET /me/photos/{photoId})
@@ -69,7 +109,9 @@ function parseUpdate(update: PhotoBatchBody['updates'][number]) {
 
 /**
  * 사진 일괄 수정 (PATCH /me/photos/batch)
- * 수정·삭제·대표 지정을 한 트랜잭션으로 처리한다. 하나라도 실패하면 전체 취소
+ * 요청 검사(중복, 권한, 수정 대상 존재)에 걸리면 아무것도 처리하지 않는다
+ * 검사를 통과하면 수정·삭제·대표 지정을 사진마다 따로 처리하고,
+ * 이미 없는 사진은 skippedPhotoIds, 오류로 실패한 항목은 retry와 failures(사유)로 돌려준다
  */
 export async function updateMyPhotos(
   photographerId: string,
@@ -96,7 +138,8 @@ export async function updateMyPhotos(
       '삭제할 사진은 수정할 수 없어요.',
     );
   }
-  const updates = body.updates.map(parseUpdate);
+  // raw는 실패했을 때 retry에 원래 요청 그대로 담기 위해 남긴다
+  const updates = body.updates.map((raw) => ({ raw, ...parseUpdate(raw) }));
 
   const invalidRepresentative = () =>
     new HttpError(
@@ -119,7 +162,7 @@ export async function updateMyPhotos(
   });
   const photoById = new Map(photos.map((photo) => [photo.id, photo]));
 
-  for (const id of targetIds) {
+  for (const id of updateIds) {
     const photo = photoById.get(id);
     if (!photo) {
       throw photoNotFound();
@@ -128,6 +171,16 @@ export async function updateMyPhotos(
       throw forbidden();
     }
   }
+  // 삭제는 이미 없는 사진(다른 탭에서 지웠거나 재요청)을 건너뛰고 나머지만 지운다
+  // 다른 작가의 사진이 섞이면 전체를 막는다
+  const existingDeleteIds = deleteIds.filter((id) => photoById.has(id));
+  if (
+    existingDeleteIds.some(
+      (id) => photoById.get(id)?.photographer_id !== photographerId,
+    )
+  ) {
+    throw forbidden();
+  }
   if (
     representativeId &&
     photoById.get(representativeId)?.photographer_id !== photographerId
@@ -135,44 +188,110 @@ export async function updateMyPhotos(
     throw invalidRepresentative();
   }
 
-  await prisma.$transaction(async (tx) => {
-    const deleted = await tx.photos.deleteMany({
-      where: { id: { in: deleteIds }, photographer_id: photographerId },
-    });
-    if (deleted.count !== deleteIds.length) {
-      throw photoNotFound();
-    }
+  // 사진마다 따로 처리한다. 한 장이 실패해도 나머지는 반영된다
+  // skipped: 이미 없는 사진이라 처리할 것이 없음 (다시 보낼 필요 없음)
+  // retry: 오류로 실패해 다시 보내야 함. 그대로 같은 API의 요청 본문으로 쓸 수 있다
+  // failures: retry에 담긴 항목마다 실패 사유
+  const skippedPhotoIds: string[] = [];
+  const retry: Required<PhotoBatchBody> = {
+    updates: [],
+    deletePhotoIds: [],
+    representativePhotoId: null,
+  };
+  const failures: BatchFailure[] = [];
+  const fail = (action: BatchAction, photoId: string, error: unknown) => {
+    const reason = toFailureReason(error);
+    failures.push({ action, photoId, ...reason });
+    console.error(
+      JSON.stringify({
+        feature: 'photo-batch',
+        action,
+        photoId,
+        code: reason.code,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  };
 
-    for (const { photoId, data, keywords } of updates) {
-      // 키워드만 바꿔도 수정 시각이 바뀌도록 updated_at을 직접 넣는다
-      const updated = await tx.photos.updateMany({
+  skippedPhotoIds.push(...deleteIds.filter((id) => !photoById.has(id)));
+  const deletedIds: string[] = [];
+  for (const photoId of existingDeleteIds) {
+    try {
+      const deleted = await prisma.photos.deleteMany({
         where: { id: photoId, photographer_id: photographerId },
-        data: { ...data, updated_at: new Date() },
       });
-      if (updated.count === 0) {
-        throw photoNotFound();
-      }
-      if (keywords) {
-        await tx.photo_keywords.deleteMany({ where: { photo_id: photoId } });
-        await tx.photo_keywords.createMany({
-          data: keywords.map((keyword) => ({ photo_id: photoId, keyword })),
-        });
-      }
+      // 조회와 삭제 사이에 다른 요청이 먼저 지웠으면 건너뛴다
+      (deleted.count > 0 ? deletedIds : skippedPhotoIds).push(photoId);
+    } catch (error) {
+      fail('DELETE', photoId, error);
+      retry.deletePhotoIds.push(photoId);
     }
+  }
 
-    // PF-12: 작가당 1장, 새로 지정하면 기존 대표를 바꾼다
-    if (representativeId) {
-      await tx.representative_photos.upsert({
-        where: { photographer_id: photographerId },
-        create: { photographer_id: photographerId, photo_id: representativeId },
-        update: { photo_id: representativeId },
+  let updatedCount = 0;
+  for (const { raw, photoId, data, keywords } of updates) {
+    try {
+      const found = await prisma.$transaction(async (tx) => {
+        // 키워드만 바꿔도 수정 시각이 바뀌도록 updated_at을 직접 넣는다
+        const updated = await tx.photos.updateMany({
+          where: { id: photoId, photographer_id: photographerId },
+          data: { ...data, updated_at: new Date() },
+        });
+        if (updated.count === 0) {
+          return false;
+        }
+        if (keywords) {
+          await tx.photo_keywords.deleteMany({ where: { photo_id: photoId } });
+          await tx.photo_keywords.createMany({
+            data: keywords.map((keyword) => ({ photo_id: photoId, keyword })),
+          });
+        }
+        return true;
       });
+      if (found) {
+        updatedCount += 1;
+      } else {
+        skippedPhotoIds.push(photoId);
+      }
+    } catch (error) {
+      fail('UPDATE', photoId, error);
+      retry.updates.push(raw);
     }
-  });
+  }
+
+  // PF-12: 작가당 1장, 새로 지정하면 기존 대표를 바꾼다
+  if (representativeId) {
+    try {
+      const found = await prisma.$transaction(async (tx) => {
+        const photo = await tx.photos.findFirst({
+          where: { id: representativeId, photographer_id: photographerId },
+          select: { id: true },
+        });
+        if (!photo) {
+          return false;
+        }
+        await tx.representative_photos.upsert({
+          where: { photographer_id: photographerId },
+          create: {
+            photographer_id: photographerId,
+            photo_id: representativeId,
+          },
+          update: { photo_id: representativeId },
+        });
+        return true;
+      });
+      if (!found) {
+        skippedPhotoIds.push(representativeId);
+      }
+    } catch (error) {
+      fail('REPRESENTATIVE', representativeId, error);
+      retry.representativePhotoId = representativeId;
+    }
+  }
 
   // 저장소에 올린 보관본만 지운다. 목 이미지(/mock/...)는 다른 데이터도 쓰므로 남긴다
   await removeFiles(
-    deleteIds.flatMap((id) => {
+    deletedIds.flatMap((id) => {
       const location = photoById.get(id)?.storage_location;
       return location?.startsWith('photos/') ? [location] : [];
     }),
@@ -186,10 +305,18 @@ export async function updateMyPhotos(
     prisma.photos.count({ where: { photographer_id: photographerId } }),
   ]);
 
+  const hasRetry =
+    retry.updates.length > 0 ||
+    retry.deletePhotoIds.length > 0 ||
+    retry.representativePhotoId !== null;
+
   return {
-    updatedCount: updates.length,
-    deletedCount: deleteIds.length,
+    updatedCount,
+    deletedCount: deletedIds.length,
     representativePhotoId: representative?.photo_id ?? null,
     photoCount,
+    skippedPhotoIds,
+    retry: hasRetry ? retry : null,
+    failures,
   };
 }

@@ -402,7 +402,19 @@ export async function getMessages(
     orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     take: limit + 1,
     include: {
-      quote: true,
+      quote: {
+        include: {
+          shooting_case: {
+            select: {
+              quotes: {
+                orderBy: { version: 'desc' },
+                take: 1,
+                select: { id: true },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -422,9 +434,13 @@ export async function getMessages(
           chatRoomId: message.quote.chat_room_id,
           shootingCaseId: message.quote.shooting_case_id,
           version: message.quote.version,
+          isLatest:
+            message.quote.shooting_case.quotes[0]?.id === message.quote.id,
           quoteName: message.quote.quote_name,
           shootAt: message.quote.shoot_at,
           location: message.quote.location,
+          locationLat: message.quote.location_lat,
+          locationLng: message.quote.location_lng,
           durationMinutes: message.quote.duration_minutes,
           price: message.quote.price,
           photoCount: message.quote.photo_count,

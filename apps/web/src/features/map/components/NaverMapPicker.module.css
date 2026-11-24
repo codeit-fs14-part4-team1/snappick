@@ -1,0 +1,118 @@
+/* 팝업 창 전체를 덮어 사이트 헤더를 가린다 */
+.picker {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.search {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.embedded {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: min(540px, 60dvh);
+  min-height: 280px;
+}
+
+.embedded .search {
+  padding-inline: 0;
+  padding-top: 0;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.button {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+}
+
+.map {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.footer {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.address {
+  flex: 1;
+  min-width: 0;
+  min-height: 22px;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message {
+  margin: auto;
+  padding: 24px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.addressError {
+  color: var(--color-danger);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .address {
+    flex: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

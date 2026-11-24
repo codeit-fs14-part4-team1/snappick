@@ -16,6 +16,9 @@ type PreviewReservation = {
   quoteName: string;
   shootAt: string;
   location: string;
+  // 예약 상세 지도 표시용 촬영 장소 좌표
+  locationLat: number;
+  locationLng: number;
   totalAmount: number;
   durationMinutes: number;
   photoCount: number;
@@ -227,6 +230,8 @@ async function main() {
             version: 1,
             shoot_at: new Date(reservation.shootAt),
             location: reservation.location,
+            location_lat: reservation.locationLat,
+            location_lng: reservation.locationLng,
             duration_minutes: reservation.durationMinutes,
             price: reservation.totalAmount,
             photo_count: reservation.photoCount,

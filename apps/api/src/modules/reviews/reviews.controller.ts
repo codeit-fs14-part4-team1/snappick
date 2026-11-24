@@ -12,6 +12,7 @@ import {
 } from './reviews.schema.js';
 import {
   getMyReviews,
+  getEligibleReviews,
   getPhotographerReviews,
   createReview,
   updateMyReview,
@@ -41,6 +42,11 @@ export async function getPhotographerReviewsHandler(
 export async function getMyReviewsHandler(req: Request, res: Response) {
   const query = reviewsQuerySchema.parse(req.query);
   res.json(await getMyReviews(await requireUserId(req), query));
+}
+
+export async function getEligibleReviewsHandler(req: Request, res: Response) {
+  const query = reviewsQuerySchema.parse(req.query);
+  res.json(await getEligibleReviews(await requireUserId(req), query));
 }
 
 export async function createReviewHandler(req: Request, res: Response) {

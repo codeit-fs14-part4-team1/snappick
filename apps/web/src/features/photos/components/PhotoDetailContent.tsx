@@ -7,11 +7,8 @@ import type { PhotoDetail } from '../types';
 import type { CSSProperties } from 'react';
 import styles from './PhotoDetailContent.module.css';
 import HeartIcon from '@/components/ui/HeartIcon';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
-import { usePhotoLike } from '../hooks/usePhotoLike';
-import { getViewerKind } from '@/features/feed/viewerKind';
 import PhotoShareButton from './PhotoShareButton';
+import { usePhotoLikeAction } from '../hooks/usePhotoLikeAction';
 
 type PhotoDetailContentProps = {
   photo: PhotoDetail;
@@ -23,19 +20,7 @@ export default function PhotoDetailContent({
   getShareUrl,
 }: PhotoDetailContentProps) {
   const { photographer } = photo;
-  const { authStatus, user } = useAuth();
-  const { openGuestLoginModal } = useGuestLoginModal();
-  const { toggleLike } = usePhotoLike(photo);
-  const viewerKind = getViewerKind(authStatus, user);
-
-  function handleLikeClick() {
-    if (viewerKind === 'pending') return;
-    if (viewerKind === 'guest') {
-      openGuestLoginModal();
-      return;
-    }
-    if (viewerKind === 'user') toggleLike();
-  }
+  const { viewerKind, handleLikeClick } = usePhotoLikeAction(photo);
 
   return (
     <div className={styles.content}>
