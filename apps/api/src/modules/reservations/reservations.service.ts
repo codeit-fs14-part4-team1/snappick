@@ -580,6 +580,12 @@ export async function patchCancelReservation(
             auth_account_id: true,
           },
         },
+        // 예약 취소를 알릴 작가의 계정 ID를 가져옴
+        photographer: {
+          select: {
+            auth_account_id: true,
+          },
+        },
         reservation_cancel_request: {
           where: { id: cancelRequestId },
           select: { id: true, status: true },
@@ -635,6 +641,39 @@ export async function patchCancelReservation(
           select: { status: true },
         })
       : { status: reservation.status };
+
+    if (accepted) {
+      // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
+      await cancelShootReminders(reservationId, tx);
+
+      // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
+      const accountIds = [
+        reservation.user?.auth_account_id,
+        reservation.photographer?.auth_account_id,
+      ].filter((id): id is string => !!id);
+
+      for (const accountId of accountIds) {
+        await createNotification(
+          {
+            accountId,
+            type: 'RESERVATION_CANCELED',
+            targetId: reservationId,
+            message: notificationMessages.reservationCanceled(),
+          },
+          tx,
+        );
+      }
+    } else if (reservation.user) {
+      await createNotification(
+        {
+          accountId: reservation.user.auth_account_id,
+          type: 'CANCEL_REJECTED',
+          targetId: reservationId,
+          message: notificationMessages.cancelRejected(),
+        },
+        tx,
+      );
+    }
 
     let systemMessage: chat_messages | null = null;
 
