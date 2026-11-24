@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
+import { createUserActionLog } from '../interactions/interactions.service.js';
 
 const photoNotFound = () =>
   new HttpError(404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없어요.');
@@ -29,9 +30,15 @@ const countLikes = (photoId: string) =>
 
 export async function likePhoto(userId: string, photoId: string) {
   await assertPhotoExists(photoId);
-  await prisma.photo_likes.createMany({
-    data: [{ user_id: userId, photo_id: photoId }],
-    skipDuplicates: true,
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.photo_likes.createMany({
+      data: [{ user_id: userId, photo_id: photoId }],
+      skipDuplicates: true,
+    });
+    // 이미 좋아요한 사진이면 추가된 행이 없으므로 기록하지 않는다
+    if (count > 0) {
+      await createUserActionLog({ userId, type: 'LIKE', photoId }, tx);
+    }
   });
   return { photoId, liked: true, likeCount: await countLikes(photoId) };
 }
