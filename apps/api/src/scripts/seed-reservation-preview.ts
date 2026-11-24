@@ -23,16 +23,23 @@ type PreviewReservation = {
   durationMinutes: number;
   photoCount: number;
   includesOriginal: boolean;
+  // 지난 예약의 진행 날짜 순서를 맞출 때만 넣는다 (없으면 시드 실행 시각)
+  createdAt?: string;
+  purchaseConfirmedAt?: string;
   cancelRequest?: {
     id: string;
     status: 'PENDING' | 'ACCEPTED';
     reason: string;
+    // 작가가 수락할 때의 사유 (ACCEPTED일 때만)
+    acceptReason?: string;
   };
   deliverable?: {
     id: string;
     link: string;
     expirationPeriod: string;
     notice: string | null;
+    // 최초 전달 시각 (없으면 시드 실행 시각)
+    createdAt?: string;
   };
 };
 
@@ -106,6 +113,13 @@ function validateSeedData(data: PreviewSeedData) {
       new Date(reservation.shootAt) <= new Date()
     ) {
       throw new Error('예약 확정 데이터의 촬영일은 미래여야 합니다.');
+    }
+
+    if (
+      (reservation.status === 'PURCHASE_CONFIRMED') !==
+      Boolean(reservation.purchaseConfirmedAt)
+    ) {
+      throw new Error('구매 확정 시각은 구매 확정 예약에만 필요합니다.');
     }
 
     if (
@@ -253,6 +267,12 @@ async function main() {
             shoot_at: new Date(reservation.shootAt),
             location: reservation.location,
             total_amount: reservation.totalAmount,
+            ...(reservation.createdAt && {
+              created_at: new Date(reservation.createdAt),
+            }),
+            purchase_confirmed_at: reservation.purchaseConfirmedAt
+              ? new Date(reservation.purchaseConfirmedAt)
+              : null,
           },
         });
 
@@ -266,6 +286,7 @@ async function main() {
               reservation_id: reservation.id,
               requested_by_account_id: data.userAuthAccountId,
               reason: cancel.reason,
+              accept_reason: cancel.acceptReason ?? null,
               status: cancel.status,
               processed_at: cancel.status === 'ACCEPTED' ? new Date() : null,
             },
@@ -283,6 +304,9 @@ async function main() {
               link: deliverable.link,
               expiration_period: new Date(deliverable.expirationPeriod),
               notice: deliverable.notice,
+              ...(deliverable.createdAt && {
+                created_at: new Date(deliverable.createdAt),
+              }),
             },
           });
         }

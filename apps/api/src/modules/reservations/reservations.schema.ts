@@ -20,27 +20,33 @@ export const cancelRequestParamsSchema = reservationParamsSchema.extend({
   }),
 });
 
+const cancelReasonSchema = z
+  .string({
+    error: 'reason의 양식은 문자열이어야 합니다.',
+  })
+  .trim()
+  .min(1, {
+    error: 'reason의 최소 길이는 1 이상이어야 합니다.',
+  })
+  .max(1000, {
+    error: 'reason의 최대 길이는 1000자 이내이어야 합니다.',
+  });
+
 export const cancelReservationSchema = z.object({
-  reason: z
-    .string({
-      error: 'reason의 양식은 문자열이어야 합니다.',
-    })
-    .trim()
-    .min(1, {
-      error: 'reason의 최소 길이는 1 이상이어야 합니다.',
-    })
-    .max(1000, {
-      error: 'reason의 최대 길이는 1000자 이내이어야 합니다.',
-    }),
+  reason: cancelReasonSchema,
 });
 
 export type CancelReservationInput = z.infer<typeof cancelReservationSchema>;
 
-export const patchCancelReservationSchema = z.object({
-  status: z.enum(['ACCEPTED', 'REJECTED'], {
-    error: 'status는 반드시 ACCEPTED, REJECTED 중 하나이어야 합니다.',
-  }),
-});
+// 수락할 때만 작가의 취소 사유를 받는다
+export const patchCancelReservationSchema = z.discriminatedUnion(
+  'status',
+  [
+    z.object({ status: z.literal('ACCEPTED'), reason: cancelReasonSchema }),
+    z.object({ status: z.literal('REJECTED') }),
+  ],
+  { error: 'status는 반드시 ACCEPTED, REJECTED 중 하나이어야 합니다.' },
+);
 
 export type PatchCancelReservationInput = z.infer<
   typeof patchCancelReservationSchema
