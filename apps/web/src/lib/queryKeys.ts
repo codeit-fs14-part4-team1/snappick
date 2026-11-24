@@ -206,6 +206,9 @@ export const queryKeys = {
   reservations: {
     all: createQueryRoot('reservations'),
 
+    // 모든 예약 목록 캐시를 무효화할 때 사용
+    listAll: () => createQueryKey('reservations', 'list'),
+
     // 예약 목록의 API 필터와 페이지네이션 조건을 캐시 키에 반영함
     list: (filters: ReservationListParams = {}) =>
       createQueryKey('reservations', 'list', {
@@ -213,9 +216,13 @@ export const queryKeys = {
         type: filters.type ?? 'ALL',
       }),
 
-    //상세에서 작가 정보를 제외한 모든 정보를 캐시
+    // 예약 상세 정보를 예약 ID별로 캐시
     detail: (reservationId: string) =>
       createQueryKey('reservations', 'detail', reservationId),
+
+    // 예약에 등록된 결과물 정보를 예약 ID별로 캐시
+    deliverable: (reservationId: string) =>
+      createQueryKey('reservations', 'detail', reservationId, 'deliverable'),
   },
 
   //리뷰

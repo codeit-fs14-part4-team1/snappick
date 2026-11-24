@@ -1,0 +1,207 @@
+/* 날짜 선택 영역 */
+.root {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 날짜 선택 입력 버튼 */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger[data-empty='true'] {
+  color: var(--color-text-tertiary);
+}
+
+.trigger[data-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.trigger:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 날짜 선택 아이콘 */
+.calendarIcon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+/* 달력 팝업 */
+.calendar {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  left: 0;
+  box-sizing: border-box;
+  width: 340px;
+  max-width: 100%;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  box-shadow: 0 6px 20px #0000001a;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 연도 및 월 이동 영역 */
+.month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.monthTitle {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 이전 달 및 다음 달 이동 버튼 */
+.monthButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.monthButton:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* 요일 및 날짜 그리드 */
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+/* 요일 */
+.weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+/* 날짜 선택 버튼 */
+.dayButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 32px;
+  height: 32px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 선택 가능한 날짜에 마우스를 올린 상태 */
+.dayButton:not(:disabled):not([aria-pressed='true']):hover {
+  background: var(--color-bg-subtle);
+}
+
+/* 선택된 날짜 */
+.dayButton[aria-pressed='true']:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-bg-base);
+  font-weight: 700;
+}
+
+/* 선택할 수 없는 과거 날짜 */
+.dayButton:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* 날짜 선택 확정 버튼 */
+.confirmButton {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  line-height: 18px;
+  margin-top: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmButton:disabled {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+/* 키보드 접근성 */
+.trigger:focus-visible,
+.calendar button:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* 모바일 대응 */
+@media (max-width: 767px) {
+  .calendar {
+    width: 340px;
+    max-width: 100%;
+  }
+}
+
+/* 좁은 모바일 화면 대응 */
+@media (max-width: 360px) {
+  .calendar {
+    padding: 12px;
+  }
+
+  .dayButton {
+    width: 28px;
+    height: 28px;
+  }
+}

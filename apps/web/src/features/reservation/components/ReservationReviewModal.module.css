@@ -1,0 +1,179 @@
+/* 리뷰 작성 모달 */
+.modal {
+  width: 560px;
+}
+
+/* 리뷰 작성 폼 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 리뷰 작성 대상 예약 요약 */
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--color-bg-subtle);
+}
+
+/* 예약 썸네일 */
+.thumbnail {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--color-border);
+}
+
+/* 예약 정보 텍스트 */
+.bookingText {
+  min-width: 0;
+}
+
+/* 사진작가 이름 및 견적명 */
+.bookingName {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 촬영 날짜 및 안내 문구 */
+.date {
+  margin: 4px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.summary .date {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* 별점 선택 영역 */
+.ratingField {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  text-align: center;
+}
+
+.ratingField legend {
+  width: 100%;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.ratingField .date {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* 별점 목록 */
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.star {
+  position: relative;
+  cursor: pointer;
+}
+
+.star input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.star svg {
+  display: block;
+  width: 32px;
+  height: 40px;
+}
+
+/* 선택되지 않은 별점 */
+.unfilled {
+  color: var(--color-border);
+}
+
+/* 선택된 별점 */
+.filled {
+  color: var(--color-accent);
+}
+
+/* 키보드로 별점을 선택하는 경우 */
+.star:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.star:has(input:disabled) {
+  cursor: default;
+}
+
+/* 리뷰 내용 입력 영역 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 160px;
+  min-height: 160px;
+  padding: 14px 16px;
+  resize: none;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-base);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.field textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.field .date {
+  margin: 0;
+}
+
+.field textarea:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: -2px;
+}
+
+/* 모바일 대응 */
+@media (max-width: 767px) {
+  .modal.modal {
+    padding-inline: 20px;
+  }
+}

@@ -407,7 +407,7 @@ export default function PhotographerReviews({
               {isSelf && !review.reply && onCreateReply && (
                 <div className={styles.replyActionArea}>
                   {replyReviewId === review.reviewId ? (
-                    // 답글 작성 중에는 Figma 디자인의 입력 영역을 표시함
+                    // 답글 작성 중에는 입력 영역을 표시함
                     <form
                       className={styles.replyEditor}
                       onSubmit={(event) => {

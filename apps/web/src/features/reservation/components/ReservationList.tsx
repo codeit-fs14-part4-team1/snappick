@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMyPageAccount } from '@/features/my/components/MyPageLayout';
 import { useMyReservations } from '../hooks/useMyReservations';
 import type { ReservationListFilter } from '../types';
@@ -13,6 +13,39 @@ import ReservationTabs, { type ReservationTab } from './ReservationTabs';
 
 // 한 페이지에 표시할 예약 개수를 정의
 const PAGE_SIZE = 10;
+
+// 예약 화면의 탭을 서버에서 지원하는 필터로 변환
+const TAB_FILTERS: Record<ReservationTab, ReservationListFilter> = {
+  scheduled: 'UPCOMING',
+  inProgress: 'IN_PROGRESS',
+  completed: 'COMPLETED',
+  canceled: 'CANCELED',
+};
+
+// URL의 예약 필터를 화면에서 사용하는 탭으로 변환
+function getSelectedTab(value: string | null): ReservationTab {
+  switch (value) {
+    case 'IN_PROGRESS':
+      return 'inProgress';
+
+    case 'COMPLETED':
+      return 'completed';
+
+    case 'CANCELED':
+      return 'canceled';
+
+    case 'UPCOMING':
+    default:
+      return 'scheduled';
+  }
+}
+
+// URL의 페이지 번호를 확인하고 잘못된 값은 첫 페이지로 처리
+function getSelectedPage(value: string | null): number {
+  const page = Number(value);
+
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
+}
 
 // 예약 상태별 전체 건수를 조회하고 탭에 표시함
 function ReservationTabsWithCounts({
@@ -78,24 +111,20 @@ function ReservationTabsWithCounts({
   );
 }
 
-// 일반 사용자의 예약 목록을 조회하고 표시
+// 일반 사용자와 사진작가의 예약 목록을 조회하고 표시
 function ReservationContent({
   selectedTab,
+  page,
+  onPageChange,
 }: {
-  selectedTab: ReservationTab | null;
+  selectedTab: ReservationTab;
+  page: number;
+  onPageChange: (page: number) => void;
 }) {
   const { accountType } = useMyPageAccount();
-  const [page, setPage] = useState(1);
 
-  // 선택한 탭을 서버에서 지원하는 예약 필터로 변환함
-  const filterType: ReservationListFilter =
-    selectedTab === 'scheduled'
-      ? 'UPCOMING'
-      : selectedTab === 'inProgress'
-        ? 'IN_PROGRESS'
-        : selectedTab === 'completed'
-          ? 'COMPLETED'
-          : 'CANCELED';
+  // 선택한 탭을 서버에서 지원하는 예약 필터로 변환
+  const filterType = TAB_FILTERS[selectedTab];
 
   // 선택한 예약 상태와 페이지에 따라 목록을 조회함
   const { data, isPending, isError, refetch } = useMyReservations({
@@ -166,7 +195,7 @@ function ReservationContent({
         title="현재 페이지에 표시할 예약이 없어요."
         button={{
           label: '첫 페이지로',
-          onClick: () => setPage(1),
+          onClick: () => onPageChange(1),
         }}
       />
     );
@@ -196,7 +225,7 @@ function ReservationContent({
           <Pagination
             currentPage={page}
             totalPages={data.totalPages}
-            onPageChange={setPage}
+            onPageChange={onPageChange}
             aria-label="예약 목록 페이지 이동"
           />
         </div>
@@ -204,30 +233,76 @@ function ReservationContent({
     </section>
   );
 }
-
-// 일반 사용자에게만 예약 목록을 표시함
+// 일반 사용자와 사진작가의 공통 예약 목록을 표시
 export default function ReservationList() {
   const { accountType } = useMyPageAccount();
 
-  // 예정 탭을 기본 선택 상태로 설정함
-  const [selectedTab, setSelectedTab] = useState<ReservationTab>('scheduled');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // 일반 사용자와 사진작가 계정에서 예약 목록을 표시함
+  // URL을 기준으로 현재 선택한 탭과 페이지를 확인
+  const selectedTab = getSelectedTab(searchParams.get('tab'));
+  const page = getSelectedPage(searchParams.get('page'));
+
+  // 선택한 예약 탭을 URL에 반영하고 첫 페이지로 이동
+  const handleTabChange = (tab: ReservationTab) => {
+    if (tab === selectedTab) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.set('tab', TAB_FILTERS[tab]);
+    params.delete('page');
+
+    router.replace(`${pathname}?${params.toString()}`, {
+      scroll: false,
+    });
+  };
+
+  // 선택한 페이지 번호를 URL에 반영
+  const handlePageChange = (nextPage: number) => {
+    if (!Number.isSafeInteger(nextPage) || nextPage < 1 || nextPage === page) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.set('tab', TAB_FILTERS[selectedTab]);
+
+    if (nextPage === 1) {
+      params.delete('page');
+    } else {
+      params.set('page', String(nextPage));
+    }
+
+    router.replace(`${pathname}?${params.toString()}`, {
+      scroll: false,
+    });
+  };
+
+  // 일반 사용자와 사진작가 계정에서 예약 목록을 표시
   if (accountType !== 'USER' && accountType !== 'PHOTOGRAPHER') {
     return null;
   }
 
   return (
     <section aria-label="내 예약 목록">
-      {/* 예약 상태 탭과 실제 예약 건수를 표시함 */}
+      {/* 예약 상태 탭과 실제 예약 건수를 표시 */}
       <ReservationTabsWithCounts
         selectedTab={selectedTab}
-        onTabChange={setSelectedTab}
+        onTabChange={handleTabChange}
       />
 
-      {/* 선택한 탭의 예약 목록을 실제 API 데이터로 표시함 */}
+      {/* 선택한 탭과 페이지의 예약 목록을 표시 */}
       <div style={{ marginTop: 20 }}>
-        <ReservationContent key={selectedTab} selectedTab={selectedTab} />
+        <ReservationContent
+          key={selectedTab}
+          selectedTab={selectedTab}
+          page={page}
+          onPageChange={handlePageChange}
+        />
       </div>
     </section>
   );

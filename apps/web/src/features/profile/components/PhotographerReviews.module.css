@@ -132,7 +132,7 @@
   margin-left: auto;
 }
 
-/* Figma 디자인에 맞게 테두리 없는 텍스트 버튼을 표시함 */
+/* 테두리 없는 텍스트 버튼을 표시함 */
 .replyTextButton {
   padding: 0;
   border: none;

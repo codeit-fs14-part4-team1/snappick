@@ -1,0 +1,352 @@
+/* 예약 상세 페이지 제목 및 예약번호 */
+.pageHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 24px;
+}
+
+/* 예약 상세 페이지 제목 */
+.pageTitle {
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+/* 화면 표시용 예약번호 */
+.reservationNumber {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+}
+
+/* 예약 헤더 */
+.header {
+  margin-bottom: 20px;
+}
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* 촬영일까지 남은 날짜 */
+.dDay {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.reservationTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.reservationSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 예약 진행 상태 */
+.progress {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 예약 취소 완료 안내 영역 */
+.canceledSection {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 예약 취소 완료 안내 카드 */
+.canceledPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-base);
+}
+
+/* 예약 취소 완료 안내 제목 */
+.canceledTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 예약 취소 상세 정보 */
+.canceledInfoList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.canceledInfoRow {
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.canceledInfoRow dt {
+  color: var(--color-text-tertiary);
+}
+
+.canceledInfoRow dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* 취소 요청 안내 */
+.cancelNotice {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 사진작가가 받은 고객 취소 요청 */
+.cancelRequestPanel {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+}
+
+/* 취소 요청 제목 */
+.cancelRequestTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+/* 취소 요청 일시 */
+.cancelRequestDate {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* 취소 요청 사유 */
+.cancelRequestReason {
+  margin: 4px 0 12px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+/* 취소 요청 처리 버튼 */
+.cancelRequestButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 예약 정보, 결제 정보, 상대방 정보 */
+.section {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 16px;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+/* 정보 레이블 및 값 */
+.infoList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.infoRow {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 16px;
+}
+
+.infoRow dt {
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.infoRow dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 아직 API에서 제공하지 않는 정보 */
+.infoRow .unavailable {
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+/* 예약 상대방 정보 */
+.counterpart {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 상대방 프로필 이미지 */
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 프로필 이미지가 없는 경우 */
+.avatarFallback {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #d9d9d9;
+}
+
+/* 상대방 닉네임 */
+.counterpartName {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 예약 상세 페이지 제목 - 태블릿 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .pageTitle {
+    font-size: 22px;
+    line-height: 30px;
+  }
+}
+
+/* 모바일 기본 대응 */
+@media (max-width: 767px) {
+  .pageHeading {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+    line-height: 28px;
+  }
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .reservationTitle {
+    font-size: 18px;
+    line-height: 26px;
+  }
+
+  .section {
+    padding: 20px 0;
+  }
+
+  .sectionTitle {
+    margin-bottom: 12px;
+  }
+
+  .infoRow {
+    grid-template-columns: 88px minmax(0, 1fr);
+    column-gap: 12px;
+  }
+
+  .canceledPanel {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .canceledInfoRow {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+}
+
+/* 좁은 모바일 화면 */
+@media (max-width: 480px) {
+  .cancelRequestPanel {
+    padding: 12px;
+  }
+
+  .cancelRequestButtons {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

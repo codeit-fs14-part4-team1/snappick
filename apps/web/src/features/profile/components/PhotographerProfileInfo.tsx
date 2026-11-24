@@ -266,7 +266,7 @@ export default function PhotographerProfileInfo({
                   onClick={handleSaveClick}
                   disabled={saveMutation.isPending}
                 >
-                  {/* 저장 여부에 따라 Figma 북마크 이미지 변경 */}
+                  {/* 저장 여부에 따라 북마크 이미지 변경 */}
                   <Image
                     src={saved ? '/save-filled.png' : '/save.png'}
                     alt=""

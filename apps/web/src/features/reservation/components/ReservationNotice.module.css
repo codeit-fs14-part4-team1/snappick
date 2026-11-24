@@ -1,0 +1,69 @@
+/* 예약 상세 안내사항 영역 */
+.section {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 안내사항 제목 */
+.sectionTitle {
+  margin: 0 0 16px;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+/* 추가 안내사항 및 공통 안내사항 박스 */
+.noticeBox {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-base);
+}
+
+/* 개별 안내사항 */
+.noticeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 안내사항 구분 제목 */
+.noticeLabel {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* 안내사항 내용 */
+.noticeContent {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 모바일 */
+@media (max-width: 767px) {
+  .section {
+    padding: 20px 0;
+  }
+
+  .sectionTitle {
+    margin-bottom: 12px;
+  }
+
+  .noticeBox {
+    padding: 12px;
+    border-radius: 8px;
+  }
+}
