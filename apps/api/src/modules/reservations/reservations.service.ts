@@ -95,8 +95,10 @@ export async function advanceReservationStatuses(now: Date) {
 export async function createReservation(
   userId: string,
   input: CreateReservationInput,
+  db?: Prisma.TransactionClient,
 ) {
-  const payment = await prisma.payments.findUnique({
+  const client = db ?? prisma;
+  const payment = await client.payments.findUnique({
     where: { id: input.paymentId },
     select: {
       user_id: true,
@@ -166,7 +168,7 @@ export async function createReservation(
 
   try {
     // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
-    const reservation = await prisma.$transaction(async (tx) => {
+    const createReservationRecords = async (tx: Prisma.TransactionClient) => {
       const created = await tx.reservations.create({
         data: {
           payment_id: input.paymentId,
@@ -208,7 +210,11 @@ export async function createReservation(
       );
 
       return created;
-    });
+    };
+
+    const reservation = db
+      ? await createReservationRecords(db)
+      : await prisma.$transaction(createReservationRecords);
 
     return {
       reservationId: reservation.id,
@@ -220,6 +226,10 @@ export async function createReservation(
       paymentProvider: payment.pg_provider,
     };
   } catch (error) {
+    if (db) {
+      throw error;
+    }
+
     // 동시 요청으로 위 확인을 통과한 뒤 다른 요청이 먼저 생성한 경우
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
