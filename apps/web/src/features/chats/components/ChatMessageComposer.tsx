@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ChatViewerRole } from '../types';
 import styles from './ChatRoomView.module.css';
 
@@ -10,12 +11,14 @@ export default function ChatMessageComposer({
   isSending,
   isBlocked = false,
   onSend,
+  quoteAction,
 }: {
   viewerRole: ChatViewerRole;
   isWithdrawn: boolean;
   isSending: boolean;
   isBlocked?: boolean;
   onSend: (content: string) => Promise<unknown>;
+  quoteAction?: ReactNode;
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -48,16 +51,17 @@ export default function ChatMessageComposer({
         void submit();
       }}
     >
-      {viewerRole === 'photographer' && (
-        <button
-          type="button"
-          className={styles.attach}
-          aria-label="추가 메뉴"
-          disabled
-        >
-          +
-        </button>
-      )}
+      {viewerRole === 'photographer' &&
+        (quoteAction ?? (
+          <button
+            type="button"
+            className={styles.attach}
+            aria-label="추가 메뉴"
+            disabled
+          >
+            +
+          </button>
+        ))}
       <textarea
         ref={inputRef}
         rows={1}

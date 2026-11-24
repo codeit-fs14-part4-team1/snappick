@@ -1,0 +1,109 @@
+.root {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.trigger {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: normal;
+  cursor: pointer;
+}
+
+.trigger[aria-expanded='true'] {
+  border-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  color: var(--color-bg-base);
+}
+
+.trigger:disabled {
+  cursor: default;
+}
+
+.plus {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  position: absolute;
+  z-index: 1;
+  bottom: calc(100% + 16px);
+  left: 0;
+  width: max-content;
+  max-width: min(400px, calc(100vw - 40px));
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-base);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-accent-subtle);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.icon {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-bg-base);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.text strong {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.text > span {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.root :focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: -2px;
+}

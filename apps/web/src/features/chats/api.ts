@@ -7,6 +7,39 @@ import type {
   SendChatMessageInput,
 } from './types';
 import type { FetchWithAuth } from '@/features/auth/types';
+import type { CreateQuoteInput, Quote } from './quote';
+
+export async function createQuote(
+  input: CreateQuoteInput,
+  fetchWithAuth: FetchWithAuth,
+): Promise<Quote> {
+  const quote = await fetchWithAuth<Quote>('/quotes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (
+    !quote?.id ||
+    quote.chatRoomId !== input.chatRoomId ||
+    !quote.shootingCaseId
+  )
+    throw new Error('견적 전송 응답이 올바르지 않습니다.');
+  return quote;
+}
+
+export async function getQuote(
+  quoteId: string,
+  fetchWithAuth: FetchWithAuth,
+  signal?: AbortSignal,
+): Promise<Quote> {
+  const quote = await fetchWithAuth<Quote>(
+    `/quotes/${encodeURIComponent(quoteId)}`,
+    { signal },
+  );
+  if (!quote || quote.id !== quoteId)
+    throw new Error('견적 조회 응답이 올바르지 않습니다.');
+  return quote;
+}
 
 export async function markChatMessagesRead(
   chatRoomId: string,

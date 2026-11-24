@@ -5,6 +5,8 @@ import Button from '@/components/ui/Button';
 import ScrollToEdgeButton from '@/components/ui/ScrollToEdgeButton';
 import ChatAvatar from './ChatAvatar';
 import InquiryCard from './InquiryCard';
+import QuoteMessageCard from './QuoteMessageCard';
+import type { Quote } from '../quote';
 import type { ChatMessageItem } from '../types';
 import { useChatScroll } from '../useChatScroll';
 import { formatChatDate, formatChatTime } from '../utils';
@@ -25,9 +27,13 @@ type Props = {
   onVisibleMessage?: (message: ChatMessageItem) => void;
   endContent?: ReactNode;
   startAtTop?: boolean;
+  onEditQuote?: (quote: Quote) => void;
+  onPayQuote?: (quote: Quote) => void;
 };
 
 export default function ChatMessageList({
+  onEditQuote,
+  onPayQuote,
   messages,
   partnerName,
   partnerImageUrl = null,
@@ -176,13 +182,41 @@ export default function ChatMessageList({
                           ? styles.systemContent
                           : message.messageType === 'INITIAL_REQUEST'
                             ? styles.requestContainer
-                            : styles.bubble
+                            : message.messageType === 'QUOTE' && message.quote
+                              ? styles.quoteContainer
+                              : styles.bubble
                       }
                     >
                       {message.messageType === 'INITIAL_REQUEST' ? (
                         <InquiryCard
                           payload={message.payload}
                           isMine={message.isMine}
+                        />
+                      ) : message.messageType === 'QUOTE' && message.quote ? (
+                        <QuoteMessageCard
+                          quote={message.quote}
+                          createdAt={message.createdAt}
+                          received={!message.isMine}
+                          onPay={
+                            !message.isMine && onPayQuote
+                              ? () => onPayQuote(message.quote!)
+                              : undefined
+                          }
+                          onEdit={
+                            message.isMine && onEditQuote
+                              ? () => onEditQuote(message.quote!)
+                              : undefined
+                          }
+                          superseded={
+                            !message.quote.isLatest ||
+                            messages.some(
+                              (candidate) =>
+                                candidate.quote?.shootingCaseId ===
+                                  message.quote!.shootingCaseId &&
+                                candidate.quote.version >
+                                  message.quote!.version,
+                            )
+                          }
                         />
                       ) : (
                         message.content
@@ -198,12 +232,14 @@ export default function ChatMessageList({
                             안읽음
                           </span>
                         )}
-                        <time
-                          className={styles.time}
-                          dateTime={message.createdAt}
-                        >
-                          {formatChatTime(message.createdAt)}
-                        </time>
+                        {message.messageType !== 'QUOTE' && (
+                          <time
+                            className={styles.time}
+                            dateTime={message.createdAt}
+                          >
+                            {formatChatTime(message.createdAt)}
+                          </time>
+                        )}
                       </div>
                     )}
                   </li>
