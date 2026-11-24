@@ -22,6 +22,7 @@ import {
   getDeliverable,
   createDeliverable,
   patchDeliverable,
+  confirmPurchase,
 } from './reservations.service.js';
 
 async function requireUserId(req: Request): Promise<string> {
@@ -154,4 +155,10 @@ export async function patchDeliverableHandler(req: Request, res: Response) {
   const input = patchDeliverableSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
   res.json(await patchDeliverable(photographerId, reservationId, input));
+}
+
+export async function confirmPurchaseHandler(req: Request, res: Response) {
+  const { reservationId } = reservationParamsSchema.parse(req.params);
+  const userId = await requireUserId(req);
+  res.json(await confirmPurchase(userId, reservationId));
 }

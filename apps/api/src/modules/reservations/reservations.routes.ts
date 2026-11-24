@@ -12,6 +12,7 @@ import {
   getDeliverableHandler,
   createDeliverableHandler,
   patchDeliverableHandler,
+  confirmPurchaseHandler,
 } from './reservations.controller.js';
 
 export const myReservationsRouter: Router = Router();
@@ -62,4 +63,11 @@ myReservationsRouter.patch(
   authenticate,
   requireAccountType('PHOTOGRAPHER'),
   patchDeliverableHandler,
+);
+
+myReservationsRouter.patch(
+  '/reservations/:reservationId/purchase-confirm',
+  authenticate,
+  requireAccountType('USER'),
+  confirmPurchaseHandler,
 );

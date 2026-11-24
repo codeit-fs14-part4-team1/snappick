@@ -986,3 +986,48 @@ export async function patchDeliverable(
 
   return toDeliverableResponse(deliverable);
 }
+
+// PATCH /me/reservations/:reservationId/purchase-confirm
+export async function confirmPurchase(userId: string, reservationId: string) {
+  return prisma.$transaction(async (tx) => {
+    // 중복 요청이나 자동 확정과 겹쳐도 한 번만 확정되도록 잠근다
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: { user_id: true, status: true },
+    });
+
+    if (!reservation || reservation.user_id !== userId) {
+      throw reservationNotFound();
+    }
+
+    if (reservation.status === 'PURCHASE_CONFIRMED') {
+      throw new HttpError(
+        409,
+        'ALREADY_PURCHASE_CONFIRMED',
+        '이미 구매 확정한 예약이에요.',
+      );
+    }
+
+    if (reservation.status !== 'DELIVERED') {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_CONFIRMABLE',
+        '결과물을 받은 예약만 구매 확정할 수 있어요.',
+      );
+    }
+
+    const confirmed = await tx.reservations.update({
+      where: { id: reservationId },
+      data: { status: 'PURCHASE_CONFIRMED' },
+      select: { id: true, status: true, updated_at: true },
+    });
+
+    return {
+      reservationId: confirmed.id,
+      status: confirmed.status,
+      updatedAt: confirmed.updated_at,
+    };
+  });
+}
