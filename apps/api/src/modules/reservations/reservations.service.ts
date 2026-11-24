@@ -89,9 +89,8 @@ function kstDayStart(now: Date): Date {
  * - CONFIRMED → SHOOT_COMPLETED: 촬영일 다음 날 00시(한국 시간)가 되면
  * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
  *   DELIVERED는 작가가 결과물을 전달할 때만 바뀐다 (시간 경과로 자동 전환하지 않는다)
- *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
- *   예약 행은 상태가 바뀔 때만 수정되므로 가능한 방식이다
- *   DELIVERED 이후 예약 행을 수정하는 기능이 생기면 구매 확정이 그만큼 밀리니 delivered_at 컬럼을 따로 둘 것
+ *   전달 시각은 deliverable.created_at(최초 전달 시각)으로 판단한다
+ *   예약이나 결과물을 수정해도 바뀌지 않으므로 구매 확정이 밀리지 않는다
  *
  * 조건에 맞는 행을 한 번에 바꾸므로 여러 번 실행해도 결과가 같고, 밀린 건도 다음 실행에 처리된다
  * now를 인자로 받는 이유: 시각을 정해 두고 테스트할 수 있게
@@ -105,8 +104,10 @@ export async function advanceReservationStatuses(now: Date) {
   const purchaseConfirmed = await prisma.reservations.updateMany({
     where: {
       status: 'DELIVERED',
-      updated_at: {
-        lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+      deliverable: {
+        created_at: {
+          lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+        },
       },
     },
     data: { status: 'PURCHASE_CONFIRMED', purchase_confirmed_at: now },
@@ -927,7 +928,7 @@ export async function createDeliverable(
       select: DELIVERABLE_SELECT,
     });
 
-    // 구매 확정 스케줄러는 DELIVERED가 된 시각을 updated_at으로 판단한다
+    // 구매 확정 스케줄러는 위 결과물의 created_at을 전달 시각으로 본다
     await tx.reservations.update({
       where: { id: reservationId },
       data: { status: 'DELIVERED' },
@@ -956,7 +957,7 @@ export async function createDeliverable(
 }
 
 // PATCH /me/reservations/:reservationId/deliverable
-// 결과물만 수정한다. 예약 행을 수정하면 updated_at이 바뀌어 구매 확정이 밀리므로 건드리지 않는다
+// 결과물만 수정한다. 최초 전달 시각(created_at)은 바뀌지 않아 구매 확정이 밀리지 않는다
 export async function patchDeliverable(
   photographerId: string,
   reservationId: string,
