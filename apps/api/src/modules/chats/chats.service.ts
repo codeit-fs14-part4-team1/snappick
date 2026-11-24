@@ -5,6 +5,8 @@ import type { InquiryPayload } from './chats.schema.js';
 import {
   createMessageNotification,
   readMessageNotifications,
+  createNotification,
+  notificationMessages,
 } from '../notifications/notifications.create.js';
 
 //사용자 조회
@@ -514,7 +516,7 @@ export async function sendInquiry(
     },
     include: {
       user: {
-        select: { auth_account_id: true },
+        select: { auth_account_id: true, nickname: true },
       },
       photographer: {
         select: { auth_account_id: true },
@@ -593,7 +595,19 @@ export async function sendInquiry(
       },
     });
 
-    return savedMessage;
+    const notification = await createNotification(
+      {
+        accountId: photographerAccountId,
+        type: 'NEW_INQUIRY',
+        targetId: chatRoomId,
+        message: notificationMessages.newInquiry(
+          chatRoom.user?.nickname ?? '사용자',
+        ),
+      },
+      tx,
+    );
+
+    return { message: savedMessage, notification };
   });
 }
 

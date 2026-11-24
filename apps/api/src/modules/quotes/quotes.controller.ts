@@ -4,14 +4,18 @@ import type { Server } from 'socket.io';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { createQuoteSchema, quoteIdParamsSchema } from './quotes.schema.js';
 import { createQuote, getQuote } from './quotes.service.js';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 export async function createQuoteHandler(req: Request, res: Response) {
   const auth = getAuth(req);
 
   const input = createQuoteSchema.parse(req.body);
 
-  // 견적과 채팅 메시지 저장
-  const { quote, message } = await createQuote(auth.accountId, input);
+  // 견적과 채팅 메시지, 알림 저장
+  const { quote, message, notification } = await createQuote(
+    auth.accountId,
+    input,
+  );
 
   // 견적 응답 데이터 구성
   const quoteData = {
@@ -52,6 +56,8 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const io: Server = req.app.get('io');
 
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
+
+  emitNotification(io, [notification]);
 
   res.status(201).json(quoteData);
 }
