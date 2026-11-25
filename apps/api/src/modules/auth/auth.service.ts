@@ -396,6 +396,25 @@ export async function getAccount(auth: AccessTokenPayload) {
 }
 
 /**
+ * 닉네임 사용 가능 여부 (GET /auth/nickname/availability)
+ * 유저·작가 전체에서 대소문자 구분 없이 비교한다. 로그인했다면 내 닉네임은 사용 가능으로 본다
+ * 확인한 뒤 다른 사람이 먼저 쓸 수 있으므로, 저장할 때의 409(NICKNAME_ALREADY_EXISTS)도 처리해야 한다
+ */
+export async function checkNickname(
+  nickname: string,
+  accountId: string | undefined,
+) {
+  // insensitive 검색은 ILIKE라 닉네임의 _와 %가 와일드카드가 된다. 유니크 인덱스와 같은 lower()로 비교한다
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id
+    FROM auth_accounts
+    WHERE lower(nickname) = lower(${nickname})
+  `;
+
+  return { available: rows.every(({ id }) => id === accountId) };
+}
+
+/**
  * 비밀번호 변경 (PATCH /auth/password)
  * 이번 로그인을 이메일(BASIC)로 했을 때만 바꿀 수 있다 (소셜 로그인 세션은 403)
  * 바꾸면 지금 세션을 뺀 다른 로그인 세션(다른 기기·브라우저)은 모두 로그아웃시킨다

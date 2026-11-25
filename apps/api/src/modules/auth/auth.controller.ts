@@ -8,10 +8,12 @@ import {
   changePasswordSchema,
   linkProviderSchema,
   loginSchema,
+  nicknameQuerySchema,
   signupSchema,
 } from './auth.schema.js';
 import {
   changePassword,
+  checkNickname,
   getAccount,
   signup,
   login,
@@ -69,6 +71,12 @@ export async function logoutHandler(req: Request, res: Response) {
 export async function getAccountHandler(req: Request, res: Response) {
   res.set('Cache-Control', 'no-store'); // 이메일이 들어 있는 응답
   res.json(await getAccount(getAuth(req)));
+}
+
+export async function checkNicknameHandler(req: Request, res: Response) {
+  const { nickname } = nicknameQuerySchema.parse(req.query);
+  res.set('Cache-Control', 'no-store'); // 다른 사람이 가입하면 바로 바뀌는 값
+  res.json(await checkNickname(nickname, req.auth?.accountId));
 }
 
 export async function changePasswordHandler(req: Request, res: Response) {

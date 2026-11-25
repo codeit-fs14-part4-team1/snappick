@@ -98,6 +98,9 @@ export const linkProviderSchema = z.object(socialFields);
 
 export type LinkProviderInput = z.infer<typeof linkProviderSchema>;
 
+// GET /auth/nickname/availability (가입과 같은 닉네임 규칙)
+export const nicknameQuerySchema = z.object({ nickname: common.nickname });
+
 // PATCH /auth/password
 // 새 비밀번호는 가입과 같은 규칙, 현재 비밀번호는 값만 확인한다 (규칙이 바뀌기 전 비밀번호도 받기 위해)
 export const changePasswordSchema = z.strictObject(
