@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Category, Region } from '@snappick/shared';
 
 import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -41,6 +42,12 @@ export default function PhotographerBasicInfoModal({
 }: PhotographerBasicInfoModalProps) {
   // 입력 폼과 각 입력 요소의 고유 ID를 생성함
   const formId = useId();
+  const [nickname, setNickname] = useState(photographer.nickname);
+  const [nicknameTooShort, setNicknameTooShort] = useState(false);
+  const [careerError, setCareerError] = useState('');
+  const [introduction, setIntroduction] = useState(
+    photographer.introduction ?? '',
+  );
 
   // 입력값 초기화를 위해 폼 요소를 참조함
   const formRef = useRef<HTMLFormElement>(null);
@@ -185,6 +192,10 @@ export default function PhotographerBasicInfoModal({
     if (isSavingEdit) return;
 
     formRef.current?.reset();
+    setNickname(photographer.nickname);
+    setNicknameTooShort(false);
+    setCareerError('');
+    setIntroduction(photographer.introduction ?? '');
 
     // 선택한 프로필 이미지와 미리보기 상태를 초기화함
     resetSelectedImage();
@@ -367,21 +378,56 @@ export default function PhotographerBasicInfoModal({
         <div className={styles.fieldRow}>
           {/* 활동명 입력 */}
           <div className={styles.field}>
-            <label htmlFor={`${formId}-nickname`} className={styles.label}>
-              활동명 <span className={styles.requiredMark}>*</span>
-            </label>
+            <div className={styles.labelWithCount}>
+              <label htmlFor={`${formId}-nickname`} className={styles.label}>
+                활동명 <span className={styles.requiredMark}>*</span>
+              </label>
+              <p
+                id={`${formId}-nickname-count`}
+                className={styles.characterCount}
+              >
+                2~20자 · {nickname.length} / 20
+              </p>
+            </div>
 
             <input
               id={`${formId}-nickname`}
               name="nickname"
               type="text"
               className={styles.input}
-              defaultValue={photographer.nickname}
+              value={nickname}
+              onFocus={() => setNicknameTooShort(false)}
+              onBlur={(event) =>
+                setNicknameTooShort(
+                  event.currentTarget.value.trim().length === 1,
+                )
+              }
+              onChange={(event) => {
+                const input = event.currentTarget;
+                if (input.value.length > input.maxLength) {
+                  input.value = nickname;
+                  return;
+                }
+                setNickname(input.value);
+              }}
               minLength={2}
               maxLength={20}
+              aria-invalid={nicknameTooShort || undefined}
+              aria-describedby={
+                nicknameTooShort
+                  ? `${formId}-nickname-count ${formId}-nickname-error`
+                  : `${formId}-nickname-count`
+              }
               disabled={isSavingEdit}
               required
             />
+            <p
+              id={`${formId}-nickname-error`}
+              className={styles.fieldError}
+              role="alert"
+            >
+              {nicknameTooShort ? '활동명은 2자 이상 입력해 주세요.' : ''}
+            </p>
           </div>
 
           {/* 경력 입력 */}
@@ -401,30 +447,67 @@ export default function PhotographerBasicInfoModal({
                 min={0}
                 max={80}
                 step={1}
+                onFocus={() => setCareerError('')}
+                onBlur={(event) => {
+                  const { rangeOverflow, rangeUnderflow } =
+                    event.currentTarget.validity;
+                  if (rangeOverflow) {
+                    setCareerError('경력은 80년 이하로 입력해 주세요.');
+                  } else if (rangeUnderflow) {
+                    setCareerError('경력은 0년 이상으로 입력해 주세요.');
+                  }
+                }}
                 disabled={isSavingEdit}
                 required
-                aria-describedby={`${formId}-career-unit`}
+                aria-invalid={Boolean(careerError) || undefined}
+                aria-describedby={
+                  careerError
+                    ? `${formId}-career-unit ${formId}-career-error`
+                    : `${formId}-career-unit`
+                }
               />
 
               <span id={`${formId}-career-unit`} className={styles.careerUnit}>
                 년
               </span>
             </div>
+            <p
+              id={`${formId}-career-error`}
+              className={styles.fieldError}
+              role="alert"
+            >
+              {careerError}
+            </p>
           </div>
         </div>
 
         {/* 상세 소개 입력 영역 */}
         <div className={styles.field}>
-          <label htmlFor={`${formId}-introduction`} className={styles.label}>
-            상세 소개 <span className={styles.requiredMark}>*</span>
-          </label>
+          <div className={styles.labelWithCount}>
+            <label htmlFor={`${formId}-introduction`} className={styles.label}>
+              상세 소개 <span className={styles.requiredMark}>*</span>
+            </label>
+            <p
+              id={`${formId}-introduction-count`}
+              className={styles.characterCount}
+            >
+              {introduction.length} / 1000
+            </p>
+          </div>
 
           <textarea
             id={`${formId}-introduction`}
             name="introduction"
             className={styles.textarea}
-            defaultValue={photographer.introduction ?? ''}
+            value={introduction}
+            onChange={(event) => {
+              const textarea = event.currentTarget;
+              const value = textarea.value.slice(0, textarea.maxLength);
+              if (textarea.value !== value) textarea.value = value;
+              setIntroduction(value);
+            }}
             maxLength={1000}
+            aria-describedby={`${formId}-introduction-count`}
             rows={5}
             disabled={isSavingEdit}
           />
@@ -440,9 +523,9 @@ export default function PhotographerBasicInfoModal({
             {/* 적용된 활동 지역과 지역 추가 버튼을 표시함 */}
             <div className={styles.regionChips}>
               {selectedRegions.map((region) => (
-                <span key={region} className={styles.regionChip}>
+                <Chip as="span" key={region} data-selected="true">
                   {RegionLabel[region as keyof typeof RegionLabel] ?? region}
-                </span>
+                </Chip>
               ))}
 
               <button
@@ -533,11 +616,8 @@ export default function PhotographerBasicInfoModal({
               const isSelected = selectedCategories.includes(category);
 
               return (
-                <button
+                <Chip
                   key={category}
-                  type="button"
-                  className={styles.categoryChip}
-                  data-selected={isSelected}
                   aria-pressed={isSelected}
                   onClick={() =>
                     setSelectedCategories((prev) =>
@@ -549,7 +629,7 @@ export default function PhotographerBasicInfoModal({
                   disabled={isSavingEdit}
                 >
                   {CategoryLabel[category]}
-                </button>
+                </Chip>
               );
             })}
           </div>

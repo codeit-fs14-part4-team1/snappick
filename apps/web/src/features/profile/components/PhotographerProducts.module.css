@@ -183,12 +183,15 @@
 
 /*상품 추가 버튼을 작게 표시 */
 .addProductButton > button {
-  height: 36px;
-  min-height: 36px;
+  display: flex;
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
   padding: 0 14px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border, #e5e5e5);
   border-radius: 8px;
-  background-color: var(--color-bg-subtle);
+  background: var(--color-bg-base, #fff);
   color: var(--color-text-primary);
   font-family: inherit;
   font-size: 13px;
@@ -288,11 +291,8 @@
     white-space: normal;
   }
 
-  /* 모바일 상품 추가 버튼 크기 조정 */
+  /* 모바일 상품 추가 버튼 글자 크기 */
   .addProductButton > button {
-    height: 34px;
-    min-height: 34px;
-    padding: 0 10px;
     font-size: 12px;
   }
 }

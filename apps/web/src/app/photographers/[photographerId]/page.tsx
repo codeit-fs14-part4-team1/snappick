@@ -614,7 +614,11 @@ export default function PhotographerProfilePage() {
         CategoryLabel[category as keyof typeof CategoryLabel] ?? category,
     ),
     careerLabel:
-      activeProfile.career === null ? null : `경력 ${activeProfile.career}년`,
+      activeProfile.career === null
+        ? null
+        : activeProfile.career === 0
+          ? '경력 1년 이하'
+          : `경력 ${activeProfile.career}년`,
 
     // 활동 지역을 공통 한글 라벨로 변환함
     regions: activeProfile.regions.map(

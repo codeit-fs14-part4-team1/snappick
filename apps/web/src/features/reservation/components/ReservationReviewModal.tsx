@@ -178,7 +178,12 @@ export default function ReservationReviewModal({
 
         {/* 리뷰 내용 입력 */}
         <div className={styles.field}>
-          <label htmlFor={`${id}-comment`}>리뷰 내용</label>
+          <div className={styles.labelWithCount}>
+            <label htmlFor={`${id}-comment`}>리뷰 내용</label>
+            <p id={`${id}-count`} className={styles.date}>
+              {comment.length} / 200
+            </p>
+          </div>
 
           <textarea
             id={`${id}-comment`}
@@ -191,10 +196,6 @@ export default function ReservationReviewModal({
             placeholder="촬영 분위기, 결과물 만족도 등을 자유롭게 남겨 주세요."
             aria-describedby={`${id}-count`}
           />
-
-          <p id={`${id}-count`} className={styles.date}>
-            {comment.length} / 200
-          </p>
         </div>
       </form>
     </Modal>

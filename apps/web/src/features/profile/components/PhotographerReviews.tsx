@@ -314,6 +314,7 @@ export default function PhotographerReviews({
                     <textarea
                       id={`edit-reply-${review.reviewId}`}
                       aria-label="작가 답글 수정"
+                      aria-describedby={`edit-reply-count-${review.reviewId}`}
                       className={styles.replyTextarea}
                       value={replyComment}
                       onChange={(event) => setReplyComment(event.target.value)}
@@ -325,6 +326,12 @@ export default function PhotographerReviews({
 
                     {/* 답글 수정 취소 및 완료 버튼을 표시함 */}
                     <div className={styles.replyEditorFooter}>
+                      <p
+                        id={`edit-reply-count-${review.reviewId}`}
+                        className={styles.replyCount}
+                      >
+                        {replyComment.length} / 1000
+                      </p>
                       <div className={styles.replyEditorButtons}>
                         <button
                           type="button"
@@ -409,7 +416,7 @@ export default function PhotographerReviews({
                   {replyReviewId === review.reviewId ? (
                     // 답글 작성 중에는 입력 영역을 표시함
                     <form
-                      className={styles.replyEditor}
+                      className={`${styles.replyEditor} ${styles.replyCreateEditor}`}
                       onSubmit={(event) => {
                         event.preventDefault();
                         void handleSubmitReply();
@@ -419,6 +426,7 @@ export default function PhotographerReviews({
                       <textarea
                         id={`reply-${review.reviewId}`}
                         aria-label="작가 답글 작성"
+                        aria-describedby={`reply-count-${review.reviewId}`}
                         className={styles.replyTextarea}
                         value={replyComment}
                         onChange={(event) =>
@@ -432,6 +440,12 @@ export default function PhotographerReviews({
 
                       {/* 입력창 오른쪽 하단에 취소 및 등록 버튼을 표시함 */}
                       <div className={styles.replyEditorFooter}>
+                        <p
+                          id={`reply-count-${review.reviewId}`}
+                          className={styles.replyCount}
+                        >
+                          {replyComment.length} / 1000
+                        </p>
                         <div className={styles.replyEditorButtons}>
                           <button
                             type="button"

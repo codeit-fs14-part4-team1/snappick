@@ -44,8 +44,8 @@
   line-height: 22px;
 }
 
-.required,
 .meta {
+  color: var(--color-text-tertiary);
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
@@ -55,40 +55,21 @@
   color: var(--color-danger);
 }
 
-.meta {
-  color: var(--color-text-tertiary);
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.chip {
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 20px;
+.chips > button {
   white-space: nowrap;
-  cursor: pointer;
 }
 
-.chip[aria-pressed='true'] {
-  background: var(--color-text-primary);
-  color: var(--color-bg-base);
-}
-
-.chip:disabled {
+.chips > button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.chip:focus-visible,
 .keywordRemove:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;

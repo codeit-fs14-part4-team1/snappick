@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import Chip from '@/components/ui/Chip';
 import { RegionLabel } from '@/constants/enum-labels';
 import { Region } from '@snappick/shared';
 import styles from './InquiryForm.module.css';
@@ -68,14 +69,13 @@ export default function LocationPicker() {
               <legend>지역</legend>
               <div className={styles.chips}>
                 {regions.map((value) => (
-                  <button
+                  <Chip
                     key={value}
-                    type="button"
                     aria-pressed={region === value}
                     onClick={() => setRegion(region === value ? '' : value)}
                   >
                     {RegionLabel[value]}
-                  </button>
+                  </Chip>
                 ))}
               </div>
             </fieldset>

@@ -64,7 +64,7 @@ export type CreateQuoteInput = {
   locationLng: number;
   durationMinutes: number;
   price: number;
-  photoCount?: number | null;
+  photoCount: number;
   includesOriginal: boolean;
   additionalNotice?: string | null;
 };
@@ -98,6 +98,8 @@ export function createQuoteInput(
 ): CreateQuoteInput {
   if (draft.locationLat === null || draft.locationLng === null)
     throw new Error('지도에서 촬영 장소를 선택해 주세요.');
+  if (draft.photoCount === null)
+    throw new Error('제공 사진 수를 입력해 주세요.');
   return {
     chatRoomId: roomId,
     ...(shootingCaseId && { shootingCaseId }),

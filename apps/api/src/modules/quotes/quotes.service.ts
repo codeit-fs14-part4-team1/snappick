@@ -223,7 +223,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         location_lng: input.locationLng,
         duration_minutes: input.durationMinutes,
         price: input.price,
-        photo_count: input.photoCount ?? null,
+        photo_count: input.photoCount,
         includes_original: input.includesOriginal,
         additional_notice: input.additionalNotice?.trim() || null,
         common_notice: product

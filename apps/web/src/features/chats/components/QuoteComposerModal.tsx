@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useId, useRef, useState, type FormEventHandler } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
 import NaverMapPicker from '@/features/map/components/NaverMapPicker';
 import SchedulePicker from './SchedulePicker';
 import TimePicker from './TimePicker';
@@ -23,10 +24,6 @@ export default function QuoteComposerModal({ open, ...props }: Props) {
   return open ? <QuoteDialog {...props} /> : null;
 }
 
-function isValidInteger(value: number, min = 0) {
-  return Number.isInteger(value) && value >= min && value <= 2147483647;
-}
-
 function QuoteDialog({
   onClose,
   products,
@@ -34,11 +31,17 @@ function QuoteDialog({
   initialQuote,
 }: Omit<Props, 'open'>) {
   const id = useId();
+  const [durationError, setDurationError] = useState('');
+  const [priceError, setPriceError] = useState('');
+  const [photoCountError, setPhotoCountError] = useState('');
   const [referenceDate] = useState(() =>
     new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
   );
   const [productId, setProductId] = useState('');
   const [quoteName, setQuoteName] = useState(initialQuote?.quoteName ?? '');
+  const [additionalNotice, setAdditionalNotice] = useState(
+    initialQuote?.additionalNotice ?? '',
+  );
   const [price, setPrice] = useState(
     initialQuote ? String(initialQuote.price) : '',
   );
@@ -76,13 +79,17 @@ function QuoteDialog({
   const amount = Number(price);
   const minutesValue = Number(duration) * 60;
   const minutes = Math.round(minutesValue);
-  const validDuration =
-    duration.trim() !== '' &&
-    Number.isFinite(minutesValue) &&
-    Math.abs(minutesValue - minutes) <= 0.000001 &&
-    minutes > 0;
-  const count = photoCount === '' ? null : Number(photoCount);
-  const validName = name.length > 0 && name.length <= 30;
+  const hasFractionalMinute = Math.abs(minutesValue - minutes) > 0.000001;
+  const hasDuration = duration.trim() !== '' && Number.isFinite(minutesValue);
+  const durationInRange = minutesValue >= 60 && minutesValue <= 2_880;
+  const durationValidation =
+    !hasDuration || !durationInRange
+      ? '촬영 시간은 1~48시간 범위로 입력해 주세요.'
+      : hasFractionalMinute
+        ? '촬영 시간은 1분 단위로 입력해 주세요.'
+        : '';
+  const count = Number(photoCount);
+  const validName = name.length > 0 && name.length <= 50;
   const validDate =
     /^\d{4}-\d{2}-\d{2}$/.test(date) &&
     Number.isFinite(Date.parse(`${date}T00:00:00Z`)) &&
@@ -98,26 +105,34 @@ function QuoteDialog({
     Number.isFinite(locationLng) &&
     locationLng >= -180 &&
     locationLng <= 180;
-  const validNumbers =
-    /^\d+$/.test(price) &&
-    isValidInteger(amount) &&
-    validDuration &&
-    (count === null || (/^\d+$/.test(photoCount) && isValidInteger(count, 1)));
+  const validPrice = /^\d+$/.test(price) && amount <= 100_000_000;
+  const priceValidation = validPrice
+    ? ''
+    : '0~100,000,000원으로 입력해 주세요.';
+  const photoCountValidation =
+    Number.isInteger(count) && count >= 1 && count <= 10_000
+      ? ''
+      : '제공 사진 수는 1~10,000장으로 입력해 주세요.';
   const canSubmit =
     Boolean(initialQuote || selectedProduct) &&
-    validName &&
-    validDate &&
-    validTime &&
-    validLocation &&
-    validNumbers &&
+    Boolean(
+      name && date && startTime && location.trim() && price && duration,
+    ) &&
+    photoCount !== '' &&
+    !priceError &&
+    !durationError &&
+    !photoCountError &&
     includesOriginal !== null;
 
   function selectProduct(product: QuoteProduct) {
     setProductId(product.id);
     setQuoteName(product.name);
     setPrice(String(product.price));
+    setPriceError('');
     setDuration(String(product.durationMinutes / 60));
+    setDurationError('');
     setPhotoCount(String(product.photoCount));
+    setPhotoCountError('');
     setIncludesOriginal(product.includesOriginal);
     setError('');
   }
@@ -150,7 +165,7 @@ function QuoteDialog({
           }
           const data = new FormData(event.currentTarget);
           if (!validName) {
-            setError('견적명은 1~30자로 입력해 주세요.');
+            setError('견적명은 1~50자로 입력해 주세요.');
             return;
           }
           if (!validDate) {
@@ -165,12 +180,10 @@ function QuoteDialog({
             setError('지도에서 촬영 장소를 선택해 주세요.');
             return;
           }
-          if (!validDuration) {
-            setError('촬영 시간은 0분보다 큰 분 단위로 입력해 주세요.');
-            return;
-          }
-          if (!validNumbers) {
-            setError('금액·촬영 시간·사진 수를 올바르게 입력해 주세요.');
+          if (durationValidation || priceValidation || photoCountValidation) {
+            setDurationError(durationValidation);
+            setPriceError(priceValidation);
+            setPhotoCountError(photoCountValidation);
             return;
           }
           if (includesOriginal === null) {
@@ -242,27 +255,35 @@ function QuoteDialog({
         )}
 
         <fieldset className={styles.fields} disabled={pending}>
-          <label className={styles.field}>
-            <span>
-              견적명 <RequiredMark />
-            </span>
+          <div className={styles.field}>
+            <div className={styles.nameHeading}>
+              <label htmlFor={`${id}-quote-name`}>
+                견적명 <RequiredMark />
+              </label>
+              <span id={`${id}-quote-name-count`} className={styles.nameHelp}>
+                {quoteName.length} / 50
+              </span>
+            </div>
             <input
+              id={`${id}-quote-name`}
               name="quoteName"
               value={quoteName}
               onChange={(event) => setQuoteName(event.target.value)}
               required
-              maxLength={30}
-              aria-describedby={`${id}-quote-name-help`}
+              maxLength={50}
+              aria-describedby={
+                initialQuote
+                  ? `${id}-quote-name-count`
+                  : `${id}-quote-name-help ${id}-quote-name-count`
+              }
               placeholder="견적명을 입력해 주세요"
             />
-            <span id={`${id}-quote-name-help`} className={styles.nameHelp}>
-              {initialQuote
-                ? '이전 견적명을 불러왔어요'
-                : '다른 견적과 구분되게 고칠 수 있어요'}
-              {' · '}
-              {quoteName.length}/30
-            </span>
-          </label>
+            {!initialQuote && (
+              <span id={`${id}-quote-name-help`} className={styles.nameHelp}>
+                다른 견적과 구분되게 고칠 수 있어요
+              </span>
+            )}
+          </div>
           <div className={styles.grid}>
             <label className={styles.field}>
               <span>
@@ -272,8 +293,27 @@ function QuoteDialog({
                 unit="원"
                 required
                 value={price}
-                onChange={setPrice}
+                onChange={(value) => {
+                  setPrice(value);
+                  setPriceError('');
+                }}
+                invalid={Boolean(priceError)}
+                onBlur={() => setPriceError(price ? priceValidation : '')}
+                describedBy={priceError ? `${id}-price-error` : undefined}
+                onInvalid={(event) => {
+                  if (event.currentTarget.validity.valueMissing) {
+                    event.preventDefault();
+                    setPriceError('견적 금액을 입력해 주세요.');
+                  }
+                }}
               />
+              <span
+                id={`${id}-price-error`}
+                className={styles.fieldError}
+                role="alert"
+              >
+                {priceError}
+              </span>
             </label>
             <label className={styles.field}>
               <span>
@@ -284,9 +324,23 @@ function QuoteDialog({
                 decimal
                 required
                 value={duration}
-                onChange={setDuration}
-                invalid={duration !== '' && !validDuration}
+                onChange={(value) => {
+                  setDuration(value);
+                  setDurationError('');
+                }}
+                invalid={Boolean(durationError)}
+                onBlur={() =>
+                  setDurationError(duration ? durationValidation : '')
+                }
+                describedBy={durationError ? `${id}-duration-error` : undefined}
               />
+              <span
+                id={`${id}-duration-error`}
+                className={styles.fieldError}
+                role="alert"
+              >
+                {durationError}
+              </span>
             </label>
             <div className={styles.field}>
               <span>
@@ -344,13 +398,32 @@ function QuoteDialog({
 
         <fieldset className={styles.fields} disabled={pending}>
           <label className={styles.field}>
-            제공 사진
+            <span>
+              제공 사진 <RequiredMark />
+            </span>
             <QuoteNumberInput
               unit="장"
+              required
               value={photoCount}
-              onChange={setPhotoCount}
-              placeholder="예) 40"
+              onChange={(value) => {
+                setPhotoCount(value);
+                setPhotoCountError('');
+              }}
+              onBlur={() =>
+                setPhotoCountError(photoCount ? photoCountValidation : '')
+              }
+              invalid={Boolean(photoCountError)}
+              describedBy={
+                photoCountError ? `${id}-photo-count-error` : undefined
+              }
             />
+            <span
+              id={`${id}-photo-count-error`}
+              className={styles.fieldError}
+              role="alert"
+            >
+              {photoCountError}
+            </span>
           </label>
           <div
             className={styles.original}
@@ -360,31 +433,39 @@ function QuoteDialog({
             <span id={`${id}-original`}>
               원본 제공 여부 <RequiredMark />
             </span>
-            <button
-              type="button"
+            <Chip
               aria-pressed={includesOriginal === true}
               onClick={() => setIncludesOriginal(true)}
             >
               제공
-            </button>
-            <button
-              type="button"
+            </Chip>
+            <Chip
               aria-pressed={includesOriginal === false}
               onClick={() => setIncludesOriginal(false)}
             >
               미제공
-            </button>
+            </Chip>
           </div>
-          <div>
-            <label className={styles.field}>
-              추가 안내사항 (선택)
-              <input
-                name="additionalNotice"
-                defaultValue={initialQuote?.additionalNotice ?? ''}
-                maxLength={1000}
-                placeholder="추가로 안내할 내용을 입력해 주세요"
-              />
-            </label>
+          <div className={styles.field}>
+            <div className={styles.nameHeading}>
+              <label htmlFor={`${id}-additional-notice`}>
+                추가 안내사항 (선택)
+              </label>
+              <span id={`${id}-notice-count`} className={styles.nameHelp}>
+                {additionalNotice.length} / 1000
+              </span>
+            </div>
+            <input
+              id={`${id}-additional-notice`}
+              name="additionalNotice"
+              value={additionalNotice}
+              onChange={(event) =>
+                setAdditionalNotice(event.currentTarget.value)
+              }
+              maxLength={1000}
+              aria-describedby={`${id}-notice-count`}
+              placeholder="추가로 안내할 내용을 입력해 주세요"
+            />
           </div>
           <div className={styles.notice}>
             <div className={styles.noticeHeading}>
@@ -454,16 +535,20 @@ function QuoteNumberInput({
   unit,
   decimal = false,
   required = false,
-  placeholder,
   invalid,
+  describedBy,
+  onInvalid,
+  onBlur,
 }: {
   value: string;
   onChange: (value: string) => void;
   unit: '원' | '시간' | '장';
   decimal?: boolean;
   required?: boolean;
-  placeholder?: string;
   invalid?: boolean;
+  describedBy?: string;
+  onInvalid?: FormEventHandler<HTMLInputElement>;
+  onBlur?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const display =
@@ -480,11 +565,15 @@ function QuoteNumberInput({
         value={display}
         required={required}
         aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        onInvalid={onInvalid}
         maxLength={24}
-        pattern={decimal ? '[0-9]+(?:\\.[0-9]+)?' : '[0-9,]+'}
-        placeholder={placeholder}
+        pattern={decimal ? undefined : '[0-9,]+'}
         onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onBlur={() => {
+          setFocused(false);
+          onBlur?.();
+        }}
         onChange={(event) => {
           const next = event.target.value.replaceAll(',', '');
           if ((decimal ? /^\d*(\.\d*)?$/ : /^\d*$/).test(next)) onChange(next);

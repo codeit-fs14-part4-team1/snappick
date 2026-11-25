@@ -136,6 +136,13 @@
   gap: 8px;
 }
 
+.labelWithCount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+}
+
 .field label {
   font-size: 14px;
   font-weight: 700;
