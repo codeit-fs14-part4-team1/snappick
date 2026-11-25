@@ -122,7 +122,9 @@ export default function QuoteMessageCard({
         )}
         {isReserved && (
           <Button fullWidth disabled>
-            결제 완료 · 예약 확정
+            {savedQuote.reservationStatus === 'CANCELED'
+              ? '예약이 취소된 견적이에요'
+              : '결제 완료 · 예약 확정'}
           </Button>
         )}
         {isPaymentPending && (
