@@ -298,7 +298,12 @@ export async function getQuote(accountId: string, quoteId: string) {
             select: { auth_account_id: true },
           },
           photographer: {
-            select: { auth_account_id: true },
+            select: {
+              auth_account_id: true,
+              representativePhoto: {
+                select: { photo: { select: { storage_location: true } } },
+              },
+            },
           },
         },
       },

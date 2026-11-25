@@ -37,6 +37,7 @@ export type Quote = {
   isLatest: boolean;
   reservationStatus?: ReservationStatus | null;
   reservationId?: string | null;
+  representativeImageUrl?: string | null;
   quoteName: string;
   shootAt: string;
   location: string;

@@ -273,6 +273,7 @@ export default function PaymentFlow({
             quote={toQuoteDraft(quote)}
             photographerName={partner?.nickname ?? '담당 작가'}
             profileImageUrl={partner?.profileImageUrl ?? ''}
+            representativeImageUrl={quote.representativeImageUrl ?? null}
             onPay={pay}
             pending={pending}
             revisedQuoteHref={

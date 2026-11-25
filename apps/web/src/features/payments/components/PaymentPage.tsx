@@ -35,6 +35,7 @@ export default function PaymentPage({
   quote,
   photographerName,
   profileImageUrl,
+  representativeImageUrl,
   onPay,
   pending,
   revisedQuoteHref,
@@ -43,6 +44,7 @@ export default function PaymentPage({
   quote: QuoteDraft;
   photographerName: string;
   profileImageUrl: string;
+  representativeImageUrl: string | null;
   onPay: () => Promise<void>;
   pending: boolean;
   revisedQuoteHref?: string;
@@ -69,9 +71,9 @@ export default function PaymentPage({
           <section className={styles.panel} aria-labelledby="order-title">
             <h2 id="order-title">주문 내역</h2>
             <div className={styles.product}>
-              {profileImageUrl ? (
+              {representativeImageUrl ? (
                 <Image
-                  src={profileImageUrl}
+                  src={representativeImageUrl}
                   alt=""
                   width={96}
                   height={72}

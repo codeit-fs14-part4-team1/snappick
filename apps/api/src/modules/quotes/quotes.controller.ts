@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { Server } from 'socket.io';
 
 import { getAuth } from '../../middlewares/authenticate.js';
+import { toImageUrl } from '../../utils/asset-url.js';
 import { createQuoteSchema, quoteIdParamsSchema } from './quotes.schema.js';
 import { createQuote, getQuote } from './quotes.service.js';
 import { emitNotification } from '../notifications/notifications.emit.js';
@@ -78,6 +79,10 @@ export async function getQuoteHandler(req: Request, res: Response) {
     isLatest: quote.shooting_case.quotes[0]?.id === quote.id,
     reservationStatus: quote.reservation?.status ?? null,
     reservationId: quote.reservation?.id ?? null,
+    representativeImageUrl: toImageUrl(
+      quote.chat_room?.photographer?.representativePhoto?.photo
+        .storage_location ?? null,
+    ),
     quoteName: quote.quote_name,
     shootAt: quote.shoot_at,
     location: quote.location,
