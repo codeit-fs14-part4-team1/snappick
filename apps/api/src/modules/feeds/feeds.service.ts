@@ -45,7 +45,11 @@ export async function getPhotoDetail(photoId: string, viewer: Viewer) {
     where: { id: photoId },
     include: {
       photographer: {
-        select: { id: true, nickname: true, profile_image_url: true },
+        select: {
+          id: true,
+          auth_account: { select: { nickname: true } },
+          profile_image_url: true,
+        },
       },
       photoKeyword: { select: { keyword: true }, orderBy: { id: 'asc' } },
       _count: { select: { photoLike: true } },
@@ -90,7 +94,7 @@ export async function getPhotoDetail(photoId: string, viewer: Viewer) {
     createdAt: photo.created_at.toISOString(),
     photographer: {
       id: photographer.id,
-      nickname: photographer.nickname,
+      nickname: photographer.auth_account.nickname,
       profileImageUrl: toImageUrl(photographer.profile_image_url),
       ratingAvg: roundRating(reviews._avg.rating),
       reviewCount: reviews._count._all,
@@ -251,7 +255,9 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
         { description: { contains: keyword, mode: 'insensitive' } },
         {
           photographer: {
-            nickname: { contains: keyword, mode: 'insensitive' },
+            auth_account: {
+              nickname: { contains: keyword, mode: 'insensitive' },
+            },
           },
         },
         { photoKeyword: { some: { keyword: { contains: keyword } } } },
@@ -298,7 +304,11 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
         width: true,
         height: true,
         photographer: {
-          select: { id: true, nickname: true, profile_image_url: true },
+          select: {
+            id: true,
+            auth_account: { select: { nickname: true } },
+            profile_image_url: true,
+          },
         },
         _count: { select: { photoLike: true } },
       },
@@ -319,7 +329,7 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
               height: photo.height,
               photographer: {
                 id: photo.photographer.id,
-                nickname: photo.photographer.nickname,
+                nickname: photo.photographer.auth_account.nickname,
                 profileImageUrl: toImageUrl(
                   photo.photographer.profile_image_url,
                 ),

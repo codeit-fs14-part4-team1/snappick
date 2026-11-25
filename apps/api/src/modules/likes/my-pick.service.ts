@@ -28,7 +28,12 @@ export async function getLikedPhotos(userId: string, query: PageQuery) {
             storage_location: true,
             width: true,
             height: true,
-            photographer: { select: { id: true, nickname: true } },
+            photographer: {
+              select: {
+                id: true,
+                auth_account: { select: { nickname: true } },
+              },
+            },
           },
         },
       },
@@ -43,7 +48,7 @@ export async function getLikedPhotos(userId: string, query: PageQuery) {
       height: photo.height,
       photographer: {
         id: photo.photographer.id,
-        nickname: photo.photographer.nickname,
+        nickname: photo.photographer.auth_account.nickname,
       },
       likedAt: created_at.toISOString(),
     })),
@@ -74,7 +79,7 @@ export async function getSavedPhotographers(userId: string, query: PageQuery) {
         photographer: {
           select: {
             id: true,
-            nickname: true,
+            auth_account: { select: { nickname: true } },
             profile_image_url: true,
             categories: true,
             regions: true,
@@ -90,7 +95,7 @@ export async function getSavedPhotographers(userId: string, query: PageQuery) {
   return {
     items: rows.slice(0, query.limit).map(({ created_at, photographer }) => ({
       photographerId: photographer.id,
-      nickname: photographer.nickname,
+      nickname: photographer.auth_account.nickname,
       profileImageUrl: toImageUrl(photographer.profile_image_url),
       coverImageUrl: toImageUrl(
         photographer.representativePhoto?.photo.storage_location ?? null,

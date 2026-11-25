@@ -6,10 +6,19 @@ import {
 } from './auth.cookies.js';
 import {
   changePasswordSchema,
+  linkProviderSchema,
   loginSchema,
+  nicknameQuerySchema,
   signupSchema,
 } from './auth.schema.js';
-import { changePassword, getAccount, signup, login } from './auth.service.js';
+import {
+  changePassword,
+  checkNickname,
+  getAccount,
+  signup,
+  login,
+  linkProvider,
+} from './auth.service.js';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { HttpError } from '../../utils/http-error.js';
 import { revokeSession, rotateRefreshToken } from './token.service.js';
@@ -64,9 +73,21 @@ export async function getAccountHandler(req: Request, res: Response) {
   res.json(await getAccount(getAuth(req)));
 }
 
+export async function checkNicknameHandler(req: Request, res: Response) {
+  const { nickname } = nicknameQuerySchema.parse(req.query);
+  res.set('Cache-Control', 'no-store'); // 다른 사람이 가입하면 바로 바뀌는 값
+  res.json(await checkNickname(nickname, req.auth?.accountId));
+}
+
 export async function changePasswordHandler(req: Request, res: Response) {
   const input = changePasswordSchema.parse(req.body);
   // 지금 세션은 유지하기 위해 refresh token 쿠키를 함께 넘긴다 (쿠키 path가 /auth라 이 요청에 붙어 온다)
   await changePassword(getAuth(req), input, readRefreshCookie(req));
+  res.status(204).end();
+}
+
+export async function linkProviderHandler(req: Request, res: Response) {
+  const input = linkProviderSchema.parse(req.body);
+  await linkProvider(getAuth(req).accountId, input);
   res.status(204).end();
 }

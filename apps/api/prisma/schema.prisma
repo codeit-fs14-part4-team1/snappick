@@ -22,6 +22,9 @@ enum AccountType {
 model auth_accounts {
   id           String      @id @default(uuid(7)) @db.Uuid
   account_type AccountType
+  // 유저·작가 공통 닉네임. 대소문자를 구분하지 않고 전체에서 중복될 수 없다
+  // lower(nickname) unique 인덱스는 Prisma로 표현할 수 없어 migration SQL에만 있다 (auth_accounts_nickname_lower_key)
+  nickname     String
   created_at   DateTime    @default(now())
   updated_at   DateTime    @updatedAt
 
@@ -80,7 +83,6 @@ model auth_refresh_tokens {
 model users {
   id                String   @id @default(uuid(7)) @db.Uuid
   auth_account_id   String   @unique @db.Uuid
-  nickname          String
   profile_image_url String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
@@ -101,7 +103,6 @@ model photographers {
   id                String     @id @default(uuid(7)) @db.Uuid
   auth_account_id   String     @unique @db.Uuid
   profile_image_url String?
-  nickname          String
   career            Int?
   regions           Region[]   @default([])
   categories        Category[] @default([])

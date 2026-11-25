@@ -21,7 +21,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         select: {
           id: true,
           auth_account_id: true,
-          nickname: true,
+          auth_account: { select: { nickname: true } },
         },
       },
     },
@@ -239,7 +239,9 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         accountId: recipientAccountId,
         type: 'NEW_QUOTE',
         targetId: input.chatRoomId,
-        message: notificationMessages.newQuote(photographer.nickname),
+        message: notificationMessages.newQuote(
+          photographer.auth_account.nickname,
+        ),
       },
       tx,
     );

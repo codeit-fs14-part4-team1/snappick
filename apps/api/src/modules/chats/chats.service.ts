@@ -45,6 +45,7 @@ export async function createChat(accountId: string, photographerId: string) {
     where: {
       id: photographerId,
     },
+    include: { auth_account: { select: { nickname: true } } },
   });
 
   if (!photographer) {
@@ -58,7 +59,7 @@ export async function createChat(accountId: string, photographerId: string) {
   //작가 프로필 완료 여부 조회
   if (
     !photographer.profile_image_url?.trim() ||
-    !photographer.nickname.trim() ||
+    !photographer.auth_account.nickname.trim() ||
     !photographer.introduction?.trim() ||
     photographer.regions.length === 0 ||
     photographer.categories.length === 0
@@ -183,14 +184,14 @@ export async function getChats(accountId: string) {
       user: {
         select: {
           id: true,
-          nickname: true,
+          auth_account: { select: { nickname: true } },
           profile_image_url: true,
         },
       },
       photographer: {
         select: {
           id: true,
-          nickname: true,
+          auth_account: { select: { nickname: true } },
           profile_image_url: true,
         },
       },
@@ -227,7 +228,7 @@ export async function getChats(accountId: string) {
       id: chat.id,
       partner: {
         id: partner?.id ?? null,
-        nickname: partner?.nickname ?? null,
+        nickname: partner?.auth_account.nickname ?? null,
         profileImageUrl: partner?.profile_image_url ?? null,
         isWithdrawn: partner === null,
       },
@@ -258,10 +259,16 @@ export async function sendMessage(
     },
     include: {
       user: {
-        select: { auth_account_id: true, nickname: true },
+        select: {
+          auth_account_id: true,
+          auth_account: { select: { nickname: true } },
+        },
       },
       photographer: {
-        select: { auth_account_id: true, nickname: true },
+        select: {
+          auth_account_id: true,
+          auth_account: { select: { nickname: true } },
+        },
       },
     },
   });
@@ -321,7 +328,7 @@ export async function sendMessage(
       {
         recipientAccountId,
         chatRoomId,
-        senderName: sender?.nickname ?? '상대방',
+        senderName: sender?.auth_account.nickname ?? '상대방',
         isRecipientViewing: viewerIds.includes(recipientAccountId),
       },
       tx,
@@ -518,7 +525,10 @@ export async function sendInquiry(
     },
     include: {
       user: {
-        select: { auth_account_id: true, nickname: true },
+        select: {
+          auth_account_id: true,
+          auth_account: { select: { nickname: true } },
+        },
       },
       photographer: {
         select: { auth_account_id: true },
@@ -603,7 +613,7 @@ export async function sendInquiry(
         type: 'NEW_INQUIRY',
         targetId: chatRoomId,
         message: notificationMessages.newInquiry(
-          chatRoom.user?.nickname ?? '사용자',
+          chatRoom.user?.auth_account.nickname ?? '사용자',
         ),
       },
       tx,

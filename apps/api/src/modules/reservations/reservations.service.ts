@@ -139,7 +139,11 @@ export async function createReservation(
       pg_provider: true,
       user: { select: { auth_account_id: true } },
       photographer: {
-        select: { id: true, nickname: true, auth_account_id: true },
+        select: {
+          id: true,
+          auth_account: { select: { nickname: true } },
+          auth_account_id: true,
+        },
       },
       reservation: { select: { id: true } },
       quote: {
@@ -259,7 +263,7 @@ export async function createReservation(
 
     return {
       reservationId: reservation.id,
-      photographerNickname: photographer.nickname,
+      photographerNickname: photographer.auth_account.nickname,
       productName: quote.quote_name,
       shootAt: reservation.shoot_at,
       location: reservation.location,
@@ -324,9 +328,19 @@ export async function getReservationDetail(
           location_lng: true,
         },
       },
-      user: { select: { id: true, nickname: true, profile_image_url: true } },
+      user: {
+        select: {
+          id: true,
+          auth_account: { select: { nickname: true } },
+          profile_image_url: true,
+        },
+      },
       photographer: {
-        select: { id: true, nickname: true, profile_image_url: true },
+        select: {
+          id: true,
+          auth_account: { select: { nickname: true } },
+          profile_image_url: true,
+        },
       },
       // 가장 최근 취소 요청 1건
       reservation_cancel_request: {
@@ -433,7 +447,7 @@ export async function getReservationDetail(
       ...base,
       photographer: photographer && {
         photographerId: photographer.id,
-        nickname: photographer.nickname,
+        nickname: photographer.auth_account.nickname,
         profileImageUrl: toImageUrl(photographer.profile_image_url),
       },
       ...cancel,
@@ -445,7 +459,7 @@ export async function getReservationDetail(
     ...base,
     user: user && {
       userId: user.id,
-      nickname: user.nickname,
+      nickname: user.auth_account.nickname,
       profileImageUrl: toImageUrl(user.profile_image_url),
     },
     ...cancel,
@@ -473,7 +487,7 @@ export async function createCancelReservation(
         user: {
           select: {
             auth_account_id: true,
-            nickname: true,
+            auth_account: { select: { nickname: true } },
           },
         },
         status: true,
@@ -590,7 +604,7 @@ export async function createCancelReservation(
             type: 'CANCEL_REQUESTED',
             targetId: reservationId,
             message: notificationMessages.cancelRequested(
-              reservation.user?.nickname ?? '사용자',
+              reservation.user?.auth_account.nickname ?? '사용자',
             ),
           },
           tx,
@@ -862,13 +876,13 @@ export async function getReservation(
         },
         user: {
           select: {
-            nickname: true,
+            auth_account: { select: { nickname: true } },
             profile_image_url: true,
           },
         },
         photographer: {
           select: {
-            nickname: true,
+            auth_account: { select: { nickname: true } },
             profile_image_url: true,
           },
         },
@@ -896,7 +910,7 @@ export async function getReservation(
         reservationId: reservation.id,
         name: reservation.quote?.quote_name ?? null,
         counterpart: other && {
-          nickname: other.nickname,
+          nickname: other.auth_account.nickname,
           profileImageUrl: toImageUrl(other.profile_image_url),
         },
         status: reservation.status,
@@ -1006,7 +1020,9 @@ export async function createDeliverable(
         photographer_id: true,
         status: true,
         user: { select: { auth_account_id: true } },
-        photographer: { select: { nickname: true } },
+        photographer: {
+          select: { auth_account: { select: { nickname: true } } },
+        },
         deliverable: { select: { id: true } },
         reservation_cancel_request: {
           where: { status: 'PENDING' },
@@ -1073,7 +1089,7 @@ export async function createDeliverable(
               type: 'DELIVERY_COMPLETED',
               targetId: reservationId,
               message: notificationMessages.deliveryCompleted(
-                reservation.photographer?.nickname ?? '작가',
+                reservation.photographer?.auth_account.nickname ?? '작가',
               ),
             },
             tx,

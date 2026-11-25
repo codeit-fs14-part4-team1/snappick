@@ -74,7 +74,12 @@ export async function getPhotographerReviews(
         comment: true,
         created_at: true,
         updated_at: true,
-        user: { select: { nickname: true, profile_image_url: true } },
+        user: {
+          select: {
+            auth_account: { select: { nickname: true } },
+            profile_image_url: true,
+          },
+        },
         reviewReply: { select: replySelect },
       },
     }),
@@ -88,7 +93,7 @@ export async function getPhotographerReviews(
       createdAt: review.created_at,
       updatedAt: review.updated_at,
       author: review.user && {
-        nickname: review.user.nickname,
+        nickname: review.user.auth_account.nickname,
         profileImageUrl: toImageUrl(review.user.profile_image_url),
       },
       reply: toReply(review.reviewReply),
@@ -122,7 +127,11 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
         shoot_at: true,
         quote: { select: { quote_name: true } },
         photographer: {
-          select: { id: true, nickname: true, profile_image_url: true },
+          select: {
+            id: true,
+            auth_account: { select: { nickname: true } },
+            profile_image_url: true,
+          },
         },
       },
     }),
@@ -135,7 +144,7 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
       shootAt: reservation.shoot_at,
       photographer: reservation.photographer && {
         photographerId: reservation.photographer.id,
-        nickname: reservation.photographer.nickname,
+        nickname: reservation.photographer.auth_account.nickname,
         profileImageUrl: toImageUrl(reservation.photographer.profile_image_url),
       },
     })),
@@ -171,7 +180,11 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
         created_at: true,
         updated_at: true,
         photographer: {
-          select: { id: true, nickname: true, profile_image_url: true },
+          select: {
+            id: true,
+            auth_account: { select: { nickname: true } },
+            profile_image_url: true,
+          },
         },
         reviewReply: { select: replySelect },
       },
@@ -190,7 +203,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       updatedAt: review.updated_at,
       photographer: review.photographer && {
         photographerId: review.photographer.id,
-        nickname: review.photographer.nickname,
+        nickname: review.photographer.auth_account.nickname,
         profileImageUrl: toImageUrl(review.photographer.profile_image_url),
       },
       reply: toReply(review.reviewReply),
@@ -210,7 +223,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
       user_id: true,
       photographer_id: true,
       status: true,
-      user: { select: { nickname: true } },
+      user: { select: { auth_account: { select: { nickname: true } } } },
       photographer: { select: { auth_account_id: true } },
     },
   });
@@ -275,7 +288,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
           type: 'NEW_REVIEW',
           targetId: photographerId,
           message: notificationMessages.newReview(
-            reservation.user?.nickname ?? '사용자',
+            reservation.user?.auth_account.nickname ?? '사용자',
           ),
         },
         tx,

@@ -2,14 +2,23 @@ import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  isNicknameConflict,
+  nicknameAlreadyExists,
+} from '../../utils/nickname.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
 import type {
   ChangePasswordInput,
   SignupInput,
   LoginInput,
+  LinkProviderInput,
 } from './auth.schema.js';
 import { issueTokens, revokeOtherSessions } from './token.service.js';
-import { getSocialProfile, type SocialProvider } from './oauth.service.js';
+import {
+  getSocialProfile,
+  type SocialProfile,
+  type SocialProvider,
+} from './oauth.service.js';
 import { Provider } from '../../generated/prisma/enums.js';
 import { Prisma } from '../../generated/prisma/client.js';
 
@@ -29,11 +38,32 @@ async function verifyPassword(
 const accountAlreadyExists = () =>
   new HttpError(409, 'ACCOUNT_ALREADY_EXISTS', '이미 가입된 이메일입니다.');
 
+const providerAlreadyLinked = () =>
+  new HttpError(
+    409,
+    'PROVIDER_ALREADY_LINKED',
+    '이미 연동된 로그인 방식이에요.',
+  );
+
+const socialAccountInUse = () =>
+  new HttpError(
+    409,
+    'SOCIAL_ACCOUNT_IN_USE',
+    '다른 계정에서 사용 중인 소셜 계정이에요.',
+  );
+
 type SocialSignupInput = Extract<SignupInput, { provider: SocialProvider }>;
 type SocialLoginInput = Extract<LoginInput, { provider: SocialProvider }>;
 
 const NICKNAME_MIN = 2;
 const NICKNAME_MAX = 20;
+
+// 소셜 가입에서 닉네임이 겹칠 때 임시 닉네임으로 다시 시도하는 횟수
+const NICKNAME_RETRIES = 5;
+
+// 이메일 가입(FE)과 같은 형식의 임시 닉네임
+const temporaryNickname = () =>
+  `스냅픽_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
 
 /**
  * 제공자 닉네임을 우리 닉네임 규칙(앞뒤 공백 제거 후 2~20자)에 맞춘다
@@ -52,7 +82,7 @@ function toNickname(nickname: string | null): string {
   if (result.length >= NICKNAME_MIN) {
     return result;
   }
-  return `스냅픽_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  return temporaryNickname();
 }
 
 export async function signup(input: SignupInput) {
@@ -83,6 +113,7 @@ export async function signup(input: SignupInput) {
       const account = await tx.auth_accounts.create({
         data: {
           account_type: input.accountType,
+          nickname: input.nickname,
           auth_provider: {
             create: {
               provider: 'BASIC',
@@ -91,8 +122,8 @@ export async function signup(input: SignupInput) {
             },
           },
           ...(input.accountType === 'USER'
-            ? { user: { create: { nickname: input.nickname } } }
-            : { photographer: { create: { nickname: input.nickname } } }),
+            ? { user: { create: {} } }
+            : { photographer: { create: {} } }),
         },
         select: { id: true, account_type: true },
       });
@@ -101,6 +132,7 @@ export async function signup(input: SignupInput) {
       return issueTokens(tx, account, Provider.BASIC);
     });
   } catch (e) {
+    if (isNicknameConflict(e)) throw nicknameAlreadyExists();
     // 동시 요청으로 사전 검사(findFirst)를 둘 다 통과한 경우, DB 유니크가 막아줌
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -117,21 +149,14 @@ export async function signup(input: SignupInput) {
 }
 
 /**
- * 소셜 가입 (POST /auth/signup, provider: KAKAO 등)
- * 콜백에서 받은 인가 코드로 제공자 프로필을 가져오고, 인증된 이메일이 있을 때만 가입시킨다
- * 이메일은 선택 동의라 없을 수 있다 → 400으로 동의를 다시 받게 한다
- * 닉네임은 제공자 프로필의 닉네임을 쓰고, 없으면 임시 닉네임을 쓴다 (모든 제공자 공통)
- * 같은 이메일의 계정이 이미 있으면 BASIC 가입과 같이 409 (기존 계정으로 로그인 후 연동하도록 유도)
+ * 가입·연동에 쓸 수 있는 인증된 이메일을 꺼낸다 (없으면 400)
  */
-async function socialSignup(input: SocialSignupInput) {
-  const profile = await getSocialProfile(input.provider, input);
-  const nickname = toNickname(profile.nickname);
-
+function getVerifiedEmail(profile: SocialProfile, action: '가입' | '연동') {
   if (!profile.email) {
     throw new HttpError(
       400,
       'SOCIAL_EMAIL_REQUIRED',
-      '이메일 제공에 동의해야 가입할 수 있어요.',
+      `이메일 제공에 동의해야 ${action}할 수 있어요.`,
     );
   }
   // 인증되지 않은 이메일로 다른 사람의 이메일을 선점하지 못하게 한다
@@ -139,10 +164,23 @@ async function socialSignup(input: SocialSignupInput) {
     throw new HttpError(
       400,
       'SOCIAL_EMAIL_NOT_VERIFIED',
-      '인증된 이메일이 있는 계정만 가입할 수 있어요.',
+      `인증된 이메일이 있는 계정만 ${action}할 수 있어요.`,
     );
   }
-  const email = profile.email;
+  return profile.email;
+}
+
+/**
+ * 소셜 가입 (POST /auth/signup, provider: KAKAO 등)
+ * 콜백에서 받은 인가 코드로 제공자 프로필을 가져오고, 인증된 이메일이 있을 때만 가입시킨다
+ * 이메일은 선택 동의라 없을 수 있다 → 400으로 동의를 다시 받게 한다
+ * 닉네임은 제공자 프로필의 닉네임을 쓰고, 없거나 이미 사용 중이면 임시 닉네임을 쓴다 (모든 제공자 공통)
+ * 같은 이메일의 계정이 이미 있으면 BASIC 가입과 같이 409 (기존 계정으로 로그인 후 연동하도록 유도)
+ */
+async function socialSignup(input: SocialSignupInput) {
+  const profile = await getSocialProfile(input.provider, input);
+  const nickname = toNickname(profile.nickname);
+  const email = getVerifiedEmail(profile, '가입');
 
   const existing = await prisma.auth_providers.findFirst({
     where: {
@@ -155,11 +193,12 @@ async function socialSignup(input: SocialSignupInput) {
   });
   if (existing) throw accountAlreadyExists();
 
-  try {
-    return await prisma.$transaction(async (tx) => {
+  const create = (accountNickname: string) =>
+    prisma.$transaction(async (tx) => {
       const account = await tx.auth_accounts.create({
         data: {
           account_type: input.accountType,
+          nickname: accountNickname,
           auth_provider: {
             create: {
               provider: input.provider,
@@ -168,15 +207,32 @@ async function socialSignup(input: SocialSignupInput) {
             },
           },
           ...(input.accountType === 'USER'
-            ? { user: { create: { nickname } } }
-            : { photographer: { create: { nickname } } }),
+            ? { user: { create: {} } }
+            : { photographer: { create: {} } }),
         },
         select: { id: true, account_type: true },
       });
 
       return issueTokens(tx, account, input.provider);
     });
+
+  // 제공자 닉네임은 본인이 고른 값이 아니므로, 겹쳐도 가입을 막지 않고 임시 닉네임으로 다시 시도한다
+  const createWithRetry = async (
+    candidate: string,
+    retries: number,
+  ): ReturnType<typeof create> => {
+    try {
+      return await create(candidate);
+    } catch (e) {
+      if (!isNicknameConflict(e) || retries === 0) throw e;
+      return createWithRetry(temporaryNickname(), retries - 1);
+    }
+  };
+
+  try {
+    return await createWithRetry(nickname, NICKNAME_RETRIES);
   } catch (e) {
+    if (isNicknameConflict(e)) throw nicknameAlreadyExists();
     // 같은 소셜 계정으로 동시에 가입한 경우 DB 유니크가 막아준다
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -215,6 +271,74 @@ async function socialLogin(input: SocialLoginInput) {
   }
 
   return issueTokens(prisma, found.auth_account, input.provider);
+}
+
+/**
+ * 소셜 계정 연동 (POST /auth/providers)
+ * 로그인한 계정에 소셜 로그인 방식을 추가한다. 토큰은 새로 발급하지 않는다
+ * 소셜 이메일은 계정 이메일과 달라도 되지만, 다른 계정이 쓰는 이메일이면 409
+ */
+export async function linkProvider(
+  accountId: string,
+  input: LinkProviderInput,
+) {
+  const { provider } = input;
+
+  // 이미 연동했다면 제공자에 요청하지 않는다
+  const linked = await prisma.auth_providers.findMany({
+    where: { auth_account_id: accountId },
+    select: { provider: true },
+  });
+  if (linked.length === 0) {
+    throw new HttpError(404, 'ACCOUNT_NOT_FOUND', '계정을 찾을 수 없습니다.');
+  }
+  if (linked.some((row) => row.provider === provider)) {
+    throw providerAlreadyLinked();
+  }
+
+  const profile = await getSocialProfile(provider, input);
+  const email = getVerifiedEmail(profile, '연동');
+
+  // 다른 계정이 이 소셜 계정이나 이메일을 쓰고 있는지 확인
+  // 내 계정의 이메일과 같은 것은 정상이므로 제외한다
+  const usedByOther = await prisma.auth_providers.findFirst({
+    where: {
+      auth_account_id: { not: accountId },
+      OR: [
+        { provider, provider_user_id: profile.providerUserId },
+        { provider_email: email },
+      ],
+    },
+    select: { id: true },
+  });
+  if (usedByOther) throw socialAccountInUse();
+
+  try {
+    await prisma.auth_providers.create({
+      data: {
+        auth_account_id: accountId,
+        provider,
+        provider_email: email,
+        provider_user_id: profile.providerUserId,
+      },
+    });
+  } catch (e) {
+    // 동시 요청으로 사전 검사를 통과한 경우 DB 유니크가 막아준다
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
+      // 같은 요청을 두 번 보낸 것인지, 다른 계정이 먼저 연동한 것인지 구분
+      const mine = await prisma.auth_providers.findUnique({
+        where: {
+          auth_account_id_provider: { auth_account_id: accountId, provider },
+        },
+        select: { id: true },
+      });
+      throw mine ? providerAlreadyLinked() : socialAccountInUse();
+    }
+    throw e;
+  }
 }
 
 export async function login(input: LoginInput) {
@@ -280,6 +404,25 @@ export async function getAccount(auth: AccessTokenPayload) {
       email: row.provider_email,
     })),
   };
+}
+
+/**
+ * 닉네임 사용 가능 여부 (GET /auth/nickname/availability)
+ * 유저·작가 전체에서 대소문자 구분 없이 비교한다. 로그인했다면 내 닉네임은 사용 가능으로 본다
+ * 확인한 뒤 다른 사람이 먼저 쓸 수 있으므로, 저장할 때의 409(NICKNAME_ALREADY_EXISTS)도 처리해야 한다
+ */
+export async function checkNickname(
+  nickname: string,
+  accountId: string | undefined,
+) {
+  // insensitive 검색은 ILIKE라 닉네임의 _와 %가 와일드카드가 된다. 유니크 인덱스와 같은 lower()로 비교한다
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id
+    FROM auth_accounts
+    WHERE lower(nickname) = lower(${nickname})
+  `;
+
+  return { available: rows.every(({ id }) => id === accountId) };
 }
 
 /**
