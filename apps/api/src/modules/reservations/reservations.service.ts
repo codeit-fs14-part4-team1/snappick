@@ -20,6 +20,7 @@ import {
   notificationMessages,
   scheduleShootReminders,
 } from '../notifications/notifications.create.js';
+import { createUserActionLog } from '../interactions/interactions.service.js';
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
 // 프론트는 details.reservationId로 기존 예약에 연결한다
@@ -219,6 +220,11 @@ export async function createReservation(
           total_amount: true,
         },
       });
+
+      await createUserActionLog(
+        { userId, type: 'RESERVE', photographerId: photographer.id },
+        tx,
+      );
 
       const notifications: notifications[] = [];
       for (const accountId of accountIds) {
