@@ -4,7 +4,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../lib/prisma.js';
 
 type MockData = {
-  auth_accounts: Prisma.auth_accountsCreateManyInput[];
+  auth_accounts: (Prisma.auth_accountsCreateManyInput & { id: string })[];
   auth_providers: Prisma.auth_providersCreateManyInput[];
   users: Prisma.usersCreateManyInput[];
   photographers: (Prisma.photographersCreateManyInput & { id: string })[];
@@ -68,6 +68,12 @@ async function main() {
 
   // 화면에 노출되는 콘텐츠는 재실행할 때 JSON의 최신 문구로 갱신한다.
   await prisma.$transaction([
+    // 작가 닉네임은 계정에 있으므로 따로 갱신한다.
+    ...data.auth_accounts
+      .filter(({ account_type }) => account_type === 'PHOTOGRAPHER')
+      .map(({ id, nickname }) =>
+        prisma.auth_accounts.update({ where: { id }, data: { nickname } }),
+      ),
     ...data.photographers.map(({ id, ...content }) =>
       prisma.photographers.upsert({
         where: { id },

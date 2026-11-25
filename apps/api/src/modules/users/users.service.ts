@@ -1,6 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  isNicknameConflict,
+  nicknameAlreadyExists,
+} from '../../utils/nickname.js';
 import type { UpdateUserNicknameInput } from './users.schema.js';
 
 export async function getMe(accountId: string) {
@@ -9,8 +13,9 @@ export async function getMe(accountId: string) {
     select: {
       id: true,
       account_type: true,
-      user: { select: { nickname: true, profile_image_url: true } },
-      photographer: { select: { nickname: true, profile_image_url: true } },
+      nickname: true,
+      user: { select: { profile_image_url: true } },
+      photographer: { select: { profile_image_url: true } },
     },
   });
 
@@ -30,7 +35,7 @@ export async function getMe(accountId: string) {
   return {
     id: account.id,
     accountType: account.account_type,
-    nickname: profile.nickname,
+    nickname: account.nickname,
     // DB에는 저장 경로만 있으므로 응답용 전체 주소로 바꾼다
     profileImageUrl: toImageUrl(profile.profile_image_url),
   };
@@ -40,12 +45,16 @@ export async function updateUserNickname(
   accountId: string,
   input: UpdateUserNicknameInput,
 ) {
-  const result = await prisma.users.updateMany({
-    where: { auth_account_id: accountId },
-    data: {
-      nickname: input.nickname,
-    },
-  });
+  const result = await prisma.auth_accounts
+    .updateMany({
+      where: { id: accountId, user: { isNot: null } },
+      data: {
+        nickname: input.nickname,
+      },
+    })
+    .catch((error: unknown) => {
+      throw isNicknameConflict(error) ? nicknameAlreadyExists() : error;
+    });
 
   if (result.count === 0) {
     throw new HttpError(404, 'PROFILE_NOT_FOUND', '프로필을 찾지 못했습니다.');

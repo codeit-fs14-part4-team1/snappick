@@ -36,7 +36,7 @@ export async function createChatHandler(req: Request, res: Response) {
     isNew,
     photographer: {
       id: photographer.id,
-      nickname: photographer.nickname,
+      nickname: photographer.auth_account.nickname,
       profileImageUrl: photographer.profile_image_url,
     },
     createdAt: chatRoom.created_at,

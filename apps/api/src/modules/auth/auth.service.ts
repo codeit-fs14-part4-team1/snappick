@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  isNicknameConflict,
+  nicknameAlreadyExists,
+} from '../../utils/nickname.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
 import type {
   ChangePasswordInput,
@@ -54,6 +58,10 @@ type SocialLoginInput = Extract<LoginInput, { provider: SocialProvider }>;
 const NICKNAME_MIN = 2;
 const NICKNAME_MAX = 20;
 
+// 이메일 가입(FE)과 같은 형식의 임시 닉네임
+const temporaryNickname = () =>
+  `스냅픽_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+
 /**
  * 제공자 닉네임을 우리 닉네임 규칙(앞뒤 공백 제거 후 2~20자)에 맞춘다
  * 길이는 가입·수정 검증(zod .max)과 같은 기준(string.length)으로 센다. 이모지는 2로 세어진다
@@ -71,7 +79,7 @@ function toNickname(nickname: string | null): string {
   if (result.length >= NICKNAME_MIN) {
     return result;
   }
-  return `스냅픽_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  return temporaryNickname();
 }
 
 export async function signup(input: SignupInput) {
@@ -102,6 +110,7 @@ export async function signup(input: SignupInput) {
       const account = await tx.auth_accounts.create({
         data: {
           account_type: input.accountType,
+          nickname: input.nickname,
           auth_provider: {
             create: {
               provider: 'BASIC',
@@ -110,8 +119,8 @@ export async function signup(input: SignupInput) {
             },
           },
           ...(input.accountType === 'USER'
-            ? { user: { create: { nickname: input.nickname } } }
-            : { photographer: { create: { nickname: input.nickname } } }),
+            ? { user: { create: {} } }
+            : { photographer: { create: {} } }),
         },
         select: { id: true, account_type: true },
       });
@@ -120,6 +129,7 @@ export async function signup(input: SignupInput) {
       return issueTokens(tx, account, Provider.BASIC);
     });
   } catch (e) {
+    if (isNicknameConflict(e)) throw nicknameAlreadyExists();
     // 동시 요청으로 사전 검사(findFirst)를 둘 다 통과한 경우, DB 유니크가 막아줌
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -161,7 +171,7 @@ function getVerifiedEmail(profile: SocialProfile, action: '가입' | '연동') {
  * 소셜 가입 (POST /auth/signup, provider: KAKAO 등)
  * 콜백에서 받은 인가 코드로 제공자 프로필을 가져오고, 인증된 이메일이 있을 때만 가입시킨다
  * 이메일은 선택 동의라 없을 수 있다 → 400으로 동의를 다시 받게 한다
- * 닉네임은 제공자 프로필의 닉네임을 쓰고, 없으면 임시 닉네임을 쓴다 (모든 제공자 공통)
+ * 닉네임은 제공자 프로필의 닉네임을 쓰고, 없거나 이미 사용 중이면 임시 닉네임을 쓴다 (모든 제공자 공통)
  * 같은 이메일의 계정이 이미 있으면 BASIC 가입과 같이 409 (기존 계정으로 로그인 후 연동하도록 유도)
  */
 async function socialSignup(input: SocialSignupInput) {
@@ -180,11 +190,12 @@ async function socialSignup(input: SocialSignupInput) {
   });
   if (existing) throw accountAlreadyExists();
 
-  try {
-    return await prisma.$transaction(async (tx) => {
+  const create = (accountNickname: string) =>
+    prisma.$transaction(async (tx) => {
       const account = await tx.auth_accounts.create({
         data: {
           account_type: input.accountType,
+          nickname: accountNickname,
           auth_provider: {
             create: {
               provider: input.provider,
@@ -193,14 +204,23 @@ async function socialSignup(input: SocialSignupInput) {
             },
           },
           ...(input.accountType === 'USER'
-            ? { user: { create: { nickname } } }
-            : { photographer: { create: { nickname } } }),
+            ? { user: { create: {} } }
+            : { photographer: { create: {} } }),
         },
         select: { id: true, account_type: true },
       });
 
       return issueTokens(tx, account, input.provider);
     });
+
+  try {
+    try {
+      return await create(nickname);
+    } catch (e) {
+      // 제공자 닉네임은 본인이 고른 값이 아니므로, 겹쳐도 가입을 막지 않는다
+      if (!isNicknameConflict(e)) throw e;
+      return await create(temporaryNickname());
+    }
   } catch (e) {
     // 같은 소셜 계정으로 동시에 가입한 경우 DB 유니크가 막아준다
     if (

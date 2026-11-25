@@ -2,6 +2,10 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../lib/prisma.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  isNicknameConflict,
+  nicknameAlreadyExists,
+} from '../../utils/nickname.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
 import type { UpdateProfileInput } from './photographers.schema.js';
 
@@ -13,7 +17,7 @@ const unique = <T>(values: T[]): T[] => [...new Set(values)];
 const PROFILE_SELECT = {
   id: true,
   auth_account_id: true,
-  nickname: true,
+  auth_account: { select: { nickname: true } },
   profile_image_url: true,
   career: true,
   regions: true,
@@ -109,7 +113,7 @@ async function buildProfile(
 
   return {
     id: photographer.id,
-    nickname: photographer.nickname,
+    nickname: photographer.auth_account.nickname,
     profileImageUrl: toImageUrl(photographer.profile_image_url),
     career: photographer.career,
     regions: photographer.regions,
@@ -179,20 +183,26 @@ export async function updateMyProfile(
 ) {
   const mine = await findMine(auth);
 
-  await prisma.photographers.update({
-    where: { id: mine.id },
-    data: {
-      ...(input.nickname !== undefined && { nickname: input.nickname }),
-      ...(input.career !== undefined && { career: input.career }),
-      ...(input.regions !== undefined && { regions: unique(input.regions) }),
-      ...(input.categories !== undefined && {
-        categories: unique(input.categories),
-      }),
-      ...(input.introduction !== undefined && {
-        introduction: input.introduction,
-      }),
-    },
-  });
+  await prisma.photographers
+    .update({
+      where: { id: mine.id },
+      data: {
+        ...(input.nickname !== undefined && {
+          auth_account: { update: { nickname: input.nickname } },
+        }),
+        ...(input.career !== undefined && { career: input.career }),
+        ...(input.regions !== undefined && { regions: unique(input.regions) }),
+        ...(input.categories !== undefined && {
+          categories: unique(input.categories),
+        }),
+        ...(input.introduction !== undefined && {
+          introduction: input.introduction,
+        }),
+      },
+    })
+    .catch((error: unknown) => {
+      throw isNicknameConflict(error) ? nicknameAlreadyExists() : error;
+    });
 
   return getMyProfile(auth);
 }

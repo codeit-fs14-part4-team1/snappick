@@ -20,54 +20,63 @@
     {
       "id": "00000000-0000-4000-8000-b00100000101",
       "account_type": "PHOTOGRAPHER",
+      "nickname": "온결스냅",
       "created_at": "2026-10-10T10:00:00+09:00",
       "updated_at": "2026-10-10T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000201",
       "account_type": "PHOTOGRAPHER",
+      "nickname": "하루필름",
       "created_at": "2026-10-10T10:00:00+09:00",
       "updated_at": "2026-10-10T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000301",
       "account_type": "PHOTOGRAPHER",
+      "nickname": "여름날스튜디오",
       "created_at": "2026-10-10T10:00:00+09:00",
       "updated_at": "2026-10-10T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000401",
       "account_type": "PHOTOGRAPHER",
+      "nickname": "멍냥스냅",
       "created_at": "2026-10-10T10:00:00+09:00",
       "updated_at": "2026-10-10T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000901",
       "account_type": "USER",
+      "nickname": "봄날의기록",
       "created_at": "2026-10-15T10:00:00+09:00",
       "updated_at": "2026-10-15T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000902",
       "account_type": "USER",
+      "nickname": "사진좋아",
       "created_at": "2026-10-15T10:00:00+09:00",
       "updated_at": "2026-10-15T10:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000903",
       "account_type": "USER",
+      "nickname": "노을수집가",
       "created_at": "2026-10-16T09:00:00+09:00",
       "updated_at": "2026-10-16T09:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000904",
       "account_type": "USER",
+      "nickname": "우리가족사진",
       "created_at": "2026-10-17T09:00:00+09:00",
       "updated_at": "2026-10-17T09:00:00+09:00"
     },
     {
       "id": "00000000-0000-4000-8000-b00100000905",
       "account_type": "USER",
+      "nickname": "코기집사",
       "created_at": "2026-10-18T09:00:00+09:00",
       "updated_at": "2026-10-18T09:00:00+09:00"
     }
@@ -168,7 +177,6 @@
     {
       "id": "00000000-0000-4000-8000-b00300000901",
       "auth_account_id": "00000000-0000-4000-8000-b00100000901",
-      "nickname": "봄날의기록",
       "profile_image_url": null,
       "created_at": "2026-10-15T10:00:00+09:00",
       "updated_at": "2026-10-15T10:00:00+09:00"
@@ -176,7 +184,6 @@
     {
       "id": "00000000-0000-4000-8000-b00300000902",
       "auth_account_id": "00000000-0000-4000-8000-b00100000902",
-      "nickname": "사진좋아",
       "profile_image_url": null,
       "created_at": "2026-10-15T10:00:00+09:00",
       "updated_at": "2026-10-15T10:00:00+09:00"
@@ -184,7 +191,6 @@
     {
       "id": "00000000-0000-4000-8000-b00300000903",
       "auth_account_id": "00000000-0000-4000-8000-b00100000903",
-      "nickname": "노을수집가",
       "profile_image_url": null,
       "created_at": "2026-10-16T09:00:00+09:00",
       "updated_at": "2026-10-16T09:00:00+09:00"
@@ -192,7 +198,6 @@
     {
       "id": "00000000-0000-4000-8000-b00300000904",
       "auth_account_id": "00000000-0000-4000-8000-b00100000904",
-      "nickname": "우리가족사진",
       "profile_image_url": null,
       "created_at": "2026-10-17T09:00:00+09:00",
       "updated_at": "2026-10-17T09:00:00+09:00"
@@ -200,7 +205,6 @@
     {
       "id": "00000000-0000-4000-8000-b00300000905",
       "auth_account_id": "00000000-0000-4000-8000-b00100000905",
-      "nickname": "코기집사",
       "profile_image_url": null,
       "created_at": "2026-10-18T09:00:00+09:00",
       "updated_at": "2026-10-18T09:00:00+09:00"
@@ -211,7 +215,6 @@
       "id": "00000000-0000-4000-8000-b00200000101",
       "auth_account_id": "00000000-0000-4000-8000-b00100000101",
       "profile_image_url": "/mock/photos/WED-1-1.webp",
-      "nickname": "온결스냅",
       "career": 6,
       "regions": ["SEOUL", "JEJU", "GANGWON"],
       "categories": ["WEDDING", "COUPLE"],
@@ -223,7 +226,6 @@
       "id": "00000000-0000-4000-8000-b00200000201",
       "auth_account_id": "00000000-0000-4000-8000-b00100000201",
       "profile_image_url": "/mock/photos/CPL-1-1.webp",
-      "nickname": "하루필름",
       "career": 4,
       "regions": ["SEOUL", "GYEONGGI"],
       "categories": ["COUPLE"],
@@ -235,7 +237,6 @@
       "id": "00000000-0000-4000-8000-b00200000301",
       "auth_account_id": "00000000-0000-4000-8000-b00100000301",
       "profile_image_url": "/mock/photos/FAM-1-1.webp",
-      "nickname": "여름날스튜디오",
       "career": 8,
       "regions": ["GYEONGGI", "JEJU"],
       "categories": ["FAMILY"],
@@ -247,7 +248,6 @@
       "id": "00000000-0000-4000-8000-b00200000401",
       "auth_account_id": "00000000-0000-4000-8000-b00100000401",
       "profile_image_url": "/mock/photos/PET-1-1.webp",
-      "nickname": "멍냥스냅",
       "career": 3,
       "regions": ["SEOUL", "GYEONGGI", "GANGWON"],
       "categories": ["PET"],
