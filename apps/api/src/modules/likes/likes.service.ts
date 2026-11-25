@@ -45,8 +45,13 @@ export async function likePhoto(userId: string, photoId: string) {
 
 export async function unlikePhoto(userId: string, photoId: string) {
   await assertPhotoExists(photoId);
-  await prisma.photo_likes.deleteMany({
-    where: { user_id: userId, photo_id: photoId },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.photo_likes.deleteMany({
+      where: { user_id: userId, photo_id: photoId },
+    });
+    if (count > 0) {
+      await createUserActionLog({ userId, type: 'UNLIKE', photoId }, tx);
+    }
   });
   return { photoId, liked: false, likeCount: await countLikes(photoId) };
 }
