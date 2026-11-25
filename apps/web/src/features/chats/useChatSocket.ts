@@ -208,6 +208,9 @@ export default function useChatSocket(
       )
         refreshConversation(payload.chatRoomId === chatRoomId);
     });
+    socket.on('notification:new', () => {
+      if (active) refreshConversation(false);
+    });
     socket.on(
       'chat:read',
       (payload: { chatRoomId?: string; readerAccountId?: string }) => {
