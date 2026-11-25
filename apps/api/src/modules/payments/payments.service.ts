@@ -10,6 +10,39 @@ import {
 } from './payments.schema.js';
 import { createReservation } from '../reservations/reservations.service.js';
 
+// 승인 여부가 불확실하거나 결제 거절이 아닌 서버 설정 문제인 토스 오류
+const UNCERTAIN_TOSS_ERROR_CODES = new Set([
+  'ALREADY_PROCESSED_PAYMENT',
+  'IDEMPOTENT_REQUEST_PROCESSING',
+  'PROVIDER_ERROR',
+  'INVALID_API_KEY',
+]);
+const UNCERTAIN_TOSS_HTTP_STATUSES = new Set([401, 408, 409, 429]);
+
+// 다시 시도해도 예약을 만들 수 없는 오류
+const PERMANENT_RESERVATION_ERROR_CODES = new Set([
+  'PHOTOGRAPHER_UNAVAILABLE',
+  'QUOTE_UNAVAILABLE',
+]);
+
+// 토스가 승인을 명확히 거절한 경우만 true (결과가 불확실하면 이중 결제를 막기 위해 false)
+function isDefiniteRejection(httpStatus: number, code: string | undefined) {
+  return (
+    httpStatus >= 400 &&
+    httpStatus < 500 &&
+    !UNCERTAIN_TOSS_HTTP_STATUSES.has(httpStatus) &&
+    code !== undefined &&
+    !UNCERTAIN_TOSS_ERROR_CODES.has(code)
+  );
+}
+
+const paymentCanceled = () =>
+  new HttpError(
+    409,
+    'PAYMENT_CANCELED',
+    '예약을 만들 수 없어 결제가 취소되었습니다.',
+  );
+
 export async function preparePayment(
   accountId: string,
   input: PreparePaymentInput,
@@ -319,6 +352,10 @@ export async function confirmPayment(
     );
   }
 
+  if (payment.status === 'CANCELED') {
+    throw paymentCanceled();
+  }
+
   const tossSecretKey = process.env.TOSS_SECRET_KEY;
 
   if (!tossSecretKey?.startsWith('test_')) {
@@ -446,6 +483,54 @@ export async function confirmPayment(
     return result.success ? result.data.code : undefined;
   };
 
+  // 토스 결제를 전액 취소하고, 취소가 확인되지 않으면 오류를 던집니다.
+  // 전액 취소는 중복되지 않으므로, 실패 응답이 재사용되지 않게 멱등키를 쓰지 않습니다.
+  const cancelTossPayment = async () => {
+    const response = await fetch(
+      `https://api.tosspayments.com/v1/payments/${encodeURIComponent(input.paymentKey)}/cancel`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: authorization,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cancelReason: '예약 생성 불가' }),
+      },
+    ).catch(() => undefined);
+
+    // 응답을 받지 못했거나 이미 취소된 결제일 수 있으므로 실패 시 다시 조회합니다.
+    const result = response?.ok ? response : await fetchTossPayment();
+    const canceled = result?.ok ? await readTossPayment(result) : undefined;
+
+    if (canceled?.status !== 'CANCELED') {
+      throw new HttpError(
+        502,
+        'TOSS_CANCEL_FAILED',
+        '토스 결제 취소를 확인할 수 없습니다.',
+      );
+    }
+  };
+
+  // 토스 취소가 확인된 뒤에만 호출합니다.
+  const markPaymentCanceled = async () => {
+    const canceled = await prisma.payments.updateMany({
+      where: {
+        id: payment.id,
+        status: 'PENDING',
+        pg_payment_id: input.paymentKey,
+      },
+      data: { status: 'CANCELED' },
+    });
+
+    if (canceled.count === 0) {
+      throw new HttpError(
+        409,
+        'PAYMENT_STATE_CHANGED',
+        '결제 상태가 변경되었습니다. 다시 확인해 주세요.',
+      );
+    }
+  };
+
   let tossPayment: Awaited<ReturnType<typeof readTossPayment>> | undefined;
   let shouldConfirm = payment.status === 'READY';
   if (payment.status === 'PENDING') {
@@ -484,10 +569,13 @@ export async function confirmPayment(
       const confirmationCode = await readErrorCode(confirmation);
       const lookup = await fetchTossPayment();
       tossPayment = lookup?.ok ? await readTossPayment(lookup) : undefined;
+      const notApproved = tossPayment
+        ? tossPayment.status === 'IN_PROGRESS'
+        : (await readErrorCode(lookup)) === 'NOT_FOUND_PAYMENT';
       approvalFailed =
-        (confirmationCode === 'REJECT_CARD_COMPANY' ||
-          confirmationCode === 'NOT_FOUND_PAYMENT_SESSION') &&
-        (await readErrorCode(lookup)) === 'NOT_FOUND_PAYMENT';
+        notApproved &&
+        confirmation !== undefined &&
+        isDefiniteRejection(confirmation.status, confirmationCode);
     }
   }
 
@@ -528,6 +616,12 @@ export async function confirmPayment(
     );
   }
 
+  // 토스 취소 후 DB 수정만 실패했던 결제를 맞춥니다.
+  if (tossPayment.status === 'CANCELED') {
+    await markPaymentCanceled();
+    throw paymentCanceled();
+  }
+
   // 토스에서 결제 완료 상태인지 확인
   if (tossPayment.status !== 'DONE') {
     throw new HttpError(
@@ -539,66 +633,82 @@ export async function confirmPayment(
 
   const userId = payment.user.id;
 
-  return prisma.$transaction(async (tx) => {
-    const completed = await tx.payments.updateMany({
-      where: {
-        id: payment.id,
-        status: 'PENDING',
-        pg_payment_id: input.paymentKey,
-      },
-      data: {
-        status: 'SUCCEEDED',
-        paid_at: new Date(),
-      },
-    });
-
-    if (completed.count === 0) {
-      const latestPayment = await tx.payments.findUnique({
-        where: { id: payment.id },
-        select: { status: true, pg_payment_id: true },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const completed = await tx.payments.updateMany({
+        where: {
+          id: payment.id,
+          status: 'PENDING',
+          pg_payment_id: input.paymentKey,
+        },
+        data: {
+          status: 'SUCCEEDED',
+          paid_at: new Date(),
+        },
       });
 
-      if (
-        latestPayment?.status === 'SUCCEEDED' &&
-        latestPayment.pg_payment_id === input.paymentKey
-      ) {
-        const reservation = await tx.reservations.findUnique({
-          where: { payment_id: payment.id },
-          select: { id: true },
+      if (completed.count === 0) {
+        const latestPayment = await tx.payments.findUnique({
+          where: { id: payment.id },
+          select: { status: true, pg_payment_id: true },
         });
 
-        if (reservation) {
-          return {
-            paymentId: payment.id,
-            status: 'SUCCEEDED',
-            reservationId: reservation.id,
-            chatRoomId: null,
-            notifications: [],
-          };
+        if (
+          latestPayment?.status === 'SUCCEEDED' &&
+          latestPayment.pg_payment_id === input.paymentKey
+        ) {
+          const reservation = await tx.reservations.findUnique({
+            where: { payment_id: payment.id },
+            select: { id: true },
+          });
+
+          if (reservation) {
+            return {
+              paymentId: payment.id,
+              status: 'SUCCEEDED',
+              reservationId: reservation.id,
+              chatRoomId: null,
+              notifications: [],
+            };
+          }
         }
+
+        throw new HttpError(
+          409,
+          'PAYMENT_STATE_CHANGED',
+          '토스 결제는 승인됐지만 결제 상태를 확인해야 합니다.',
+        );
       }
 
-      throw new HttpError(
-        409,
-        'PAYMENT_STATE_CHANGED',
-        '토스 결제는 승인됐지만 결제 상태를 확인해야 합니다.',
+      const reservation = await createReservation(
+        userId,
+        {
+          paymentId: payment.id,
+        },
+        tx,
       );
+
+      return {
+        paymentId: payment.id,
+        status: 'SUCCEEDED',
+        reservationId: reservation.reservationId,
+        chatRoomId: reservation.chatRoomId,
+        notifications: reservation.notifications,
+      };
+    });
+  } catch (error) {
+    if (
+      !(error instanceof HttpError) ||
+      !PERMANENT_RESERVATION_ERROR_CODES.has(error.code)
+    ) {
+      // 일시적 오류는 PENDING을 유지해 추가 결제 없이 다시 예약을 만들 수 있게 합니다.
+      throw error;
     }
 
-    const reservation = await createReservation(
-      userId,
-      {
-        paymentId: payment.id,
-      },
-      tx,
-    );
-
-    return {
-      paymentId: payment.id,
-      status: 'SUCCEEDED',
-      reservationId: reservation.reservationId,
-      chatRoomId: reservation.chatRoomId,
-      notifications: reservation.notifications,
-    };
-  });
+    // 트랜잭션이 롤백됐으므로 토스 취소를 먼저 확인한 뒤 DB를 바꿉니다.
+    // 토스 취소에 실패하면 PENDING을 유지해 다음 요청에서 다시 취소합니다.
+    await cancelTossPayment();
+    await markPaymentCanceled();
+    throw paymentCanceled();
+  }
 }

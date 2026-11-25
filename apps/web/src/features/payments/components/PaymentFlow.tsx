@@ -40,6 +40,7 @@ export default function PaymentFlow({
   const [supersededDialogDismissed, setSupersededDialogDismissed] =
     useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
+  const [paymentCanceled, setPaymentCanceled] = useState(false);
   const [result, setResult] = useState<PaymentResult | null>(null);
   const started = useRef(false);
   const busy = useRef(false);
@@ -116,6 +117,7 @@ export default function PaymentFlow({
     setPending(true);
     setError('');
     setRestartRequired(false);
+    setPaymentCanceled(false);
     try {
       // 서버는 orderId의 소유자와 DB 금액을 다시 검증합니다.
       const approved = await confirmPayment(
@@ -148,6 +150,15 @@ export default function PaymentFlow({
       ) {
         setRestartRequired(true);
         setError('결제에 실패했어요');
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        cause.code === 'PAYMENT_CANCELED'
+      ) {
+        setPaymentCanceled(true);
+        setError('예약할 수 없어 결제가 취소됐어요.');
         return;
       }
       setError(
@@ -256,7 +267,10 @@ export default function PaymentFlow({
       else router.replace(callbackCanRestart ? checkoutHref : chatHref);
     };
     const resultUnknown =
-      !showSupersededNotice && mode === 'success' && !restartRequired;
+      !showSupersededNotice &&
+      mode === 'success' &&
+      !restartRequired &&
+      !paymentCanceled;
     const dialogDescription = showSupersededNotice
       ? '재견적이 도착해서 이 견적으로는 결제할 수 없어요.'
       : callbackCanRestart
@@ -302,7 +316,9 @@ export default function PaymentFlow({
           title={
             resultUnknown
               ? '결제 결과를 확인하지 못했어요'
-              : '결제를 진행할 수 없어요'
+              : paymentCanceled
+                ? '결제가 취소됐어요'
+                : '결제를 진행할 수 없어요'
           }
           description={dialogDescription}
           footer={
@@ -344,7 +360,9 @@ export default function PaymentFlow({
           description={
             restartRequired
               ? '결제 페이지로 돌아가 다시 진행해 주세요.'
-              : '승인 결과 확인 전에는 결제를 다시 시작하지 마세요.'
+              : paymentCanceled
+                ? '채팅에서 작가님에게 문의해 주세요.'
+                : '승인 결과 확인 전에는 결제를 다시 시작하지 마세요.'
           }
           {...(restartRequired
             ? {
