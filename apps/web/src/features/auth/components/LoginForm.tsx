@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { apiFetch } from '@/lib/api';
 import AuthMethodButtons from './AuthMethodButtons';
@@ -33,6 +34,7 @@ function getEmailError(value: string): string {
 
 export default function LoginForm() {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const emailId = useId();
@@ -50,7 +52,7 @@ export default function LoginForm() {
   // 로그인 요청 중 상태와 결과를 관리함
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginStatus, setLoginStatus] = useState<
-    'idle' | 'success' | 'invalid' | 'error'
+    'idle' | 'success' | 'invalid'
   >('idle');
 
   // 입력창에서 다른 곳으로 이동한 뒤부터 오류를 표시함
@@ -114,7 +116,7 @@ export default function LoginForm() {
         setLoginStatus('invalid');
       } else {
         console.error('로그인 요청 실패:', error);
-        setLoginStatus('error');
+        showToast('로그인에 실패했어요. 잠시 후 다시 시도해 주세요.', 'error');
       }
     } finally {
       setIsSubmitting(false);
@@ -225,13 +227,6 @@ export default function LoginForm() {
         {loginStatus === 'invalid' && (
           <p className={styles.errorMessage} role="alert">
             이메일 또는 비밀번호가 올바르지 않습니다.
-          </p>
-        )}
-
-        {/* 기타 로그인 오류를 표시함 */}
-        {loginStatus === 'error' && (
-          <p className={styles.errorMessage} role="alert">
-            로그인에 실패했어요. 잠시 후 다시 시도해 주세요.
           </p>
         )}
       </form>

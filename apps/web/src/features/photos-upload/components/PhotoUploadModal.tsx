@@ -159,6 +159,10 @@ export default function PhotoUploadModal({
       );
     }
     setRejectMessages(message);
+    const rejectedCount = messages.length + droppedCount;
+    if (rejectedCount > 0) {
+      showToast(`사진 ${rejectedCount}장을 추가하지 못했어요.`, 'error');
+    }
     if (acceptedFiles.length === 0) return;
     //'준비 중'으로 먼저 띄움
     const newPhotos: SelectedPhoto[] = acceptedFiles.map((file) => ({
