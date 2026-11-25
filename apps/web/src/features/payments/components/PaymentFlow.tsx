@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { getQuote, getChatRooms } from '@/features/chats/api';
 import useChatRooms from '@/features/chats/useChatRooms';
 import { toQuoteDraft } from '@/features/chats/quote';
+import AccessDenied from '@/components/ui/AccessDenied';
 import StateMessage from '@/components/ui/StateMessage';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -16,6 +17,19 @@ import useTossPaymentWindow from '../useTossPaymentWindow';
 import PaymentCompletion from './PaymentCompletion';
 import PaymentPage from './PaymentPage';
 import styles from './PaymentPage.module.css';
+
+// 주소의 message는 조작될 수 있어 쓰지 않고, 알려진 코드만 문구로 바꿉니다.
+const failReasons: Record<string, string> = {
+  PAY_PROCESS_CANCELED: '결제를 취소했어요. 다시 결제할 수 있어요.',
+  PAY_PROCESS_ABORTED:
+    '결제 진행 중 문제가 생겼어요. 결제를 다시 시도해 주세요.',
+  REJECT_CARD_COMPANY:
+    '카드사에서 결제를 거절했어요. 다른 결제 수단으로 시도해 주세요.',
+};
+
+function isForbidden(error: unknown) {
+  return error instanceof Error && 'status' in error && error.status === 403;
+}
 
 export default function PaymentFlow({
   mode = 'checkout',
@@ -42,6 +56,7 @@ export default function PaymentFlow({
   // 화면을 연 시각 기준. 여는 동안 지난 경우는 서버가 막습니다.
   const [openedAt] = useState(() => Date.now());
   const [quoteExpired, setQuoteExpired] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
   // 서버가 결제 결과를 확인하는 동안 true
   const [checking, setChecking] = useState(false);
@@ -54,6 +69,8 @@ export default function PaymentFlow({
     queryFn: ({ signal }) => getQuote(quoteId, fetchWithAuth, signal),
     enabled: Boolean(quoteId && user?.accountType === 'USER'),
     staleTime: 0,
+    // 권한 오류는 다시 요청해도 같으므로 재시도하지 않습니다.
+    retry: (count, error) => !isForbidden(error) && count < 3,
     // 결제 결과가 확정되면 화면을 자동으로 갱신합니다.
     refetchInterval: (query) =>
       query.state.data?.paymentPending ? 3000 : false,
@@ -62,6 +79,10 @@ export default function PaymentFlow({
   const chatHref = chatRoomId
     ? `/chats/${encodeURIComponent(chatRoomId)}`
     : '/chats';
+  const failCode = mode === 'fail' ? (params.get('code') ?? '') : '';
+  const retryMessage =
+    (Object.hasOwn(failReasons, failCode) && failReasons[failCode]) ||
+    '결제를 다시 시도해 주세요.';
   const checkoutHref = `/payments?${new URLSearchParams({ quoteId })}`;
   const showCallbackError =
     mode === 'fail' || (mode === 'success' && Boolean(error));
@@ -145,6 +166,10 @@ export default function PaymentFlow({
       );
       await completePayment(approved);
     } catch (cause) {
+      if (isForbidden(cause)) {
+        setAccessDenied(true);
+        return;
+      }
       void client.invalidateQueries({ queryKey: queryKeys.chats.all });
       if (
         cause instanceof Error &&
@@ -225,6 +250,10 @@ export default function PaymentFlow({
       await openPaymentWindow(user.id, payment, query);
     } catch (cause) {
       if (!active.current) return;
+      if (isForbidden(cause)) {
+        setAccessDenied(true);
+        return;
+      }
       if (
         cause instanceof Error &&
         'code' in cause &&
@@ -268,6 +297,8 @@ export default function PaymentFlow({
 
   if (user?.accountType !== 'USER')
     return <StateMessage title="일반 사용자만 결제할 수 있어요" />;
+
+  if (accessDenied || isForbidden(quoteQuery.error)) return <AccessDenied />;
 
   const quote = quoteQuery.data;
   if (mode === 'checkout' && result)
@@ -318,7 +349,7 @@ export default function PaymentFlow({
     const dialogDescription = showSupersededNotice
       ? '재견적이 도착해서 이 견적으로는 결제할 수 없어요.'
       : callbackCanRestart
-        ? '결제를 다시 시도해 주세요.'
+        ? retryMessage
         : error;
 
     return (
@@ -381,7 +412,7 @@ export default function PaymentFlow({
       <StateMessage
         className={styles.state}
         title="결제가 완료되지 않았어요"
-        description="결제창을 닫았거나 결제에 실패했어요. 다시 시도할 수 있어요."
+        description={retryMessage}
         link={{
           label: '결제 페이지로 돌아가기',
           href: checkoutHref,
