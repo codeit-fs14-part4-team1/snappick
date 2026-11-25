@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import PageContainer from '@/components/layout/PageContainer';
-import Button from '@/components/ui/Button';
 import {
   formatQuoteDate,
   formatQuoteTime,
@@ -67,9 +66,12 @@ export default function PaymentCompletion({
         <Link className={styles.backLink} href={chatHref}>
           채팅으로 돌아가기
         </Link>
-        <Button variant="outline" size="lg" disabled>
+        <Link
+          className={styles.backLink}
+          href={`/my/reservations/${encodeURIComponent(reservationId)}`}
+        >
           예약 상세 보기
-        </Button>
+        </Link>
       </div>
     </PageContainer>
   );

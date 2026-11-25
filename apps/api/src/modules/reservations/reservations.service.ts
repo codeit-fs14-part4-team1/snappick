@@ -660,6 +660,11 @@ export async function createCancelReservation(
           reservation_id: reservationId,
           message_type: 'SYSTEM',
           content,
+          payload: {
+            type: isPhotographer
+              ? 'RESERVATION_CANCELED'
+              : 'RESERVATION_CANCEL_REQUESTED',
+          },
         },
       });
 
@@ -842,6 +847,11 @@ export async function patchCancelReservation(
           reservation_id: reservationId,
           message_type: 'SYSTEM',
           content,
+          payload: {
+            type: accepted
+              ? 'RESERVATION_CANCELED'
+              : 'RESERVATION_CANCEL_REJECTED',
+          },
         },
       });
 
@@ -1049,6 +1059,7 @@ export async function createDeliverable(
         photographer: {
           select: { auth_account: { select: { nickname: true } } },
         },
+        quote: { select: { chat_room_id: true } },
         deliverable: { select: { id: true } },
         reservation_cancel_request: {
           where: { status: 'PENDING' },
@@ -1123,10 +1134,30 @@ export async function createDeliverable(
         ]
       : [];
 
+    const chatRoomId = reservation.quote?.chat_room_id ?? null;
+    if (chatRoomId) {
+      const message = await tx.chat_messages.create({
+        data: {
+          chat_room_id: chatRoomId,
+          recipient_account_id: userAccountId ?? null,
+          reservation_id: reservationId,
+          message_type: 'SYSTEM',
+          content: '결과물이 전달됐어요',
+          payload: { type: 'RESERVATION_DELIVERED' },
+          created_at: deliverable.created_at,
+        },
+      });
+      await tx.chat_rooms.updateMany({
+        where: { id: chatRoomId, last_message_at: { lt: message.created_at } },
+        data: { last_message_at: message.created_at },
+      });
+    }
+
     return {
       ...toDeliverableResponse(deliverable),
       reservationStatus: 'DELIVERED' as const,
       notifications,
+      chatRoomId,
     };
   });
 }

@@ -6,7 +6,7 @@ import ScrollToEdgeButton from '@/components/ui/ScrollToEdgeButton';
 import ChatAvatar from './ChatAvatar';
 import InquiryCard from './InquiryCard';
 import QuoteMessageCard from './QuoteMessageCard';
-import ReservationConfirmCard from './ReservationConfirmCard';
+import ReservationEventCard from './ReservationEventCard';
 import type { Quote } from '../quote';
 import type { ChatMessageItem, ChatViewerRole } from '../types';
 import { useChatScroll } from '../useChatScroll';
@@ -162,7 +162,7 @@ export default function ChatMessageList({
                 formatChatDate(previous.createdAt) !==
                   formatChatDate(message.createdAt);
               const system = message.messageType === 'SYSTEM';
-              const reservationConfirmation =
+              const confirmedQuote =
                 system &&
                 message.quote?.reservationId &&
                 message.payload &&
@@ -170,6 +170,18 @@ export default function ChatMessageList({
                 'type' in message.payload &&
                 message.payload.type === 'RESERVATION_CONFIRMED'
                   ? message.quote
+                  : null;
+              const reservation = confirmedQuote?.reservationId
+                ? {
+                    event: 'RESERVATION_CONFIRMED' as const,
+                    id: confirmedQuote.reservationId,
+                    quoteName: confirmedQuote.quoteName,
+                    shootAt: confirmedQuote.shootAt,
+                    location: confirmedQuote.location,
+                    amount: confirmedQuote.price,
+                  }
+                : system
+                  ? message.reservation
                   : null;
               return (
                 <Fragment key={message.id}>
@@ -182,13 +194,15 @@ export default function ChatMessageList({
                   )}
                   <li
                     className={
-                      system && !reservationConfirmation
-                        ? styles.system
-                        : styles.message
+                      system && !reservation ? styles.system : styles.message
                     }
                     data-mine={
-                      reservationConfirmation
-                        ? viewerRole === 'user'
+                      reservation
+                        ? viewerRole ===
+                          (reservation.event === 'RESERVATION_CONFIRMED' ||
+                          reservation.event === 'RESERVATION_CANCEL_REQUESTED'
+                            ? 'user'
+                            : 'photographer')
                         : message.isMine
                     }
                     data-message-id={message.id}
@@ -198,7 +212,7 @@ export default function ChatMessageList({
                     </span>
                     <div
                       className={
-                        reservationConfirmation
+                        reservation
                           ? styles.quoteContainer
                           : system
                             ? styles.systemContent
@@ -209,9 +223,9 @@ export default function ChatMessageList({
                                 : styles.bubble
                       }
                     >
-                      {reservationConfirmation ? (
-                        <ReservationConfirmCard
-                          quote={reservationConfirmation}
+                      {reservation ? (
+                        <ReservationEventCard
+                          reservation={reservation}
                           now={now}
                         />
                       ) : message.messageType === 'INITIAL_REQUEST' ? (

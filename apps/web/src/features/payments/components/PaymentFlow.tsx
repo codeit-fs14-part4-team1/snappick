@@ -232,7 +232,14 @@ export default function PaymentFlow({
             ? '취소된 예약의 견적이에요'
             : '이미 결제가 완료된 견적이에요'
         }
-        button={{ label: '예약 상세 보기', onClick: () => {}, disabled: true }}
+        link={
+          quote.reservationId
+            ? {
+                label: '예약 상세 보기',
+                href: `/my/reservations/${encodeURIComponent(quote.reservationId)}`,
+              }
+            : { label: '예약 내역 보기', href: '/my/reservations' }
+        }
       />
     );
   }

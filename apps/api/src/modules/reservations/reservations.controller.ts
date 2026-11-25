@@ -153,13 +153,16 @@ export async function createDeliverableHandler(req: Request, res: Response) {
   const { reservationId } = reservationParamsSchema.parse(req.params);
   const input = createDeliverableSchema.parse(req.body);
   const photographerId = await requirePhotographerId(getAuth(req));
-  const { notifications, ...result } = await createDeliverable(
+  const { chatRoomId, notifications, ...result } = await createDeliverable(
     photographerId,
     reservationId,
     input,
   );
   const io: Server = req.app.get('io');
   emitNotification(io, notifications);
+  if (chatRoomId) {
+    io.to(`chat:${chatRoomId}`).emit('message:new', { chatRoomId });
+  }
   res.status(201).json(result);
 }
 
