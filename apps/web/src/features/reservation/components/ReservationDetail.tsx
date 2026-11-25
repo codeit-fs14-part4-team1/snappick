@@ -522,10 +522,12 @@ export default function ReservationDetail({
               <dt>결제 수단</dt>
               <dd className={data.payment ? undefined : styles.unavailable}>
                 {data.payment
-                  ? formatPaymentMethod(
-                      data.payment.paymentMethod,
-                      data.payment.paymentProvider,
-                    )
+                  ? data.totalAmount === 0
+                    ? '무료'
+                    : formatPaymentMethod(
+                        data.payment.paymentMethod,
+                        data.payment.paymentProvider,
+                      )
                   : '-'}
               </dd>
             </div>

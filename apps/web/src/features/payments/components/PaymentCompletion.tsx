@@ -54,7 +54,7 @@ export default function PaymentCompletion({
           )}
           <div>
             <dt>결제 수단</dt>
-            <dd>토스페이먼츠</dd>
+            <dd>{amount === 0 ? '무료' : '토스페이먼츠'}</dd>
           </div>
           <div>
             <dt>결제 금액</dt>

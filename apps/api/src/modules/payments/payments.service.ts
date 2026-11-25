@@ -4,6 +4,7 @@ import type {
   PreparePaymentInput,
   ConfirmPaymentInput,
 } from './payments.schema.js';
+import { createReservation } from '../reservations/reservations.service.js';
 import {
   failPendingPayment,
   settlePayment,
@@ -226,13 +227,50 @@ export async function preparePayment(
       );
     }
 
+    // 토스는 0원 결제를 거부하므로 결제창 없이 결제 기록과 예약을 함께 저장
+    if (quote.price === 0) {
+      const freePayment = {
+        status: 'SUCCEEDED' as const,
+        paid_at: new Date(),
+      };
+      const payment = preparedPayment
+        ? await tx.payments.update({
+            where: { id: preparedPayment.id },
+            data: freePayment,
+          })
+        : await tx.payments.create({
+            data: {
+              ...freePayment,
+              quote_id: quote.id,
+              user_id: userId,
+              photographer_id: photographerId,
+              amount: 0,
+              payment_method: 'EASY_PAY',
+              pg_provider: 'TOSS',
+            },
+          });
+      const reservation = await createReservation(
+        userId,
+        { paymentId: payment.id },
+        tx,
+      );
+
+      return {
+        paymentId: payment.id,
+        status: 'SUCCEEDED' as const,
+        reservationId: reservation.reservationId,
+        chatRoomId: reservation.chatRoomId,
+        notifications: reservation.notifications,
+      };
+    }
+
     if (preparedPayment) {
       return {
         paymentId: preparedPayment.id,
         orderId: preparedPayment.pg_order_id,
         orderName: quote.quote_name,
         amount: preparedPayment.amount,
-        status: preparedPayment.status,
+        status: 'READY' as const,
         reused: true,
       };
     }
@@ -255,7 +293,7 @@ export async function preparePayment(
       orderId: payment.pg_order_id,
       orderName: quote.quote_name,
       amount: payment.amount,
-      status: payment.status,
+      status: 'READY' as const,
     };
   });
 }

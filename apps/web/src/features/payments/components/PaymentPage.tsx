@@ -160,10 +160,12 @@ export default function PaymentPage({
             <h2 id="method-title">결제 수단</h2>
             <label className={styles.method}>
               <input type="radio" name="payment-method" defaultChecked />
-              토스페이먼츠
+              {quote.price === 0 ? '무료' : '토스페이먼츠'}
             </label>
             <p className={styles.help}>
-              결제수단은 토스페이먼츠 결제창에서 선택할 수 있어요.
+              {quote.price === 0
+                ? '결제 없이 예약이 확정돼요.'
+                : '결제수단은 토스페이먼츠 결제창에서 선택할 수 있어요.'}
             </p>
           </section>
         </div>

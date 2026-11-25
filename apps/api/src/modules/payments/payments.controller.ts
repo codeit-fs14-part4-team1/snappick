@@ -25,7 +25,21 @@ export async function preparePaymentHandler(req: Request, res: Response) {
   const auth = getAuth(req);
   const input = preparePaymentSchema.parse(req.body);
 
-  const { reused, ...result } = await preparePayment(auth.accountId, input);
+  const prepared = await preparePayment(auth.accountId, input);
+
+  // 0원 견적은 결제창 없이 바로 예약이 확정된다
+  if (prepared.status === 'SUCCEEDED') {
+    const { chatRoomId, notifications, ...result } = prepared;
+    const io: Server = req.app.get('io');
+    emitNotification(io, notifications);
+    if (chatRoomId) {
+      io.to(`chat:${chatRoomId}`).emit('message:new', { chatRoomId });
+    }
+    res.status(201).json(result);
+    return;
+  }
+
+  const { reused, ...result } = prepared;
 
   res.status(reused ? 200 : 201).json(result);
 }

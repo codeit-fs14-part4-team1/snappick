@@ -104,6 +104,18 @@ export default function PaymentFlow({
     fetchNextPage,
   ]);
 
+  async function completePayment(approved: PaymentResult) {
+    setResult(approved);
+    await Promise.allSettled([
+      client.invalidateQueries({ queryKey: queryKeys.quotes.all }),
+      client.invalidateQueries({
+        queryKey: queryKeys.chats.all,
+        refetchType: 'all',
+      }),
+      client.invalidateQueries({ queryKey: queryKeys.reservations.all }),
+    ]);
+  }
+
   async function approve() {
     if (busy.current) return;
     const paymentKey = params.get('paymentKey');
@@ -131,15 +143,7 @@ export default function PaymentFlow({
         { paymentKey, orderId, amount },
         fetchWithAuth,
       );
-      setResult(approved);
-      await Promise.allSettled([
-        client.invalidateQueries({ queryKey: queryKeys.quotes.all }),
-        client.invalidateQueries({
-          queryKey: queryKeys.chats.all,
-          refetchType: 'all',
-        }),
-        client.invalidateQueries({ queryKey: queryKeys.reservations.all }),
-      ]);
+      await completePayment(approved);
     } catch (cause) {
       void client.invalidateQueries({ queryKey: queryKeys.chats.all });
       if (
@@ -209,6 +213,10 @@ export default function PaymentFlow({
     try {
       const payment = await preparePayment(quoteId, fetchWithAuth);
       if (!active.current) return;
+      if (payment.status === 'SUCCEEDED') {
+        await completePayment(payment);
+        return;
+      }
       const query = new URLSearchParams({
         quoteId,
         chatRoomId: quoteQuery.data.chatRoomId,
@@ -262,6 +270,15 @@ export default function PaymentFlow({
     return <StateMessage title="일반 사용자만 결제할 수 있어요" />;
 
   const quote = quoteQuery.data;
+  if (mode === 'checkout' && result)
+    return (
+      <PaymentCompletion
+        reservationId={result.reservationId}
+        amount={quote?.price ?? 0}
+        quote={quote}
+        chatHref={chatHref}
+      />
+    );
   const callbackCanRestart = mode === 'fail' || restartRequired;
   const canShowReservedQuote =
     callbackCanRestart || (mode === 'checkout' && !quoteQuery.isError);
