@@ -3,6 +3,7 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import {
   changePasswordHandler,
   getAccountHandler,
+  linkProviderHandler,
   loginHandler,
   logoutHandler,
   refreshHandler,
@@ -19,3 +20,4 @@ authRouter.post('/logout', logoutHandler);
 // 일반 사용자·작가 공통
 authRouter.get('/account', authenticate, getAccountHandler);
 authRouter.patch('/password', authenticate, changePasswordHandler);
+authRouter.post('/providers', authenticate, linkProviderHandler);

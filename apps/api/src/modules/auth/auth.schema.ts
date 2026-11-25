@@ -58,7 +58,9 @@ const basicFields = {
 };
 
 const socialFields = {
-  provider: z.enum(['GOOGLE', 'KAKAO', 'NAVER']),
+  provider: z.enum(['GOOGLE', 'KAKAO', 'NAVER'], {
+    error: '지원하지 않는 provider입니다.',
+  }),
   code: socialCodeSchema,
   redirectUri: redirectUriSchema,
   // 로그인 URL에 넣었던 state (네이버는 필수, 없으면 서비스에서 막는다)
@@ -91,6 +93,10 @@ export const loginSchema = z.discriminatedUnion(
   [z.object(basicFields), z.object(socialFields)],
   { error: providerError },
 );
+
+export const linkProviderSchema = z.object(socialFields);
+
+export type LinkProviderInput = z.infer<typeof linkProviderSchema>;
 
 // PATCH /auth/password
 // 새 비밀번호는 가입과 같은 규칙, 현재 비밀번호는 값만 확인한다 (규칙이 바뀌기 전 비밀번호도 받기 위해)

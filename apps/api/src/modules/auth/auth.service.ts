@@ -7,9 +7,14 @@ import type {
   ChangePasswordInput,
   SignupInput,
   LoginInput,
+  LinkProviderInput,
 } from './auth.schema.js';
 import { issueTokens, revokeOtherSessions } from './token.service.js';
-import { getSocialProfile, type SocialProvider } from './oauth.service.js';
+import {
+  getSocialProfile,
+  type SocialProfile,
+  type SocialProvider,
+} from './oauth.service.js';
 import { Provider } from '../../generated/prisma/enums.js';
 import { Prisma } from '../../generated/prisma/client.js';
 
@@ -28,6 +33,20 @@ async function verifyPassword(
 
 const accountAlreadyExists = () =>
   new HttpError(409, 'ACCOUNT_ALREADY_EXISTS', '이미 가입된 이메일입니다.');
+
+const providerAlreadyLinked = () =>
+  new HttpError(
+    409,
+    'PROVIDER_ALREADY_LINKED',
+    '이미 연동된 로그인 방식이에요.',
+  );
+
+const socialAccountInUse = () =>
+  new HttpError(
+    409,
+    'SOCIAL_ACCOUNT_IN_USE',
+    '다른 계정에서 사용 중인 소셜 계정이에요.',
+  );
 
 type SocialSignupInput = Extract<SignupInput, { provider: SocialProvider }>;
 type SocialLoginInput = Extract<LoginInput, { provider: SocialProvider }>;
@@ -117,6 +136,28 @@ export async function signup(input: SignupInput) {
 }
 
 /**
+ * 가입·연동에 쓸 수 있는 인증된 이메일을 꺼낸다 (없으면 400)
+ */
+function getVerifiedEmail(profile: SocialProfile, action: '가입' | '연동') {
+  if (!profile.email) {
+    throw new HttpError(
+      400,
+      'SOCIAL_EMAIL_REQUIRED',
+      `이메일 제공에 동의해야 ${action}할 수 있어요.`,
+    );
+  }
+  // 인증되지 않은 이메일로 다른 사람의 이메일을 선점하지 못하게 한다
+  if (!profile.emailVerified) {
+    throw new HttpError(
+      400,
+      'SOCIAL_EMAIL_NOT_VERIFIED',
+      `인증된 이메일이 있는 계정만 ${action}할 수 있어요.`,
+    );
+  }
+  return profile.email;
+}
+
+/**
  * 소셜 가입 (POST /auth/signup, provider: KAKAO 등)
  * 콜백에서 받은 인가 코드로 제공자 프로필을 가져오고, 인증된 이메일이 있을 때만 가입시킨다
  * 이메일은 선택 동의라 없을 수 있다 → 400으로 동의를 다시 받게 한다
@@ -126,23 +167,7 @@ export async function signup(input: SignupInput) {
 async function socialSignup(input: SocialSignupInput) {
   const profile = await getSocialProfile(input.provider, input);
   const nickname = toNickname(profile.nickname);
-
-  if (!profile.email) {
-    throw new HttpError(
-      400,
-      'SOCIAL_EMAIL_REQUIRED',
-      '이메일 제공에 동의해야 가입할 수 있어요.',
-    );
-  }
-  // 인증되지 않은 이메일로 다른 사람의 이메일을 선점하지 못하게 한다
-  if (!profile.emailVerified) {
-    throw new HttpError(
-      400,
-      'SOCIAL_EMAIL_NOT_VERIFIED',
-      '인증된 이메일이 있는 계정만 가입할 수 있어요.',
-    );
-  }
-  const email = profile.email;
+  const email = getVerifiedEmail(profile, '가입');
 
   const existing = await prisma.auth_providers.findFirst({
     where: {
@@ -215,6 +240,74 @@ async function socialLogin(input: SocialLoginInput) {
   }
 
   return issueTokens(prisma, found.auth_account, input.provider);
+}
+
+/**
+ * 소셜 계정 연동 (POST /auth/providers)
+ * 로그인한 계정에 소셜 로그인 방식을 추가한다. 토큰은 새로 발급하지 않는다
+ * 소셜 이메일은 계정 이메일과 달라도 되지만, 다른 계정이 쓰는 이메일이면 409
+ */
+export async function linkProvider(
+  accountId: string,
+  input: LinkProviderInput,
+) {
+  const { provider } = input;
+
+  // 이미 연동했다면 제공자에 요청하지 않는다
+  const linked = await prisma.auth_providers.findMany({
+    where: { auth_account_id: accountId },
+    select: { provider: true },
+  });
+  if (linked.length === 0) {
+    throw new HttpError(404, 'ACCOUNT_NOT_FOUND', '계정을 찾을 수 없습니다.');
+  }
+  if (linked.some((row) => row.provider === provider)) {
+    throw providerAlreadyLinked();
+  }
+
+  const profile = await getSocialProfile(provider, input);
+  const email = getVerifiedEmail(profile, '연동');
+
+  // 다른 계정이 이 소셜 계정이나 이메일을 쓰고 있는지 확인
+  // 내 계정의 이메일과 같은 것은 정상이므로 제외한다
+  const usedByOther = await prisma.auth_providers.findFirst({
+    where: {
+      auth_account_id: { not: accountId },
+      OR: [
+        { provider, provider_user_id: profile.providerUserId },
+        { provider_email: email },
+      ],
+    },
+    select: { id: true },
+  });
+  if (usedByOther) throw socialAccountInUse();
+
+  try {
+    await prisma.auth_providers.create({
+      data: {
+        auth_account_id: accountId,
+        provider,
+        provider_email: email,
+        provider_user_id: profile.providerUserId,
+      },
+    });
+  } catch (e) {
+    // 동시 요청으로 사전 검사를 통과한 경우 DB 유니크가 막아준다
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
+      // 같은 요청을 두 번 보낸 것인지, 다른 계정이 먼저 연동한 것인지 구분
+      const mine = await prisma.auth_providers.findUnique({
+        where: {
+          auth_account_id_provider: { auth_account_id: accountId, provider },
+        },
+        select: { id: true },
+      });
+      throw mine ? providerAlreadyLinked() : socialAccountInUse();
+    }
+    throw e;
+  }
 }
 
 export async function login(input: LoginInput) {
