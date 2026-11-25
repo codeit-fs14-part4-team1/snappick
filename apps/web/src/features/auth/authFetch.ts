@@ -51,6 +51,7 @@ export async function authFetch<T>(
     throw await createApiError(response);
   }
 
+  // 본문이 없는 응답은 JSON으로 변환하지 않음
   if (response.status === 204) {
     return;
   }

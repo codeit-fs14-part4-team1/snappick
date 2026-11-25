@@ -137,6 +137,8 @@ export async function preparePayment(
         quote_id: true,
         status: true,
         pg_order_id: true,
+        pg_payment_id: true,
+        user_id: true,
         amount: true,
       },
     });
@@ -146,6 +148,22 @@ export async function preparePayment(
     );
 
     if (pendingPayment) {
+      if (
+        pendingPayment.quote_id === quote.id &&
+        pendingPayment.user_id === quote.chat_room?.user_id &&
+        pendingPayment.pg_payment_id
+      ) {
+        return {
+          paymentId: pendingPayment.id,
+          orderId: pendingPayment.pg_order_id,
+          orderName: quote.quote_name,
+          amount: pendingPayment.amount,
+          status: 'PENDING' as const,
+          paymentKey: pendingPayment.pg_payment_id,
+          reused: true,
+        };
+      }
+
       throw new HttpError(
         409,
         'PAYMENT_IN_PROGRESS',
@@ -288,8 +306,17 @@ export async function confirmPayment(
       paymentId: payment.id,
       status: 'SUCCEEDED',
       reservationId: reservation.id,
+      chatRoomId: null,
       notifications: [],
     };
+  }
+
+  if (payment.status === 'FAILED') {
+    throw new HttpError(
+      409,
+      'PAYMENT_RETRY_REQUIRED',
+      '실패한 결제입니다. 결제 페이지에서 다시 시작해 주세요.',
+    );
   }
 
   const tossSecretKey = process.env.TOSS_SECRET_KEY;
@@ -322,9 +349,6 @@ export async function confirmPayment(
     }
   };
 
-  let tossConfirmResponse: Response | undefined;
-  let tossResponse: Response | undefined;
-
   if (payment.status === 'PENDING') {
     // 기존 결제 시도와 같은 키인지 확인합니다.
     if (payment.pg_payment_id !== input.paymentKey) {
@@ -334,8 +358,6 @@ export async function confirmPayment(
         '기존 결제 요청과 결제 키가 일치하지 않습니다.',
       );
     }
-
-    tossResponse = await fetchTossPayment();
   } else {
     const shootingCaseId = payment.quote?.shooting_case_id;
 
@@ -388,48 +410,92 @@ export async function confirmPayment(
         '이미 처리 중이거나 처리된 결제입니다.',
       );
     }
+  }
 
-    try {
-      tossConfirmResponse = await fetch(
-        'https://api.tosspayments.com/v1/payments/confirm',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: authorization,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paymentKey: input.paymentKey,
-            orderId: input.orderId,
-            amount: payment.amount,
-          }),
-        },
+  const readTossPayment = async (response: Response) => {
+    const result = tossPaymentResponseSchema.safeParse(
+      await response.json().catch(() => undefined),
+    );
+    if (!result.success) {
+      throw new HttpError(
+        502,
+        'TOSS_INVALID_RESPONSE',
+        '토스 결제 응답을 확인할 수 없습니다.',
       );
-    } catch {
-      tossResponse = undefined;
     }
+    const data = result.data;
+    if (
+      data.paymentKey !== input.paymentKey ||
+      data.orderId !== input.orderId ||
+      data.totalAmount !== input.amount
+    ) {
+      throw new HttpError(
+        502,
+        'TOSS_PAYMENT_MISMATCH',
+        '토스 결제 정보가 일치하지 않습니다.',
+      );
+    }
+    return data;
+  };
 
-    tossResponse = tossConfirmResponse;
-  }
+  const readErrorCode = async (response: Response | undefined) => {
+    if (!response || response.ok) return undefined;
+    const result = tossErrorResponseSchema.safeParse(
+      await response.json().catch(() => undefined),
+    );
+    return result.success ? result.data.code : undefined;
+  };
 
-  let tossConfirmErrorCode: string | undefined;
-
-  if (tossConfirmResponse && !tossConfirmResponse.ok) {
-    const body: unknown = await tossConfirmResponse
-      .json()
-      .catch(() => undefined);
-    const result = tossErrorResponseSchema.safeParse(body);
-
-    if (result.success) {
-      tossConfirmErrorCode = result.data.code;
+  let tossPayment: Awaited<ReturnType<typeof readTossPayment>> | undefined;
+  let shouldConfirm = payment.status === 'READY';
+  if (payment.status === 'PENDING') {
+    const lookup = await fetchTossPayment();
+    if (lookup?.ok) {
+      tossPayment = await readTossPayment(lookup);
+      shouldConfirm = tossPayment.status === 'IN_PROGRESS';
+    } else {
+      // 승인 전에는 결제 조회에 아직 기록이 없을 수 있습니다.
+      shouldConfirm = (await readErrorCode(lookup)) === 'NOT_FOUND_PAYMENT';
     }
   }
 
-  if (!tossResponse?.ok && payment.status === 'READY') {
-    tossResponse = await fetchTossPayment();
+  let approvalFailed = false;
+  if (shouldConfirm) {
+    const confirmation = await fetch(
+      'https://api.tosspayments.com/v1/payments/confirm',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: authorization,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': payment.id,
+        },
+        body: JSON.stringify({
+          paymentKey: input.paymentKey,
+          orderId: input.orderId,
+          amount: payment.amount,
+        }),
+      },
+    ).catch(() => undefined);
+
+    if (confirmation?.ok) {
+      tossPayment = await readTossPayment(confirmation);
+    } else {
+      const confirmationCode = await readErrorCode(confirmation);
+      const lookup = await fetchTossPayment();
+      tossPayment = lookup?.ok ? await readTossPayment(lookup) : undefined;
+      approvalFailed =
+        (confirmationCode === 'REJECT_CARD_COMPANY' ||
+          confirmationCode === 'NOT_FOUND_PAYMENT_SESSION') &&
+        (await readErrorCode(lookup)) === 'NOT_FOUND_PAYMENT';
+    }
   }
 
-  if (!tossResponse?.ok && tossConfirmErrorCode === 'REJECT_CARD_COMPANY') {
+  if (
+    approvalFailed ||
+    tossPayment?.status === 'ABORTED' ||
+    tossPayment?.status === 'EXPIRED'
+  ) {
     const failed = await prisma.payments.updateMany({
       where: {
         id: payment.id,
@@ -450,67 +516,15 @@ export async function confirmPayment(
     throw new HttpError(
       409,
       'PAYMENT_RETRY_REQUIRED',
-      '결제 승인이 거절되었습니다. 결제를 다시 시작해 주세요.',
+      '결제가 실패했거나 만료되었습니다. 결제를 다시 시작해 주세요.',
     );
   }
 
-  if (!tossResponse?.ok) {
+  if (!tossPayment) {
     throw new HttpError(
       502,
       'TOSS_CONFIRM_FAILED',
       '토스 결제 상태를 확인할 수 없습니다.',
-    );
-  }
-
-  const tossResult = tossPaymentResponseSchema.safeParse(
-    await tossResponse.json(),
-  );
-
-  if (!tossResult.success) {
-    throw new HttpError(
-      502,
-      'TOSS_INVALID_RESPONSE',
-      '토스 결제 응답을 확인할 수 없습니다.',
-    );
-  }
-
-  const tossPayment = tossResult.data;
-
-  // 토스 응답이 요청한 결제와 일치하는지 확인
-  if (
-    tossPayment.paymentKey !== input.paymentKey ||
-    tossPayment.orderId !== input.orderId ||
-    tossPayment.totalAmount !== payment.amount
-  ) {
-    throw new HttpError(
-      502,
-      'TOSS_PAYMENT_MISMATCH',
-      '토스 결제 정보가 일치하지 않습니다.',
-    );
-  }
-
-  if (tossPayment.status === 'ABORTED' || tossPayment.status === 'EXPIRED') {
-    const updated = await prisma.payments.updateMany({
-      where: {
-        id: payment.id,
-        status: 'PENDING',
-        pg_payment_id: input.paymentKey,
-      },
-      data: { status: 'FAILED' },
-    });
-
-    if (updated.count === 0) {
-      throw new HttpError(
-        409,
-        'PAYMENT_STATE_CHANGED',
-        '결제 상태가 변경되었습니다. 다시 확인해 주세요.',
-      );
-    }
-
-    throw new HttpError(
-      409,
-      'PAYMENT_RETRY_REQUIRED',
-      '결제가 실패했거나 만료되었습니다. 결제를 다시 시작해 주세요.',
     );
   }
 
@@ -558,6 +572,7 @@ export async function confirmPayment(
             paymentId: payment.id,
             status: 'SUCCEEDED',
             reservationId: reservation.id,
+            chatRoomId: null,
             notifications: [],
           };
         }
@@ -582,6 +597,7 @@ export async function confirmPayment(
       paymentId: payment.id,
       status: 'SUCCEEDED',
       reservationId: reservation.reservationId,
+      chatRoomId: reservation.chatRoomId,
       notifications: reservation.notifications,
     };
   });

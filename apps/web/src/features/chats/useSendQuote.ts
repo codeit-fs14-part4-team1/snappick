@@ -43,6 +43,12 @@ export default function useSendQuote(
         void client.invalidateQueries({ queryKey: queryKeys.chats.all });
         void client.invalidateQueries({ queryKey: queryKeys.quotes.all });
       }
+      if (
+        'code' in error &&
+        (error.code === 'SHOOTING_CASE_CANCELED' ||
+          error.code === 'SHOOTING_CASE_PURCHASE_CONFIRMED')
+      )
+        return;
       const notice =
         error.message === 'API 요청 실패: 409'
           ? '최신 견적 또는 예약 상태가 변경되었어요. 목록을 확인한 뒤 다시 시도해 주세요.'

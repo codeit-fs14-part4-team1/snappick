@@ -35,9 +35,9 @@ export type Quote = {
   shootingCaseId: string;
   version: number;
   isLatest: boolean;
-  // TODO(결제 API 연동): 견적 상세·채팅 메시지 응답에 이 견적의 예약 상태를 연결합니다.
-  // 결제 성공 후 견적 상세와 채팅 메시지 캐시도 갱신해야 합니다.
   reservationStatus?: ReservationStatus | null;
+  reservationId?: string | null;
+  representativeImageUrl?: string | null;
   quoteName: string;
   shootAt: string;
   location: string;

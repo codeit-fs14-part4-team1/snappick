@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { Server } from 'socket.io';
 
 import { getAuth } from '../../middlewares/authenticate.js';
 import {
@@ -6,7 +7,6 @@ import {
   preparePaymentSchema,
 } from './payments.schema.js';
 import { confirmPayment, preparePayment } from './payments.service.js';
-import type { Server } from 'socket.io';
 import { emitNotification } from '../notifications/notifications.emit.js';
 
 export async function preparePaymentHandler(req: Request, res: Response) {
@@ -22,12 +22,15 @@ export async function confirmPaymentHandler(req: Request, res: Response) {
   const auth = getAuth(req);
   const input = confirmPaymentSchema.parse(req.body);
 
-  const { notifications, ...result } = await confirmPayment(
+  const { chatRoomId, notifications, ...result } = await confirmPayment(
     auth.accountId,
     input,
   );
 
   const io: Server = req.app.get('io');
   emitNotification(io, notifications);
+  if (chatRoomId) {
+    io.to(`chat:${chatRoomId}`).emit('message:new', { chatRoomId });
+  }
   res.status(200).json(result);
 }
