@@ -38,6 +38,7 @@ export default function QuoteMessageCard({
   const hours = quote.durationMinutes / 60;
   const isLatest = savedQuote.isLatest && !superseded;
   const isReserved = Boolean(savedQuote.reservationStatus);
+  const isPaymentPending = Boolean(savedQuote.paymentPending) && !isReserved;
 
   return (
     <article className={styles.card} aria-label={`${quote.quoteName} 견적서`}>
@@ -120,7 +121,12 @@ export default function QuoteMessageCard({
             결제 완료 · 예약 확정
           </Button>
         )}
-        {received && !isReserved && (
+        {isPaymentPending && (
+          <Button fullWidth disabled>
+            결제 확인 중
+          </Button>
+        )}
+        {received && !isReserved && !isPaymentPending && (
           <div className={styles.payment}>
             {isLatest && (
               <Button fullWidth disabled={!onPay} onClick={onPay}>
@@ -138,7 +144,12 @@ export default function QuoteMessageCard({
           </div>
         )}
         {onEdit && isLatest && !isReserved && (
-          <Button fullWidth variant="outline" onClick={onEdit}>
+          <Button
+            fullWidth
+            variant="outline"
+            disabled={isPaymentPending}
+            onClick={onEdit}
+          >
             수정하기
           </Button>
         )}

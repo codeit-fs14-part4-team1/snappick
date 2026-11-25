@@ -40,6 +40,7 @@ export default function PaymentPage({
   pending,
   revisedQuoteHref,
   checkoutLocked = false,
+  paymentPending = false,
 }: {
   quote: QuoteDraft;
   photographerName: string;
@@ -49,6 +50,8 @@ export default function PaymentPage({
   pending: boolean;
   revisedQuoteHref?: string;
   checkoutLocked?: boolean;
+  /** 이 견적의 결제 결과를 서버가 확인하는 중 */
+  paymentPending?: boolean;
 }) {
   const [agreed, setAgreed] = useState(false);
 
@@ -165,7 +168,13 @@ export default function PaymentPage({
           className={`${styles.panel} ${styles.summary}`}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!agreed || pending || revisedQuoteHref || checkoutLocked)
+            if (
+              !agreed ||
+              pending ||
+              revisedQuoteHref ||
+              checkoutLocked ||
+              paymentPending
+            )
               return;
             void onPay();
           }}
@@ -239,15 +248,30 @@ export default function PaymentPage({
             fullWidth
             type="submit"
             disabled={
-              !agreed || pending || Boolean(revisedQuoteHref) || checkoutLocked
+              !agreed ||
+              pending ||
+              Boolean(revisedQuoteHref) ||
+              checkoutLocked ||
+              paymentPending
             }
             startIcon={
               pending ? <span className={styles.spinner} /> : undefined
             }
           >
-            {pending ? '결제 진행 중…' : '동의하고 결제하기'}
+            {paymentPending
+              ? '결제 확인 중'
+              : pending
+                ? '결제 진행 중…'
+                : '동의하고 결제하기'}
           </Button>
-          <p className={styles.help}>결제가 완료되면 예약이 바로 확정돼요.</p>
+          <p
+            className={styles.help}
+            role={paymentPending ? 'status' : undefined}
+          >
+            {paymentPending
+              ? '결제 결과를 확인하고 있어요. 나가도 자동으로 처리돼요.'
+              : '결제가 완료되면 예약이 바로 확정돼요.'}
+          </p>
         </form>
       </div>
     </PageContainer>

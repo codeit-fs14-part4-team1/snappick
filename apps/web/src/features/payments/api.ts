@@ -5,7 +5,8 @@ export type PreparedPayment = {
   orderId: string;
   orderName: string;
   amount: number;
-} & ({ status: 'READY' } | { status: 'PENDING'; paymentKey: string });
+  status: 'READY';
+};
 
 export type PaymentResult = {
   paymentId: string;
@@ -24,8 +25,7 @@ export async function preparePayment(
   });
   if (
     !result?.orderId ||
-    (result.status !== 'READY' &&
-      (result.status !== 'PENDING' || !result.paymentKey)) ||
+    result.status !== 'READY' ||
     !Number.isSafeInteger(result.amount) ||
     result.amount < 0
   )
