@@ -125,6 +125,7 @@ export async function getChatRooms(
   if (cursor) params.set('cursor', cursor);
 
   const page = await fetchWithAuth<ChatRoomsResponse>(`/chats?${params}`, {
+    cache: 'no-store',
     signal,
   });
   if (!page) throw new Error('채팅방 목록 응답이 없습니다.');
