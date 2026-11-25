@@ -295,12 +295,31 @@ export default function ChatMessageList({
         <button
           type="button"
           className={styles.newMessage}
-          aria-label={`${partnerName}의 새 메시지: ${newMessage.content}. 최하단으로 이동`}
+          aria-label={
+            newMessage.messageType === 'SYSTEM'
+              ? `새 메시지: ${newMessage.content}. 최하단으로 이동`
+              : `${partnerName}의 새 메시지: ${newMessage.content}. 최하단으로 이동`
+          }
           onClick={scrollToBottom}
         >
-          <ChatAvatar src={partnerImageUrl} nickname={partnerName} size={22} />
-          <strong className={styles.newMessageName}>{partnerName}</strong>
-          <span className={styles.newMessageContent} role="status">
+          {newMessage.messageType !== 'SYSTEM' && (
+            <>
+              <ChatAvatar
+                src={partnerImageUrl}
+                nickname={partnerName}
+                size={22}
+              />
+              <strong className={styles.newMessageName}>{partnerName}</strong>
+            </>
+          )}
+          <span
+            className={
+              newMessage.messageType === 'SYSTEM'
+                ? styles.newSystemMessageContent
+                : styles.newMessageContent
+            }
+            role="status"
+          >
             {newMessage.content}
           </span>
         </button>

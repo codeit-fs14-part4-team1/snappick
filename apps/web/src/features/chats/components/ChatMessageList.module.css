@@ -43,6 +43,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.newSystemMessageContent {
+  min-width: 0;
+  font-weight: 700;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .newMessageName {
   max-width: 120px;
   min-width: 0;
