@@ -245,6 +245,42 @@
   overflow-wrap: anywhere;
 }
 
+.locationDetails {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.locationDetails > span {
+  min-width: 0;
+}
+
+.locationLink {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-text-primary, #111);
+  color: var(--color-bg-base, #fff);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.locationMap {
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: 12px;
+  background: #eef0ea;
+}
+
 /* 아직 API에서 제공하지 않는 정보 */
 .infoRow .unavailable {
   color: var(--color-text-tertiary);
