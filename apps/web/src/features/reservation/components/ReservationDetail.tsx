@@ -21,6 +21,8 @@ import ReservationProgress from './ReservationProgress';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ReservationDetailActions from './ReservationDetailActions';
 import Button from '@/components/ui/Button';
+import NaverMapView from '@/features/map/components/NaverMapView';
+import { naverMapSearchUrl } from '@/features/map/naver-maps';
 
 import styles from './ReservationDetail.module.css';
 
@@ -417,7 +419,45 @@ export default function ReservationDetail({
 
             <div className={styles.infoRow}>
               <dt>촬영 장소</dt>
-              <dd>{data.location}</dd>
+              <dd>
+                <div className={styles.locationDetails}>
+                  <span>{data.location}</span>
+                  {data.location.trim() && (
+                    <a
+                      className={styles.locationLink}
+                      href={naverMapSearchUrl(data.location.trim())}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="지도보기 (네이버 지도, 새 탭)"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="8"
+                        height="10"
+                        viewBox="0 0 8 10"
+                        fill="none"
+                      >
+                        <path
+                          d="M4 0C1.8 0 0 1.73333 0 3.93333C0 6.86667 4 10 4 10C4 10 8 6.86667 8 3.93333C8 1.73333 6.2 0 4 0ZM4 2.4C4.86667 2.4 5.53333 3.06667 5.53333 3.93333C5.53333 4.8 4.86667 5.46667 4 5.46667C3.13333 5.46667 2.46667 4.8 2.46667 3.93333C2.46667 3.06667 3.13333 2.4 4 2.4Z"
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          fill="white"
+                        />
+                      </svg>
+                      지도보기
+                    </a>
+                  )}
+                </div>
+                {data.locationCoords && (
+                  <div className={styles.locationMap}>
+                    <NaverMapView
+                      lat={data.locationCoords.lat}
+                      lng={data.locationCoords.lng}
+                    />
+                  </div>
+                )}
+              </dd>
             </div>
 
             <div className={styles.infoRow}>
