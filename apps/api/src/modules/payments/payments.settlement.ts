@@ -53,6 +53,7 @@ const paymentStateChanged = () =>
 async function closePendingPayment(
   payment: PendingPayment,
   status: 'FAILED' | 'CANCELED',
+  failureCode?: string,
 ) {
   const closed = await prisma.payments.updateMany({
     where: {
@@ -60,7 +61,7 @@ async function closePendingPayment(
       status: 'PENDING',
       pg_payment_id: payment.target.paymentKey,
     },
-    data: { status },
+    data: { status, ...(failureCode && { failure_code: failureCode }) },
   });
 
   if (closed.count === 0) {
@@ -68,15 +69,21 @@ async function closePendingPayment(
   }
 }
 
-export function failPendingPayment(payment: PendingPayment) {
-  return closePendingPayment(payment, 'FAILED');
+export function failPendingPayment(
+  payment: PendingPayment,
+  failureCode?: string,
+) {
+  return closePendingPayment(payment, 'FAILED', failureCode);
 }
 
 // 토스 취소를 먼저 확인한 뒤 DB를 바꾼다
 // 토스 취소에 실패하면 PENDING을 유지해 다음에 다시 취소한다
-async function cancelApprovedPayment(payment: PendingPayment) {
+async function cancelApprovedPayment(
+  payment: PendingPayment,
+  failureCode: string,
+) {
   await cancelTossPayment(payment.target, '예약 생성 불가');
-  await closePendingPayment(payment, 'CANCELED');
+  await closePendingPayment(payment, 'CANCELED', failureCode);
 }
 
 async function completePayment(
@@ -150,11 +157,12 @@ async function completePayment(
 export async function settlePayment(
   payment: PendingPayment,
   tossPayment: TossPayment,
+  errorCode?: string,
 ): Promise<SettledPayment> {
   switch (tossPayment.status) {
     case 'ABORTED':
     case 'EXPIRED':
-      await failPendingPayment(payment);
+      await failPendingPayment(payment, errorCode ?? tossPayment.status);
       return { status: 'FAILED' };
     case 'CANCELED':
       // 토스 취소 후 DB 수정만 실패했던 결제를 맞춘다
@@ -168,7 +176,7 @@ export async function settlePayment(
 
   // 탈퇴한 사용자의 결제는 예약을 만들 수 없다
   if (!payment.userId) {
-    await cancelApprovedPayment(payment);
+    await cancelApprovedPayment(payment, 'USER_UNAVAILABLE');
     return { status: 'CANCELED' };
   }
 
@@ -184,7 +192,7 @@ export async function settlePayment(
     }
 
     // 예약 생성 트랜잭션은 롤백됐으므로 결제를 취소한다
-    await cancelApprovedPayment(payment);
+    await cancelApprovedPayment(payment, error.code);
     return { status: 'CANCELED' };
   }
 }
@@ -242,23 +250,26 @@ export async function reconcilePendingPayments(now: Date, minAgeMs: number) {
 
       let tossPayment = lookup.type === 'FOUND' ? lookup.payment : undefined;
       let failed = false;
+      let errorCode: string | undefined;
 
       if (!tossPayment || tossPayment.status === 'IN_PROGRESS') {
         if (now.getTime() - row.updated_at.getTime() >= APPROVAL_VALID_MS) {
           failed = true;
+          errorCode = 'APPROVAL_TIMEOUT';
         } else if (row.user_id && row.quote && row.quote.shoot_at > now) {
           const approval = await approveTossPayment(payment.target, payment.id);
           failed = approval.rejected;
+          errorCode = approval.errorCode;
           tossPayment = approval.payment;
         }
       }
 
       let settled: SettledPayment;
       if (failed) {
-        await failPendingPayment(payment);
+        await failPendingPayment(payment, errorCode);
         settled = { status: 'FAILED' };
       } else if (tossPayment) {
-        settled = await settlePayment(payment, tossPayment);
+        settled = await settlePayment(payment, tossPayment, errorCode);
       } else {
         continue;
       }

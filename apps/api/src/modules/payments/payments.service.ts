@@ -474,6 +474,7 @@ export async function confirmPayment(
   };
 
   let tossPayment: TossPayment | undefined;
+  let errorCode: string | undefined;
   if (payment.status === 'PENDING') {
     const lookup = await lookupTossPayment(pendingPayment.target);
     // 이미 시작된 결제는 조회로만 맞추고, 승인 재요청은 정리 작업에 맡깁니다.
@@ -484,17 +485,18 @@ export async function confirmPayment(
       payment.id,
     );
     if (approval.rejected) {
-      await failPendingPayment(pendingPayment);
+      await failPendingPayment(pendingPayment, approval.errorCode);
       throw paymentRetryRequired();
     }
     tossPayment = approval.payment;
+    errorCode = approval.errorCode;
   }
 
   if (!tossPayment) {
     throw paymentProcessing();
   }
 
-  const settled = await settlePayment(pendingPayment, tossPayment);
+  const settled = await settlePayment(pendingPayment, tossPayment, errorCode);
 
   switch (settled.status) {
     case 'FAILED':

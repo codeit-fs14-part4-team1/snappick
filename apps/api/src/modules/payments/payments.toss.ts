@@ -126,11 +126,16 @@ export async function lookupTossPayment(
  * 토스 결제 승인
  * - 승인 응답이 실패면 다시 조회해 실제 상태를 확인한다
  * - rejected: 토스가 거절했고 조회에서도 승인되지 않은 것이 확인된 경우
+ * - errorCode: 승인 실패 시 토스 오류 코드 (원인 기록용)
  */
 export async function approveTossPayment(
   target: TossTarget,
   idempotencyKey: string,
-): Promise<{ payment: TossPayment | undefined; rejected: boolean }> {
+): Promise<{
+  payment: TossPayment | undefined;
+  rejected: boolean;
+  errorCode?: string | undefined;
+}> {
   const authorization = getTossAuthorization();
   const response = await fetch(`${TOSS_PAYMENTS_URL}/confirm`, {
     method: 'POST',
@@ -158,6 +163,7 @@ export async function approveTossPayment(
 
   return {
     payment,
+    errorCode: code,
     rejected:
       notApproved &&
       response !== undefined &&
