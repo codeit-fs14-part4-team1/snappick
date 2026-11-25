@@ -53,6 +53,13 @@ function MyPageContent({
     ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
   );
 
+  // 예약 상세에서는 메뉴 선택 상태를 유지하면서 제목만 변경
+  const isReservationDetailPage = pathname.startsWith('/my/reservations/');
+
+  const pageTitle = isReservationDetailPage
+    ? '예약 상세'
+    : (selectedItem?.label ?? '마이페이지');
+
   useEffect(() => {
     if (restricted) router.replace('/my/reservations');
   }, [restricted, router]);
@@ -89,9 +96,13 @@ function MyPageContent({
         </nav>
       </aside>
       <section className={styles.content} aria-labelledby="my-page-title">
-        <h1 id="my-page-title" className={styles.heading}>
-          {selectedItem?.label ?? '마이페이지'}
-        </h1>
+        {/* 예약 상세 페이지에서는 자체 제목과 예약번호를 표시 */}
+        {!isReservationDetailPage && (
+          <h1 id="my-page-title" className={styles.heading}>
+            {pageTitle}
+          </h1>
+        )}
+
         <MyPageAccountContext.Provider value={user}>
           {children}
         </MyPageAccountContext.Provider>

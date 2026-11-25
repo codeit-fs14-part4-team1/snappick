@@ -29,7 +29,7 @@
   gap: 8px;
 }
 
-/* 포트폴리오 관리 버튼을 Figma 디자인에 맞게 표시함 */
+/* 포트폴리오 관리 버튼 */
 .actionButton {
   display: inline-flex;
   align-items: center;

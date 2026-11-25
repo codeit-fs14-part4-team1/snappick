@@ -1,0 +1,12 @@
+/* 예약 상세 하단 액션 버튼 영역 */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 16px;
+}
+
+/* 버튼이 하나만 표시되는 경우 */
+.singleAction {
+  grid-template-columns: minmax(0, 1fr);
+}

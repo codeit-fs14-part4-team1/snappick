@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { ReservationStatusLabel } from '@/constants/enum-labels';
 import { formatDateWithWeekday, formatTime } from '@/utils/dateTime';
@@ -37,6 +38,7 @@ function formatShootAt(value: string): string {
 // 예약 목록의 개별 예약 정보를 표시
 export default function ReservationCard({ reservation }: ReservationCardProps) {
   const {
+    reservationId,
     name,
     counterpart,
     status,
@@ -54,7 +56,11 @@ export default function ReservationCard({ reservation }: ReservationCardProps) {
     status === 'CONFIRMED' && cancelRequestStatus === 'PENDING';
 
   return (
-    <article className={styles.card}>
+    <Link
+      href={`/my/reservations/${encodeURIComponent(reservationId)}`}
+      className={styles.card}
+      aria-label={`${name ?? '예약'} 상세 보기`}
+    >
       {/* 예약 진행 상태와 촬영일까지 남은 날짜를 표시함 */}
       <div className={styles.statusRow}>
         <StatusBadge variant={reservationStatusBadgeVariants[status]}>
@@ -112,6 +118,6 @@ export default function ReservationCard({ reservation }: ReservationCardProps) {
           />
         </svg>
       </span>
-    </article>
+    </Link>
   );
 }

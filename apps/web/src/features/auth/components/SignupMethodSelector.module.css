@@ -40,8 +40,6 @@
   font-size: 14px;
   line-height: 1.5;
 }
-
-/* 로그인 링크 색상은 팀 디자인 확인 전까지 기존 기준을 유지함 */
 .loginLink {
   color: var(--color-primary);
   font-weight: 700;
