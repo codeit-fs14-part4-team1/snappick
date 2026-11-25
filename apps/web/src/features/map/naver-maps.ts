@@ -33,6 +33,7 @@ export type MapPickerMessage = {
 export type NaverLatLng = { lat(): number; lng(): number };
 export type NaverMap = {
   setCenter(center: NaverLatLng): void;
+  setSize(size: { width: number; height: number }): void;
   destroy(): void;
 };
 export type NaverMarker = { setPosition(position: NaverLatLng): void };

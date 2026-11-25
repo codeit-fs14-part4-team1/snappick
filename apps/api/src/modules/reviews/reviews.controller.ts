@@ -21,6 +21,8 @@ import {
   updateReply,
   deleteReply,
 } from './reviews.service.js';
+import type { Server } from 'socket.io';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 async function requireUserId(req: Request): Promise<string> {
   const { userId } = await resolveViewer(getAuth(req));
@@ -51,7 +53,13 @@ export async function getEligibleReviewsHandler(req: Request, res: Response) {
 
 export async function createReviewHandler(req: Request, res: Response) {
   const input = createReviewSchema.parse(req.body);
-  res.status(201).json(await createReview(await requireUserId(req), input));
+  const { notification, ...result } = await createReview(
+    await requireUserId(req),
+    input,
+  );
+  const io: Server = req.app.get('io');
+  emitNotification(io, [notification]);
+  res.status(201).json(result);
 }
 
 export async function updateReviewHandler(req: Request, res: Response) {

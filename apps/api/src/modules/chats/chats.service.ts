@@ -2,6 +2,12 @@ import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { InquiryPayload } from './chats.schema.js';
+import {
+  createMessageNotification,
+  readMessageNotifications,
+  createNotification,
+  notificationMessages,
+} from '../notifications/notifications.create.js';
 
 //사용자 조회
 export async function createChat(accountId: string, photographerId: string) {
@@ -251,10 +257,10 @@ export async function sendMessage(
     },
     include: {
       user: {
-        select: { auth_account_id: true },
+        select: { auth_account_id: true, nickname: true },
       },
       photographer: {
-        select: { auth_account_id: true },
+        select: { auth_account_id: true, nickname: true },
       },
     },
   });
@@ -307,7 +313,19 @@ export async function sendMessage(
         last_message_at: savedMessage.created_at,
       },
     });
-    return savedMessage;
+    const sender =
+      accountId === userAccountId ? chatRoom.user : chatRoom.photographer;
+
+    const notification = await createMessageNotification(
+      {
+        recipientAccountId,
+        chatRoomId,
+        senderName: sender?.nickname ?? '상대방',
+      },
+      tx,
+    );
+
+    return { message: savedMessage, notification };
   });
   return message;
 }
@@ -386,7 +404,19 @@ export async function getMessages(
     orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     take: limit + 1,
     include: {
-      quote: true,
+      quote: {
+        include: {
+          shooting_case: {
+            select: {
+              quotes: {
+                orderBy: { version: 'desc' },
+                take: 1,
+                select: { id: true },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -406,9 +436,13 @@ export async function getMessages(
           chatRoomId: message.quote.chat_room_id,
           shootingCaseId: message.quote.shooting_case_id,
           version: message.quote.version,
+          isLatest:
+            message.quote.shooting_case.quotes[0]?.id === message.quote.id,
           quoteName: message.quote.quote_name,
           shootAt: message.quote.shoot_at,
           location: message.quote.location,
+          locationLat: message.quote.location_lat,
+          locationLng: message.quote.location_lng,
           durationMinutes: message.quote.duration_minutes,
           price: message.quote.price,
           photoCount: message.quote.photo_count,
@@ -482,7 +516,7 @@ export async function sendInquiry(
     },
     include: {
       user: {
-        select: { auth_account_id: true },
+        select: { auth_account_id: true, nickname: true },
       },
       photographer: {
         select: { auth_account_id: true },
@@ -561,7 +595,19 @@ export async function sendInquiry(
       },
     });
 
-    return savedMessage;
+    const notification = await createNotification(
+      {
+        accountId: photographerAccountId,
+        type: 'NEW_INQUIRY',
+        targetId: chatRoomId,
+        message: notificationMessages.newInquiry(
+          chatRoom.user?.nickname ?? '사용자',
+        ),
+      },
+      tx,
+    );
+
+    return { message: savedMessage, notification };
   });
 }
 
@@ -589,30 +635,52 @@ export async function markChatAsRead(
 
   const readAt = new Date();
 
-  const updated = await prisma.chat_messages.updateMany({
-    where: {
-      chat_room_id: chatRoomId,
-      recipient_account_id: accountId,
-      read_at: null,
-      OR: [
-        {
-          created_at: { lt: lastReadMessage.created_at },
-        },
-        {
-          created_at: lastReadMessage.created_at,
-          id: { lte: lastReadMessage.id },
-        },
-      ],
-    },
+  return prisma.$transaction(async (tx) => {
+    const lockKey = `noti:${accountId}:${chatRoomId}`;
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
+    `;
 
-    data: {
-      read_at: readAt,
-    },
+    const updated = await tx.chat_messages.updateMany({
+      where: {
+        chat_room_id: chatRoomId,
+        recipient_account_id: accountId,
+        read_at: null,
+        OR: [
+          {
+            created_at: { lt: lastReadMessage.created_at },
+          },
+          {
+            created_at: lastReadMessage.created_at,
+            id: { lte: lastReadMessage.id },
+          },
+        ],
+      },
+
+      data: {
+        read_at: readAt,
+      },
+    });
+    const remainingUnread = await tx.chat_messages.findFirst({
+      where: {
+        chat_room_id: chatRoomId,
+        recipient_account_id: accountId,
+        read_at: null,
+      },
+      select: { id: true },
+    });
+
+    const readNotificationCount = remainingUnread
+      ? 0
+      : await readMessageNotifications(accountId, chatRoomId, tx);
+
+    return {
+      readResult: {
+        lastReadMessageId,
+        updatedCount: updated.count,
+        readAt,
+      },
+      readNotificationCount,
+    };
   });
-
-  return {
-    lastReadMessageId,
-    updatedCount: updated.count,
-    readAt,
-  };
 }

@@ -1,6 +1,9 @@
 import { prisma } from '../../lib/prisma.js';
 import { Prisma, ReservationStatus } from '../../generated/prisma/client.js';
-import type { chat_messages } from '../../generated/prisma/client.js';
+import type {
+  chat_messages,
+  notifications,
+} from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
 import type {
   CancelReservationInput,
@@ -12,6 +15,7 @@ import type {
 } from './reservations.schema.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import {
+  cancelShootReminders,
   createNotification,
   notificationMessages,
   scheduleShootReminders,
@@ -58,31 +62,59 @@ function toDeliveryDueDate(shootAt: Date): string {
 }
 
 /**
+ * 화면에 표시하는 예약번호: SP-YYMMDD-HHMMSS-XXXX (예약 생성 시각, 한국 시간)
+ * XXXX는 UUID 끝 5자리(20비트)를 32진수 4자리로 바꾼 값
+ * 저장하지 않는 표시용 값이라 중복을 보장하지 않으므로 예약을 찾을 때는 reservationId를 쓴다
+ */
+function toReservationNumber(reservationId: string, createdAt: Date): string {
+  const [date, time] = new Date(createdAt.getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .slice(2, 19)
+    .replace(/[-:]/g, '')
+    .split('T');
+  const code = Number.parseInt(reservationId.slice(-5), 16)
+    .toString(32)
+    .toUpperCase()
+    .padStart(4, '0');
+  return `SP-${date}-${time}-${code}`;
+}
+
+// 기준 시각이 속한 날의 00시 (한국 시간)
+function kstDayStart(now: Date): Date {
+  const kst = new Date(now.getTime() + KST_OFFSET_MS);
+  return new Date(
+    Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) -
+      KST_OFFSET_MS,
+  );
+}
+
+/**
  * 시간 경과에 따른 예약 상태 자동 전환 (server.ts에서 주기적으로 실행)
- * - CONFIRMED → SHOOT_COMPLETED: 촬영 시각(shoot_at)이 지나면
+ * - CONFIRMED → SHOOT_COMPLETED: 촬영일 다음 날 00시(한국 시간)가 되면
  * - DELIVERED → PURCHASE_CONFIRMED: 전달 후 8일이 지나면
  *   DELIVERED는 작가가 결과물을 전달할 때만 바뀐다 (시간 경과로 자동 전환하지 않는다)
- *   전달 시각은 updated_at으로 판단한다 (DELIVERED로 바뀐 순간 updated_at이 갱신된다)
- *   예약 행은 상태가 바뀔 때만 수정되므로 가능한 방식이다
- *   DELIVERED 이후 예약 행을 수정하는 기능이 생기면 구매 확정이 그만큼 밀리니 delivered_at 컬럼을 따로 둘 것
+ *   전달 시각은 deliverable.created_at(최초 전달 시각)으로 판단한다
+ *   예약이나 결과물을 수정해도 바뀌지 않으므로 구매 확정이 밀리지 않는다
  *
  * 조건에 맞는 행을 한 번에 바꾸므로 여러 번 실행해도 결과가 같고, 밀린 건도 다음 실행에 처리된다
  * now를 인자로 받는 이유: 시각을 정해 두고 테스트할 수 있게
  */
 export async function advanceReservationStatuses(now: Date) {
   const shootCompleted = await prisma.reservations.updateMany({
-    where: { status: 'CONFIRMED', shoot_at: { lte: now } },
+    where: { status: 'CONFIRMED', shoot_at: { lt: kstDayStart(now) } },
     data: { status: 'SHOOT_COMPLETED' },
   });
 
   const purchaseConfirmed = await prisma.reservations.updateMany({
     where: {
       status: 'DELIVERED',
-      updated_at: {
-        lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+      deliverable: {
+        created_at: {
+          lte: new Date(now.getTime() - PURCHASE_CONFIRM_DAYS * DAY_MS),
+        },
       },
     },
-    data: { status: 'PURCHASE_CONFIRMED' },
+    data: { status: 'PURCHASE_CONFIRMED', purchase_confirmed_at: now },
   });
 
   return {
@@ -95,8 +127,10 @@ export async function advanceReservationStatuses(now: Date) {
 export async function createReservation(
   userId: string,
   input: CreateReservationInput,
+  db?: Prisma.TransactionClient,
 ) {
-  const payment = await prisma.payments.findUnique({
+  const client = db ?? prisma;
+  const payment = await client.payments.findUnique({
     where: { id: input.paymentId },
     select: {
       user_id: true,
@@ -166,7 +200,7 @@ export async function createReservation(
 
   try {
     // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
-    const reservation = await prisma.$transaction(async (tx) => {
+    const createReservationRecords = async (tx: Prisma.TransactionClient) => {
       const created = await tx.reservations.create({
         data: {
           payment_id: input.paymentId,
@@ -186,15 +220,18 @@ export async function createReservation(
         },
       });
 
+      const notifications: notifications[] = [];
       for (const accountId of accountIds) {
-        await createNotification(
-          {
-            accountId,
-            type: 'RESERVATION_CONFIRMED',
-            targetId: created.id,
-            message: notificationMessages.reservationConfirmed(),
-          },
-          tx,
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CONFIRMED',
+              targetId: created.id,
+              message: notificationMessages.reservationConfirmed(),
+            },
+            tx,
+          ),
         );
       }
 
@@ -207,8 +244,12 @@ export async function createReservation(
         tx,
       );
 
-      return created;
-    });
+      return { reservation: created, notifications };
+    };
+
+    const { reservation, notifications } = db
+      ? await createReservationRecords(db)
+      : await prisma.$transaction(createReservationRecords);
 
     return {
       reservationId: reservation.id,
@@ -218,8 +259,14 @@ export async function createReservation(
       location: reservation.location,
       totalAmount: reservation.total_amount,
       paymentProvider: payment.pg_provider,
+      // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+      notifications,
     };
   } catch (error) {
+    if (db) {
+      throw error;
+    }
+
     // 동시 요청으로 위 확인을 통과한 뒤 다른 요청이 먼저 생성한 경우
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -256,8 +303,15 @@ export async function getReservationDetail(
       location: true,
       total_amount: true,
       created_at: true,
+      purchase_confirmed_at: true,
+      deliverable: { select: { created_at: true } },
       quote: {
         select: {
+          quote_name: true,
+          includes_original: true,
+          additional_notice: true,
+          common_notice: true,
+          chat_room_id: true,
           duration_minutes: true,
           photo_count: true,
           location_lat: true,
@@ -276,9 +330,19 @@ export async function getReservationDetail(
           id: true,
           status: true,
           reason: true,
+          accept_reason: true,
           requested_by_account_id: true,
+          auth_account: { select: { account_type: true } },
           created_at: true,
           processed_at: true,
+        },
+      },
+      payment: {
+        select: {
+          id: true,
+          payment_method: true,
+          pg_provider: true,
+          paid_at: true,
         },
       },
     },
@@ -295,9 +359,24 @@ export async function getReservationDetail(
   }
 
   const latest = reservation.reservation_cancel_request[0] ?? null;
+  // 유저가 요청한 취소인지, 작가가 직접 취소한 것인지에 따라 reason의 작성자가 다르다
+  const canceledByUser = latest?.auth_account.account_type === 'USER';
 
   const base = {
     reservationId: reservation.id,
+    reservationNumber: toReservationNumber(
+      reservation.id,
+      reservation.created_at,
+    ),
+    quote: reservation.quote
+      ? {
+          name: reservation.quote?.quote_name,
+          includesOriginal: reservation.quote?.includes_original,
+          additionalNotice: reservation.quote?.additional_notice,
+          commonNotice: reservation.quote?.common_notice,
+          chatRoomId: reservation.quote?.chat_room_id,
+        }
+      : null,
     status: reservation.status,
     shootAt: reservation.shoot_at,
     location: reservation.location,
@@ -312,14 +391,25 @@ export async function getReservationDetail(
     photoCount: reservation.quote?.photo_count ?? null,
     deliveryDueDate: toDeliveryDueDate(reservation.shoot_at),
     totalAmount: reservation.total_amount,
+    payment: reservation.payment
+      ? {
+          paymentMethod: reservation.payment.payment_method,
+          paymentProvider: reservation.payment.pg_provider,
+          paidAt: reservation.payment.paid_at,
+        }
+      : null,
     createdAt: reservation.created_at,
+    // 결과물 최초 전달 시각 (결과물을 수정해도 바뀌지 않는다)
+    deliveredAt: reservation.deliverable?.created_at ?? null,
+    purchaseConfirmedAt: reservation.purchase_confirmed_at,
   };
 
   const cancel = {
     cancelRequest: latest && {
       cancelRequestId: latest.id,
       status: latest.status,
-      reason: latest.reason,
+      userReason: canceledByUser ? latest.reason : null,
+      photographerReason: canceledByUser ? latest.accept_reason : latest.reason,
       requestedByMe: latest.requested_by_account_id === accountId,
       requestedAt: latest.created_at,
       processedAt: latest.processed_at,
@@ -377,6 +467,7 @@ export async function createCancelReservation(
         user: {
           select: {
             auth_account_id: true,
+            nickname: true,
           },
         },
         status: true,
@@ -453,6 +544,9 @@ export async function createCancelReservation(
       },
     });
 
+    // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+    const notifications: notifications[] = [];
+
     if (cancelRequest.status === 'ACCEPTED') {
       await tx.reservations.update({
         where: { id: reservationId },
@@ -460,6 +554,42 @@ export async function createCancelReservation(
           status: 'CANCELED',
         },
       });
+      // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
+      await cancelShootReminders(reservationId, tx);
+
+      // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
+      const accountIds = [
+        reservation.user?.auth_account_id,
+        reservation.photographer?.auth_account_id,
+      ].filter((id): id is string => !!id);
+
+      for (const accountId of accountIds) {
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CANCELED',
+              targetId: reservationId,
+              message: notificationMessages.reservationCanceled(),
+            },
+            tx,
+          ),
+        );
+      }
+    } else if (reservation.photographer) {
+      notifications.push(
+        await createNotification(
+          {
+            accountId: reservation.photographer.auth_account_id,
+            type: 'CANCEL_REQUESTED',
+            targetId: reservationId,
+            message: notificationMessages.cancelRequested(
+              reservation.user?.nickname ?? '사용자',
+            ),
+          },
+          tx,
+        ),
+      );
     }
 
     let systemMessage: chat_messages | null = null;
@@ -507,6 +637,7 @@ export async function createCancelReservation(
       requestedAt: cancelRequest.created_at,
       processedAt: cancelRequest.processed_at,
       systemMessage,
+      notifications,
     };
   });
 }
@@ -532,6 +663,12 @@ export async function patchCancelReservation(
           },
         },
         user: {
+          select: {
+            auth_account_id: true,
+          },
+        },
+        // 예약 취소를 알릴 작가의 계정 ID를 가져옴
+        photographer: {
           select: {
             auth_account_id: true,
           },
@@ -580,8 +717,18 @@ export async function patchCancelReservation(
 
     const processed = await tx.reservation_cancel_requests.update({
       where: { id: cancelRequest.id },
-      data: { status: input.status, processed_at: new Date() },
-      select: { id: true, status: true, processed_at: true },
+      data: {
+        status: input.status,
+        accept_reason: input.status === 'ACCEPTED' ? input.reason : null,
+        processed_at: new Date(),
+      },
+      select: {
+        id: true,
+        status: true,
+        reason: true,
+        accept_reason: true,
+        processed_at: true,
+      },
     });
 
     const updatedReservation = accepted
@@ -591,6 +738,46 @@ export async function patchCancelReservation(
           select: { status: true },
         })
       : { status: reservation.status };
+
+    // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
+    const notifications: notifications[] = [];
+
+    if (accepted) {
+      // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
+      await cancelShootReminders(reservationId, tx);
+
+      // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
+      const accountIds = [
+        reservation.user?.auth_account_id,
+        reservation.photographer?.auth_account_id,
+      ].filter((id): id is string => !!id);
+
+      for (const accountId of accountIds) {
+        notifications.push(
+          await createNotification(
+            {
+              accountId,
+              type: 'RESERVATION_CANCELED',
+              targetId: reservationId,
+              message: notificationMessages.reservationCanceled(),
+            },
+            tx,
+          ),
+        );
+      }
+    } else if (reservation.user) {
+      notifications.push(
+        await createNotification(
+          {
+            accountId: reservation.user.auth_account_id,
+            type: 'CANCEL_REJECTED',
+            targetId: reservationId,
+            message: notificationMessages.cancelRejected(),
+          },
+          tx,
+        ),
+      );
+    }
 
     let systemMessage: chat_messages | null = null;
 
@@ -628,9 +815,12 @@ export async function patchCancelReservation(
     return {
       cancelRequestId: processed.id,
       status: processed.status,
+      userReason: processed.reason,
+      photographerReason: processed.accept_reason,
       processedAt: processed.processed_at,
       reservationStatus: updatedReservation.status,
       systemMessage,
+      notifications,
     };
   });
 }
@@ -862,36 +1052,39 @@ export async function createDeliverable(
       select: DELIVERABLE_SELECT,
     });
 
-    // 구매 확정 스케줄러는 DELIVERED가 된 시각을 updated_at으로 판단한다
+    // 구매 확정 스케줄러는 위 결과물의 created_at을 전달 시각으로 본다
     await tx.reservations.update({
       where: { id: reservationId },
       data: { status: 'DELIVERED' },
     });
 
     const userAccountId = reservation.user?.auth_account_id;
-    if (userAccountId) {
-      await createNotification(
-        {
-          accountId: userAccountId,
-          type: 'DELIVERY_COMPLETED',
-          targetId: reservationId,
-          message: notificationMessages.deliveryCompleted(
-            reservation.photographer?.nickname ?? '작가',
+    const notifications = userAccountId
+      ? [
+          await createNotification(
+            {
+              accountId: userAccountId,
+              type: 'DELIVERY_COMPLETED',
+              targetId: reservationId,
+              message: notificationMessages.deliveryCompleted(
+                reservation.photographer?.nickname ?? '작가',
+              ),
+            },
+            tx,
           ),
-        },
-        tx,
-      );
-    }
+        ]
+      : [];
 
     return {
       ...toDeliverableResponse(deliverable),
       reservationStatus: 'DELIVERED' as const,
+      notifications,
     };
   });
 }
 
 // PATCH /me/reservations/:reservationId/deliverable
-// 결과물만 수정한다. 예약 행을 수정하면 updated_at이 바뀌어 구매 확정이 밀리므로 건드리지 않는다
+// 결과물만 수정한다. 최초 전달 시각(created_at)은 바뀌지 않아 구매 확정이 밀리지 않는다
 export async function patchDeliverable(
   photographerId: string,
   reservationId: string,
@@ -925,4 +1118,52 @@ export async function patchDeliverable(
   });
 
   return toDeliverableResponse(deliverable);
+}
+
+// PATCH /me/reservations/:reservationId/purchase-confirm
+export async function confirmPurchase(userId: string, reservationId: string) {
+  return prisma.$transaction(async (tx) => {
+    // 중복 요청이나 자동 확정과 겹쳐도 한 번만 확정되도록 잠근다
+    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+
+    const reservation = await tx.reservations.findUnique({
+      where: { id: reservationId },
+      select: { user_id: true, status: true },
+    });
+
+    if (!reservation || reservation.user_id !== userId) {
+      throw reservationNotFound();
+    }
+
+    if (reservation.status === 'PURCHASE_CONFIRMED') {
+      throw new HttpError(
+        409,
+        'ALREADY_PURCHASE_CONFIRMED',
+        '이미 구매 확정한 예약이에요.',
+      );
+    }
+
+    if (reservation.status !== 'DELIVERED') {
+      throw new HttpError(
+        409,
+        'RESERVATION_NOT_CONFIRMABLE',
+        '결과물을 받은 예약만 구매 확정할 수 있어요.',
+      );
+    }
+
+    const confirmed = await tx.reservations.update({
+      where: { id: reservationId },
+      data: {
+        status: 'PURCHASE_CONFIRMED',
+        purchase_confirmed_at: new Date(),
+      },
+      select: { id: true, status: true, purchase_confirmed_at: true },
+    });
+
+    return {
+      reservationId: confirmed.id,
+      status: confirmed.status,
+      purchaseConfirmedAt: confirmed.purchase_confirmed_at,
+    };
+  });
 }

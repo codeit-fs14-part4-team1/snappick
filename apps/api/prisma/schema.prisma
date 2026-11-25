@@ -146,6 +146,9 @@ model reservations {
   created_at      DateTime          @default(now())
   updated_at      DateTime          @updatedAt
 
+  // 구매 확정 시각 (유저가 직접 확정하거나 자동 확정된 시각, 확정 전이면 null)
+  purchase_confirmed_at DateTime?
+
   user         users?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
   photographer photographers? @relation(fields: [photographer_id], references: [id], onDelete: SetNull)
   quote        quotes?        @relation(fields: [quote_id], references: [id], onDelete: SetNull)
@@ -171,7 +174,8 @@ model reservation_cancel_requests {
   id                      String       @id @default(uuid(7)) @db.Uuid
   reservation_id          String       @db.Uuid
   requested_by_account_id String       @db.Uuid
-  reason                  String
+  reason                  String // 취소를 요청한 사람(유저 또는 작가)의 사유
+  accept_reason           String? // 작가가 유저의 취소 요청을 수락할 때의 사유
   status                  CancelStatus
   processed_at            DateTime?
   created_at              DateTime     @default(now())

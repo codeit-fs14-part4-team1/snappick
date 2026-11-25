@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import Modal from '@/components/ui/Modal';
 import { formatDateWithWeekday as dateLabel } from '@/utils/dateTime';
 import styles from './InquiryForm.module.css';
+import pickerStyles from './SchedulePicker.module.css';
 
 export const timeSlotLabels = {
   MORNING: '오전',
@@ -18,12 +21,14 @@ export default function SchedulePicker({
   value,
   onDateChange,
   triggerClassName,
+  presentation = 'popover',
 }: {
   referenceDate: string;
   dateOnly?: boolean;
   value?: string;
   onDateChange?: (date: string) => void;
   triggerClassName?: string;
+  presentation?: 'popover' | 'modal';
 }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -40,14 +45,14 @@ export default function SchedulePicker({
   const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation === 'modal') return;
     const closeOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !root.current?.contains(event.target))
         setOpen(false);
     };
     document.addEventListener('pointerdown', closeOutside);
     return () => document.removeEventListener('pointerdown', closeOutside);
-  }, [open]);
+  }, [open, presentation]);
 
   function moveMonth(delta: number) {
     setMonth(
@@ -78,6 +83,7 @@ export default function SchedulePicker({
         className={triggerClassName ?? styles.scheduleTrigger}
         aria-label={dateOnly ? '촬영 날짜' : '촬영 일정'}
         aria-expanded={open}
+        aria-haspopup="dialog"
         aria-controls={id}
         onClick={() => {
           setDraftDate(date);
@@ -96,11 +102,11 @@ export default function SchedulePicker({
             : '날짜와 시간대를 선택해 주세요'}
       </button>
       {open && (
-        <div
+        <PickerLayer
           id={id}
-          role="dialog"
-          aria-label={dateOnly ? '촬영 날짜 선택' : '촬영 날짜와 시간대 선택'}
-          className={styles.calendar}
+          title={dateOnly ? '촬영 날짜 선택' : '촬영 날짜와 시간대 선택'}
+          presentation={presentation}
+          onClose={() => setOpen(false)}
         >
           <div className={styles.month}>
             <button
@@ -182,8 +188,43 @@ export default function SchedulePicker({
             {draftDate ? dateLabel(draftDate) + ' ' : ''}
             {!dateOnly && timeSlotLabels[draftTime]} 선택
           </button>
-        </div>
+        </PickerLayer>
       )}
+    </div>
+  );
+}
+
+function PickerLayer({
+  id,
+  title,
+  presentation,
+  onClose,
+  children,
+}: {
+  id: string;
+  title: string;
+  presentation: 'popover' | 'modal';
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (presentation === 'modal') {
+    return (
+      <Modal
+        open
+        title={title}
+        onClose={onClose}
+        className={pickerStyles.modal}
+      >
+        <div id={id} className={`${styles.calendar} ${pickerStyles.calendar}`}>
+          {children}
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <div id={id} role="dialog" aria-label={title} className={styles.calendar}>
+      {children}
     </div>
   );
 }

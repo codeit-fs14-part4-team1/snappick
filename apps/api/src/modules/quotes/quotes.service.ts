@@ -1,6 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { CreateQuoteInput } from './quotes.schema.js';
+import {
+  createNotification,
+  notificationMessages,
+} from '../notifications/notifications.create.js';
 
 export async function createQuote(accountId: string, input: CreateQuoteInput) {
   const chatRoom = await prisma.chat_rooms.findUnique({
@@ -17,6 +21,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         select: {
           id: true,
           auth_account_id: true,
+          nickname: true,
         },
       },
     },
@@ -115,6 +120,26 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         );
       }
 
+      const pendingPayment = await tx.payments.findFirst({
+        where: {
+          status: 'PENDING',
+          quote: {
+            is: {
+              shooting_case_id: shootingCase.id,
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (pendingPayment) {
+        throw new HttpError(
+          409,
+          'PAYMENT_IN_PROGRESS',
+          '결제 처리 중에는 재견적을 보낼 수 없습니다.',
+        );
+      }
+
       shootingCaseId = shootingCase.id;
     } else {
       // 촬영 건 ID가 없으면 새 촬영 건을 만듬
@@ -142,6 +167,17 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
     });
 
     // 기존 견적이 없으면 1, 있으면 마지막 버전 + 1
+    // 촬영 건 행을 잠근 뒤 검사하여 동시 재견적도 같은 버전에서 중복 발행하지 않습니다.
+    if (
+      input.shootingCaseId &&
+      latestQuote?.version !== input.expectedVersion
+    ) {
+      throw new HttpError(
+        409,
+        'QUOTE_VERSION_CONFLICT',
+        '새 재견적이 발행되었습니다. 최신 견적에서 다시 수정해 주세요.',
+      );
+    }
     const nextVersion = (latestQuote?.version ?? 0) + 1;
     if (!product && !latestQuote) {
       throw new HttpError(
@@ -198,9 +234,20 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       },
     });
 
+    const notification = await createNotification(
+      {
+        accountId: recipientAccountId,
+        type: 'NEW_QUOTE',
+        targetId: input.chatRoomId,
+        message: notificationMessages.newQuote(photographer.nickname),
+      },
+      tx,
+    );
+
     return {
       quote,
       message,
+      notification,
     };
   });
 }
@@ -211,6 +258,15 @@ export async function getQuote(accountId: string, quoteId: string) {
       id: quoteId,
     },
     include: {
+      shooting_case: {
+        select: {
+          quotes: {
+            orderBy: { version: 'desc' },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      },
       chat_room: {
         include: {
           user: {

@@ -49,6 +49,9 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
 
+  const accountId = socket.data.auth.accountId;
+  void socket.join(`account:${accountId}`);
+
   // 토큰 만료 시간 계산
   const expiresAtMs = socket.data.auth.expiresAt * 1000;
 

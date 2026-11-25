@@ -4,14 +4,18 @@ import type { Server } from 'socket.io';
 import { getAuth } from '../../middlewares/authenticate.js';
 import { createQuoteSchema, quoteIdParamsSchema } from './quotes.schema.js';
 import { createQuote, getQuote } from './quotes.service.js';
+import { emitNotification } from '../notifications/notifications.emit.js';
 
 export async function createQuoteHandler(req: Request, res: Response) {
   const auth = getAuth(req);
 
   const input = createQuoteSchema.parse(req.body);
 
-  // 견적과 채팅 메시지 저장
-  const { quote, message } = await createQuote(auth.accountId, input);
+  // 견적과 채팅 메시지, 알림 저장
+  const { quote, message, notification } = await createQuote(
+    auth.accountId,
+    input,
+  );
 
   // 견적 응답 데이터 구성
   const quoteData = {
@@ -19,9 +23,12 @@ export async function createQuoteHandler(req: Request, res: Response) {
     chatRoomId: quote.chat_room_id,
     shootingCaseId: quote.shooting_case_id,
     version: quote.version,
+    isLatest: true,
     quoteName: quote.quote_name,
     shootAt: quote.shoot_at,
     location: quote.location,
+    locationLat: quote.location_lat,
+    locationLng: quote.location_lng,
     durationMinutes: quote.duration_minutes,
     price: quote.price,
     photoCount: quote.photo_count,
@@ -50,6 +57,8 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
 
+  emitNotification(io, [notification]);
+
   res.status(201).json(quoteData);
 }
 
@@ -64,9 +73,12 @@ export async function getQuoteHandler(req: Request, res: Response) {
     chatRoomId: quote.chat_room_id,
     shootingCaseId: quote.shooting_case_id,
     version: quote.version,
+    isLatest: quote.shooting_case.quotes[0]?.id === quote.id,
     quoteName: quote.quote_name,
     shootAt: quote.shoot_at,
     location: quote.location,
+    locationLat: quote.location_lat,
+    locationLng: quote.location_lng,
     durationMinutes: quote.duration_minutes,
     price: quote.price,
     photoCount: quote.photo_count,
