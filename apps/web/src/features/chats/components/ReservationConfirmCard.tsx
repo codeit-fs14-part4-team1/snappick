@@ -1,6 +1,5 @@
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
-import buttonStyles from '@/components/ui/Button.module.css';
 import { formatDate } from '@/utils/dateTime';
 import {
   formatQuoteDate,
@@ -10,7 +9,7 @@ import {
 } from '../quote';
 import styles from './ReservationConfirmCard.module.css';
 
-/** 결제한 견적의 예약 정보를 표시합니다. 별도 채팅 메시지를 생성하지 않습니다. */
+/** 예약 확정 시스템 메시지에 결제한 견적의 예약 정보를 표시합니다. */
 export default function ReservationConfirmCard({
   quote,
   now,
@@ -53,13 +52,16 @@ export default function ReservationConfirmCard({
           <dd>{quote.price.toLocaleString('ko-KR')}원</dd>
         </div>
       </dl>
+      {/* TODO: 예약 상세 페이지가 구현되면 reservationId로 연결합니다. */}
       {quote.reservationId && (
-        <Link
-          className={`${buttonStyles.button} ${buttonStyles.outline} ${buttonStyles.md} ${buttonStyles.fullWidth} ${styles.link}`}
-          href={`/my/reservations/${encodeURIComponent(quote.reservationId)}`}
+        <Button
+          className={styles.detailAction}
+          variant="outline"
+          fullWidth
+          disabled
         >
           예약 상세 보기
-        </Link>
+        </Button>
       )}
     </article>
   );

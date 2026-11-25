@@ -117,9 +117,7 @@ export default function QuoteMessageCard({
         )}
         {isReserved && (
           <Button fullWidth disabled>
-            {savedQuote.reservationStatus === 'CANCELED'
-              ? '예약 취소'
-              : '결제 완료 · 예약 확정'}
+            결제 완료 · 예약 확정
           </Button>
         )}
         {received && !isReserved && (

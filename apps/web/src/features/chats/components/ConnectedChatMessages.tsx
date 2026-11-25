@@ -120,6 +120,7 @@ function ChatMessagesContent({
           </div>
         )}
       <ChatMessageList
+        viewerRole={viewerRole}
         startAtTop={showInquiryForm}
         onVisibleMessage={markVisibleMessageRead}
         scrollToMessageId={scrollQuoteId ? quoteMessageId : sentMessageId}
