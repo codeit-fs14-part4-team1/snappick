@@ -12,6 +12,7 @@ import {
   createNotification,
   notificationMessages,
 } from '../notifications/notifications.create.js';
+import { createUserActionLog } from '../interactions/interactions.service.js';
 
 const replySelect = {
   id: true,
@@ -257,6 +258,16 @@ export async function createReview(userId: string, input: CreateReviewInput) {
           updated_at: true,
         },
       });
+
+      await createUserActionLog(
+        {
+          userId,
+          type: 'REVIEW',
+          photographerId,
+          rating: created.rating,
+        },
+        tx,
+      );
 
       const notification = await createNotification(
         {
