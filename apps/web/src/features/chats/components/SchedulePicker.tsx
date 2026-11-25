@@ -3,7 +3,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Modal from '@/components/ui/Modal';
-import { formatDateWithWeekday as dateLabel } from '@/utils/dateTime';
+import {
+  formatDate,
+  formatDateWithWeekday as dateLabel,
+} from '@/utils/dateTime';
 import styles from './InquiryForm.module.css';
 import pickerStyles from './SchedulePicker.module.css';
 
@@ -34,6 +37,7 @@ export default function SchedulePicker({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [minDate, setMinDate] = useState('');
   const [internalDate, setDate] = useState('');
   const date = value ?? internalDate;
   const [timeSlot, setTimeSlot] = useState<InquiryTimeSlot>('UNDECIDED');
@@ -43,6 +47,46 @@ export default function SchedulePicker({
   const [year, monthNumber] = month.split('-').map(Number);
   const offset = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
   const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+
+  useEffect(() => {
+    if (!open) return;
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    function scheduleMidnight() {
+      const today = formatDate(new Date()).replaceAll('.', '-');
+      const nextMidnight =
+        Date.parse(`${today}T00:00:00+09:00`) + 24 * 60 * 60 * 1000;
+      timer = setTimeout(refreshDate, Math.max(1, nextMidnight - Date.now()));
+    }
+
+    function refreshDate() {
+      clearTimeout(timer);
+      const today = formatDate(new Date()).replaceAll('.', '-');
+      setMinDate(today);
+      // 저장된 날짜는 유지하고, 달력에서 선택 중인 지난 날짜만 해제합니다.
+      setDraftDate((selected) =>
+        selected && selected < today ? '' : selected,
+      );
+      setMonth((current) =>
+        current < today.slice(0, 7) ? today.slice(0, 7) : current,
+      );
+      scheduleMidnight();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') refreshDate();
+    }
+
+    scheduleMidnight();
+    window.addEventListener('focus', refreshDate);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', refreshDate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open || presentation === 'modal') return;
@@ -86,9 +130,11 @@ export default function SchedulePicker({
         aria-haspopup="dialog"
         aria-controls={id}
         onClick={() => {
-          setDraftDate(date);
+          const today = formatDate(new Date()).replaceAll('.', '-');
+          setMinDate(today);
+          setDraftDate(date >= today ? date : '');
           setDraftTime(timeSlot);
-          if (date) setMonth(date.slice(0, 7));
+          setMonth((date >= today ? date : today).slice(0, 7));
           setOpen(!open);
         }}
         data-empty={!date && timeSlot === 'UNDECIDED'}
@@ -111,6 +157,7 @@ export default function SchedulePicker({
           <div className={styles.month}>
             <button
               type="button"
+              disabled={month <= minDate.slice(0, 7)}
               aria-label="이전 달"
               onClick={() => moveMonth(-1)}
             >
@@ -143,7 +190,10 @@ export default function SchedulePicker({
                   type="button"
                   aria-label={`${year}년 ${monthNumber}월 ${day}일`}
                   aria-pressed={draftDate === value}
+                  disabled={value < minDate}
                   onClick={() => {
+                    if (value < formatDate(new Date()).replaceAll('.', '-'))
+                      return;
                     setDraftDate(value);
                     if (dateOnly) {
                       setDate(value);
@@ -178,6 +228,13 @@ export default function SchedulePicker({
             className={styles.selectSchedule}
             disabled={dateOnly && !draftDate}
             onClick={() => {
+              const today = formatDate(new Date()).replaceAll('.', '-');
+              if (draftDate && draftDate < today) {
+                setMinDate(today);
+                setDraftDate('');
+                setMonth(today.slice(0, 7));
+                return;
+              }
               setDate(draftDate);
               onDateChange?.(draftDate);
               setTimeSlot(draftTime);

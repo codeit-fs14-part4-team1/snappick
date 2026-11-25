@@ -14,14 +14,16 @@
   display: flex;
   width: 340px;
   max-width: 100%;
+  min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 14px;
   padding: 20px;
   border: 1px solid var(--color-border);
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--color-bg-base);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
   text-align: left;
   font-size: 14px;
   line-height: 22px;
@@ -30,13 +32,14 @@
 .resumeTitle {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 22px;
 }
 
 .resumeDescription {
   margin: 6px 0 0;
+  color: var(--color-text-secondary);
 }
 
 .card h3 {
@@ -175,14 +178,6 @@
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.locationPopup {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.locationPopup .selectSchedule {
-  margin-top: 0;
-}
 .month button {
   width: 32px;
   height: 32px;
@@ -224,6 +219,12 @@
   background: var(--color-accent);
   color: var(--color-bg-base);
   font-weight: 700;
+}
+.days button:disabled,
+.month button:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: 0.4;
 }
 .timeSlots {
   display: flex;

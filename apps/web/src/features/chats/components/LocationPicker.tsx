@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import { RegionLabel } from '@/constants/enum-labels';
 import { Region } from '@snappick/shared';
 import styles from './InquiryForm.module.css';
+import pickerStyles from './LocationPicker.module.css';
 
 const regions = Object.values(Region);
 
 export default function LocationPicker() {
   const id = useId();
-  const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState<{
@@ -34,28 +35,8 @@ export default function LocationPicker() {
     trigger.current?.focus();
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const closeOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target))
-        setOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOutside);
-    return () => document.removeEventListener('pointerdown', closeOutside);
-  }, [open]);
-
   return (
-    <div
-      ref={root}
-      className={styles.schedule}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && open) {
-          event.stopPropagation();
-          setOpen(false);
-          trigger.current?.focus();
-        }
-      }}
-    >
+    <div className={styles.schedule}>
       <input type="hidden" name="region" value={selection.region} />
       <input type="hidden" name="location" value={selection.detail} />
       <button
@@ -64,6 +45,7 @@ export default function LocationPicker() {
         className={styles.scheduleTrigger}
         aria-label="촬영 장소"
         aria-expanded={open}
+        aria-haspopup="dialog"
         aria-controls={id}
         data-empty={!value}
         onClick={() => {
@@ -75,51 +57,53 @@ export default function LocationPicker() {
         {value || '예) 서울숲, 제주'}
       </button>
       {open && (
-        <div
-          id={id}
-          role="dialog"
-          aria-label="촬영 장소 선택"
-          className={`${styles.calendar} ${styles.locationPopup}`}
+        <Modal
+          open={open}
+          title="촬영 장소 선택"
+          onClose={() => setOpen(false)}
+          className={pickerStyles.modal}
         >
-          <fieldset className={styles.choices}>
-            <legend>지역</legend>
-            <div className={styles.chips}>
-              {regions.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={region === value}
-                  onClick={() => setRegion(region === value ? '' : value)}
-                >
-                  {RegionLabel[value]}
-                </button>
-              ))}
+          <div id={id} className={pickerStyles.content}>
+            <fieldset className={styles.choices}>
+              <legend>지역</legend>
+              <div className={styles.chips}>
+                {regions.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={region === value}
+                    onClick={() => setRegion(region === value ? '' : value)}
+                  >
+                    {RegionLabel[value]}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <div className={styles.field}>
+              <label htmlFor={`${id}-detail`}>상세 장소 (선택)</label>
+              <input
+                id={`${id}-detail`}
+                value={detail}
+                onChange={(event) => setDetail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    confirmSelection();
+                  }
+                }}
+                maxLength={50}
+                placeholder="예) 서울숲, 성수동"
+              />
             </div>
-          </fieldset>
-          <div className={styles.field}>
-            <label htmlFor={`${id}-detail`}>상세 장소 (선택)</label>
-            <input
-              id={`${id}-detail`}
-              value={detail}
-              onChange={(event) => setDetail(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  confirmSelection();
-                }
-              }}
-              maxLength={50}
-              placeholder="예) 서울숲, 성수동"
-            />
+            <button
+              type="button"
+              className={styles.selectSchedule}
+              onClick={confirmSelection}
+            >
+              선택 완료
+            </button>
           </div>
-          <button
-            type="button"
-            className={styles.selectSchedule}
-            onClick={confirmSelection}
-          >
-            선택 완료
-          </button>
-        </div>
+        </Modal>
       )}
     </div>
   );

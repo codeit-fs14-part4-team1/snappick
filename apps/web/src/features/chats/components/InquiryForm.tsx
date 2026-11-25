@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from 'react';
 import { Category, Region, Style } from '@snappick/shared';
 import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/ToastProvider';
 import type { InquiryPayload } from '../types';
 import { CategoryLabel, StyleLabel } from '@/constants/enum-labels';
 import styles from './InquiryForm.module.css';
@@ -26,9 +27,9 @@ export function InquiryPrompt({
   return (
     <div className={styles.resume}>
       <div>
-        <h3 className={styles.resumeTitle}>촬영 정보를 건너뛰었어요</h3>
+        <p className={styles.resumeTitle}>촬영 정보 작성을 건너뛰었어요</p>
         <p className={styles.resumeDescription}>
-          촬영 정보를 남겨주시면 더 정확하게 상담할 수 있어요.
+          촬영 정보를 남기면 상담에 도움이 돼요.
         </p>
       </div>
       <Button
@@ -49,6 +50,7 @@ export default function InquiryForm({
   onSkip,
 }: Props) {
   const id = useId();
+  const { showToast } = useToast();
   const [concept, setConcept] = useState<Style[]>([]);
   const [category, setCategory] = useState<Category>();
   const submitting = useRef(false);
@@ -61,7 +63,6 @@ export default function InquiryForm({
     } else if (concept.length < 5) {
       setConcept([...concept, value]);
     } else {
-      setError('스타일은 최대 5개까지 선택할 수 있어요.');
       return;
     }
     setError('');
@@ -109,7 +110,10 @@ export default function InquiryForm({
             ...(category && { category }),
           });
         } catch {
-          setError('촬영 정보를 보내지 못했어요. 다시 시도해 주세요.');
+          showToast(
+            '촬영 정보를 보내지 못했어요. 다시 시도해 주세요.',
+            'error',
+          );
         } finally {
           setPending(false);
           submitting.current = false;
@@ -123,14 +127,14 @@ export default function InquiryForm({
       <fieldset disabled={pending} className={styles.fields}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>촬영 일정</span>
-          <SchedulePicker referenceDate={referenceDate} />
+          <SchedulePicker referenceDate={referenceDate} presentation="modal" />
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>촬영 장소</span>
           <LocationPicker />
         </div>
         <fieldset className={styles.choices}>
-          <legend>콘셉트·스타일 (여러 개 선택)</legend>
+          <legend>콘셉트·스타일 (최대 5개 선택 가능)</legend>
           <div className={styles.chips}>
             {Object.values(Style).map((value) => (
               <button
