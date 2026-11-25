@@ -98,8 +98,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         );
       }
 
-      // 해당 촬영 건의 견적으로 생성된 진행 중 예약 찾기
-      const activeReservation = await tx.reservations.findFirst({
+      const reservation = await tx.reservations.findFirst({
         where: {
           quote: {
             is: {
@@ -107,12 +106,35 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
             },
           },
           status: {
-            in: ['CONFIRMED', 'SHOOT_COMPLETED', 'DELIVERED'],
+            in: [
+              'CONFIRMED',
+              'SHOOT_COMPLETED',
+              'DELIVERED',
+              'CANCELED',
+              'PURCHASE_CONFIRMED',
+            ],
           },
         },
+        select: { status: true },
       });
 
-      if (activeReservation) {
+      if (reservation?.status === 'CANCELED') {
+        throw new HttpError(
+          409,
+          'SHOOTING_CASE_CANCELED',
+          '예약이 취소된 촬영 건이에요. 새 견적을 보내 주세요.',
+        );
+      }
+
+      if (reservation?.status === 'PURCHASE_CONFIRMED') {
+        throw new HttpError(
+          409,
+          'SHOOTING_CASE_PURCHASE_CONFIRMED',
+          '구매가 확정된 촬영 건이에요. 새 견적을 보내 주세요.',
+        );
+      }
+
+      if (reservation) {
         throw new HttpError(
           409,
           'ACTIVE_RESERVATION_EXISTS',

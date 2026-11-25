@@ -41,6 +41,9 @@ export default function PaymentFlow({
   const client = useQueryClient();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [quoteSuperseded, setQuoteSuperseded] = useState(false);
+  const [supersededDialogDismissed, setSupersededDialogDismissed] =
+    useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
   const [result, setResult] = useState<PaymentResult | null>(null);
   const started = useRef(false);
@@ -69,12 +72,12 @@ export default function PaymentFlow({
   const checkoutHref = `/payments?${new URLSearchParams({ quoteId })}`;
   const showCallbackError =
     mode === 'fail' || (mode === 'success' && Boolean(error));
+  const showCheckoutDetails =
+    mode === 'checkout' || showCallbackError || quoteSuperseded;
   // 견적 응답에는 작가 정보가 없으므로 문의 목록에서 표시 정보를 찾습니다.
   const roomQuery = useChatRooms({
     accountId:
-      (mode === 'checkout' || showCallbackError) && user?.accountType === 'USER'
-        ? user.id
-        : null,
+      showCheckoutDetails && user?.accountType === 'USER' ? user.id : null,
     loadPage: (options) => getChatRooms(options, fetchWithAuth),
   });
   const partner = roomQuery.rooms.find(
@@ -89,7 +92,7 @@ export default function PaymentFlow({
 
   useEffect(() => {
     if (
-      (mode === 'checkout' || showCallbackError) &&
+      showCheckoutDetails &&
       quoteQuery.data &&
       !partner &&
       hasNextPage &&
@@ -99,8 +102,7 @@ export default function PaymentFlow({
       void fetchNextPage();
     }
   }, [
-    mode,
-    showCallbackError,
+    showCheckoutDetails,
     quoteQuery.data,
     partner,
     hasNextPage,
@@ -148,6 +150,15 @@ export default function PaymentFlow({
       if (
         cause instanceof Error &&
         'code' in cause &&
+        cause.code === 'QUOTE_NOT_LATEST'
+      ) {
+        setQuoteSuperseded(true);
+        void quoteQuery.refetch();
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
         cause.code === 'PAYMENT_RETRY_REQUIRED'
       ) {
         setRestartRequired(true);
@@ -178,17 +189,27 @@ export default function PaymentFlow({
     setPending(true);
     setError('');
     try {
+      const payment = await preparePayment(quoteId, fetchWithAuth);
+      if (!active.current) return;
+      const query = new URLSearchParams({
+        quoteId,
+        chatRoomId: quoteQuery.data.chatRoomId,
+      });
+
+      if (payment.status === 'PENDING') {
+        query.set('paymentKey', payment.paymentKey);
+        query.set('orderId', payment.orderId);
+        query.set('amount', String(payment.amount));
+        router.replace(`/payments/success?${query}`);
+        return;
+      }
+
       const key = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
       if (!key?.startsWith('test_gck_'))
         throw new Error(
           '토스 테스트 결제창형 클라이언트 키(test_gck_)를 설정해 주세요.',
         );
       const TossPayments = await loadToss();
-      const payment = await preparePayment(quoteId, fetchWithAuth);
-      const query = new URLSearchParams({
-        quoteId,
-        chatRoomId: quoteQuery.data.chatRoomId,
-      });
       if (!active.current) return;
       const widgets = TossPayments(key).widgets({ customerKey: user.id });
       await widgets.setAmount({ currency: 'KRW', value: payment.amount });
@@ -220,6 +241,15 @@ export default function PaymentFlow({
       });
     } catch (cause) {
       if (!active.current) return;
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        cause.code === 'QUOTE_NOT_LATEST'
+      ) {
+        setQuoteSuperseded(true);
+        void quoteQuery.refetch();
+        return;
+      }
       const message = cause instanceof Error ? cause.message : '';
       setError(
         message === 'API 요청 실패: 409'
@@ -242,10 +272,61 @@ export default function PaymentFlow({
 
   const quote = quoteQuery.data;
   const callbackCanRestart = mode === 'fail' || restartRequired;
+  const canShowReservedQuote =
+    callbackCanRestart || (mode === 'checkout' && !quoteQuery.isError);
+  if (canShowReservedQuote && quote?.reservationStatus) {
+    return (
+      <StateMessage
+        className={styles.state}
+        title={
+          quote.reservationStatus === 'CANCELED'
+            ? '취소된 예약의 견적이에요'
+            : '이미 결제가 완료된 견적이에요'
+        }
+        button={{ label: '예약 상세 보기', onClick: () => {}, disabled: true }}
+      />
+    );
+  }
+  if (quoteSuperseded || (callbackCanRestart && quote?.isLatest === false)) {
+    const dismissDialog = () => setSupersededDialogDismissed(true);
+    const supersededNotice = quote ? (
+      <PaymentPage
+        key={quoteId}
+        quote={toQuoteDraft(quote)}
+        photographerName={partner?.nickname ?? '담당 작가'}
+        profileImageUrl={partner?.profileImageUrl ?? ''}
+        onPay={pay}
+        pending={pending}
+        revisedQuoteHref={chatHref}
+        checkoutLocked
+      />
+    ) : (
+      <StateMessage
+        className={styles.state}
+        title="재견적이 도착했어요"
+        description="작가님이 재견적을 보내서 이 견적으로는 결제할 수 없어요."
+        link={{ label: '재견적 보기', href: chatHref }}
+      />
+    );
+    return (
+      <>
+        {supersededNotice}
+        <Modal
+          open={mode !== 'checkout' && !supersededDialogDismissed}
+          onClose={dismissDialog}
+          closeOnBackdrop={false}
+          variant="confirm"
+          className={styles.paymentDialog}
+          title="결제를 진행할 수 없어요"
+          description="재견적이 도착해서 이 견적으로는 결제할 수 없어요."
+          footer={<Button onClick={dismissDialog}>확인</Button>}
+        />
+      </>
+    );
+  }
   if (
     quote &&
-    (showCallbackError ||
-      (mode === 'checkout' && !quoteQuery.isError && !quote.reservationStatus))
+    (showCallbackError || (mode === 'checkout' && !quoteQuery.isError))
   ) {
     const closeDialog = () => {
       if (mode === 'checkout') setError('');
@@ -283,22 +364,11 @@ export default function PaymentFlow({
                 : error
           }
           footer={
-            <>
-              {mode === 'success' && !restartRequired && (
-                <Button
-                  variant="outline"
-                  onClick={() => void approve()}
-                  disabled={pending}
-                >
-                  승인 결과 다시 확인
-                </Button>
-              )}
-              <Button onClick={closeDialog}>
-                {mode === 'success' && !restartRequired
-                  ? '이전 페이지로'
-                  : '확인'}
-              </Button>
-            </>
+            <Button onClick={closeDialog}>
+              {mode === 'success' && !restartRequired
+                ? '이전 페이지로'
+                : '확인'}
+            </Button>
           }
         />
       </>
@@ -343,15 +413,9 @@ export default function PaymentFlow({
                   href: checkoutHref,
                 },
               }
-            : {
-                button: error
-                  ? {
-                      label: '승인 결과 다시 확인',
-                      onClick: () => void approve(),
-                      disabled: pending,
-                    }
-                  : undefined,
-              })}
+            : error
+              ? { link: { label: '이전 페이지로', href: chatHref } }
+              : {})}
         />
       );
     return (
@@ -400,9 +464,9 @@ export default function PaymentFlow({
           <Link className={styles.backLink} href={chatHref}>
             채팅으로 돌아가기
           </Link>
-          <Link className={styles.backLink} href="/my/reservations">
-            예약 내역 보기
-          </Link>
+          <Button variant="outline" size="lg" disabled>
+            예약 상세 보기
+          </Button>
         </div>
       </PageContainer>
     );
@@ -423,27 +487,15 @@ export default function PaymentFlow({
         title="견적을 불러오고 있어요"
       />
     );
-  if (!quoteQuery.data || quoteQuery.isError)
-    return (
-      <StateMessage
-        className={styles.state}
-        role="alert"
-        title="견적을 불러오지 못했어요"
-        button={{
-          label: '다시 시도',
-          onClick: () => void quoteQuery.refetch(),
-        }}
-      />
-    );
   return (
     <StateMessage
       className={styles.state}
-      title={
-        quoteQuery.data.reservationStatus === 'CANCELED'
-          ? '취소된 예약의 견적이에요'
-          : '이미 결제가 완료된 견적이에요'
-      }
-      link={{ label: '예약 내역 보기', href: '/my/reservations' }}
+      role="alert"
+      title="견적을 불러오지 못했어요"
+      button={{
+        label: '다시 시도',
+        onClick: () => void quoteQuery.refetch(),
+      }}
     />
   );
 }
