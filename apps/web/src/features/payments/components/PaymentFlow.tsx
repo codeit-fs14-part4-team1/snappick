@@ -2,23 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { getQuote, getChatRooms } from '@/features/chats/api';
 import useChatRooms from '@/features/chats/useChatRooms';
-import {
-  toQuoteDraft,
-  formatQuoteDate,
-  formatQuoteTime,
-} from '@/features/chats/quote';
+import { toQuoteDraft } from '@/features/chats/quote';
 import StateMessage from '@/components/ui/StateMessage';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import PageContainer from '@/components/layout/PageContainer';
 import { queryKeys } from '@/lib/queryKeys';
 import { preparePayment, confirmPayment, type PaymentResult } from '../api';
-import { loadToss, type TossPaymentWindow } from '../toss';
+import useTossPaymentWindow from '../useTossPaymentWindow';
+import PaymentCompletion from './PaymentCompletion';
 import PaymentPage from './PaymentPage';
 import styles from './PaymentPage.module.css';
 
@@ -48,17 +43,7 @@ export default function PaymentFlow({
   const [result, setResult] = useState<PaymentResult | null>(null);
   const started = useRef(false);
   const busy = useRef(false);
-  const paymentWindow = useRef<TossPaymentWindow | null>(null);
-  const active = useRef(true);
-
-  useEffect(() => {
-    active.current = true;
-    return () => {
-      active.current = false;
-      paymentWindow.current?.destroy();
-      paymentWindow.current = null;
-    };
-  }, []);
+  const { active, openPaymentWindow } = useTossPaymentWindow();
   const quoteQuery = useQuery({
     queryKey: queryKeys.quotes.detail(quoteId),
     queryFn: ({ signal }) => getQuote(quoteId, fetchWithAuth, signal),
@@ -179,7 +164,7 @@ export default function PaymentFlow({
       return;
     started.current = true;
     void approve();
-    // 승인 요청은 콜백 진입 시 한 번만 시작합니다. 재시도는 버튼으로 요청합니다.
+    // 승인 요청은 콜백 진입 시 한 번만 시작합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, user?.accountType]);
 
@@ -204,41 +189,7 @@ export default function PaymentFlow({
         return;
       }
 
-      const key = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-      if (!key?.startsWith('test_gck_'))
-        throw new Error(
-          '토스 테스트 결제창형 클라이언트 키(test_gck_)를 설정해 주세요.',
-        );
-      const TossPayments = await loadToss();
-      if (!active.current) return;
-      const widgets = TossPayments(key).widgets({ customerKey: user.id });
-      await widgets.setAmount({ currency: 'KRW', value: payment.amount });
-      if (!active.current) return;
-      const checkoutWindow = await widgets.renderPaymentWindow({
-        orderName: payment.orderName,
-      });
-      if (!active.current) {
-        checkoutWindow.destroy();
-        return;
-      }
-      paymentWindow.current = checkoutWindow;
-      // 창을 닫거나 요청이 실패할 때까지 중복 결제창 생성을 막습니다.
-      await new Promise<void>((resolve, reject) => {
-        let requesting = false;
-        checkoutWindow.on('cancel', resolve);
-        checkoutWindow.on('paymentRequest', () => {
-          if (requesting || !active.current) return;
-          requesting = true;
-          void widgets
-            .requestPayment({
-              orderId: payment.orderId,
-              orderName: payment.orderName,
-              successUrl: `${window.location.origin}/payments/success?${query}`,
-              failUrl: `${window.location.origin}/payments/fail?${query}`,
-            })
-            .then(resolve, reject);
-        });
-      });
+      await openPaymentWindow(user.id, payment, query);
     } catch (cause) {
       if (!active.current) return;
       if (
@@ -260,8 +211,6 @@ export default function PaymentFlow({
       );
       void quoteQuery.refetch();
     } finally {
-      paymentWindow.current?.destroy();
-      paymentWindow.current = null;
       busy.current = false;
       if (active.current) setPending(false);
     }
@@ -287,87 +236,70 @@ export default function PaymentFlow({
       />
     );
   }
-  if (quoteSuperseded || (callbackCanRestart && quote?.isLatest === false)) {
-    const dismissDialog = () => setSupersededDialogDismissed(true);
-    const supersededNotice = quote ? (
-      <PaymentPage
-        key={quoteId}
-        quote={toQuoteDraft(quote)}
-        photographerName={partner?.nickname ?? '담당 작가'}
-        profileImageUrl={partner?.profileImageUrl ?? ''}
-        onPay={pay}
-        pending={pending}
-        revisedQuoteHref={chatHref}
-        checkoutLocked
-      />
-    ) : (
-      <StateMessage
-        className={styles.state}
-        title="재견적이 도착했어요"
-        description="작가님이 재견적을 보내서 이 견적으로는 결제할 수 없어요."
-        link={{ label: '재견적 보기', href: chatHref }}
-      />
-    );
-    return (
-      <>
-        {supersededNotice}
-        <Modal
-          open={mode !== 'checkout' && !supersededDialogDismissed}
-          onClose={dismissDialog}
-          closeOnBackdrop={false}
-          variant="confirm"
-          className={styles.paymentDialog}
-          title="결제를 진행할 수 없어요"
-          description="재견적이 도착해서 이 견적으로는 결제할 수 없어요."
-          footer={<Button onClick={dismissDialog}>확인</Button>}
-        />
-      </>
-    );
-  }
+  const showSupersededNotice =
+    quoteSuperseded || (callbackCanRestart && quote?.isLatest === false);
   if (
-    quote &&
-    (showCallbackError || (mode === 'checkout' && !quoteQuery.isError))
+    showSupersededNotice ||
+    (quote &&
+      (showCallbackError || (mode === 'checkout' && !quoteQuery.isError)))
   ) {
     const closeDialog = () => {
-      if (mode === 'checkout') setError('');
+      if (showSupersededNotice) setSupersededDialogDismissed(true);
+      else if (mode === 'checkout') setError('');
       else router.replace(callbackCanRestart ? checkoutHref : chatHref);
     };
-    const dialogTitle =
-      mode === 'success' && !restartRequired
-        ? '결제 결과를 확인하지 못했어요'
-        : '결제를 진행할 수 없어요';
+    const resultUnknown =
+      !showSupersededNotice && mode === 'success' && !restartRequired;
+    const dialogDescription = showSupersededNotice
+      ? '재견적이 도착해서 이 견적으로는 결제할 수 없어요.'
+      : callbackCanRestart
+        ? '현재 견적으로 다시 결제할 수 있어요.'
+        : resultUnknown
+          ? '결제가 정상적으로 끝나지 않았어요. 결제 내역에서 승인 여부를 확인한 뒤 다시 시도해 주세요.'
+          : error;
 
     return (
       <>
-        <PaymentPage
-          key={quoteId}
-          quote={toQuoteDraft(quote)}
-          photographerName={partner?.nickname ?? '담당 작가'}
-          profileImageUrl={partner?.profileImageUrl ?? ''}
-          onPay={pay}
-          pending={pending}
-          revisedQuoteHref={quote.isLatest ? undefined : chatHref}
-          checkoutLocked={mode !== 'checkout'}
-        />
+        {quote ? (
+          <PaymentPage
+            key={quoteId}
+            quote={toQuoteDraft(quote)}
+            photographerName={partner?.nickname ?? '담당 작가'}
+            profileImageUrl={partner?.profileImageUrl ?? ''}
+            onPay={pay}
+            pending={pending}
+            revisedQuoteHref={
+              showSupersededNotice || !quote.isLatest ? chatHref : undefined
+            }
+            checkoutLocked={showSupersededNotice || mode !== 'checkout'}
+          />
+        ) : (
+          <StateMessage
+            className={styles.state}
+            title="재견적이 도착했어요"
+            description="작가님이 재견적을 보내서 이 견적으로는 결제할 수 없어요."
+            link={{ label: '재견적 보기', href: chatHref }}
+          />
+        )}
         <Modal
-          open={Boolean(error) || mode === 'fail'}
+          open={
+            showSupersededNotice
+              ? mode !== 'checkout' && !supersededDialogDismissed
+              : Boolean(error) || mode === 'fail'
+          }
           onClose={closeDialog}
           closeOnBackdrop={false}
           variant="confirm"
           className={styles.paymentDialog}
-          title={dialogTitle}
-          description={
-            callbackCanRestart
-              ? '현재 견적으로 다시 결제할 수 있어요.'
-              : mode === 'success'
-                ? '결제가 정상적으로 끝나지 않았어요. 결제 내역에서 승인 여부를 확인한 뒤 다시 시도해 주세요.'
-                : error
+          title={
+            resultUnknown
+              ? '결제 결과를 확인하지 못했어요'
+              : '결제를 진행할 수 없어요'
           }
+          description={dialogDescription}
           footer={
             <Button onClick={closeDialog}>
-              {mode === 'success' && !restartRequired
-                ? '이전 페이지로'
-                : '확인'}
+              {resultUnknown ? '이전 페이지로' : '확인'}
             </Button>
           }
         />
@@ -419,56 +351,12 @@ export default function PaymentFlow({
         />
       );
     return (
-      <PageContainer className={styles.completion}>
-        <div className={styles.successIcon} aria-hidden="true">
-          ✓
-        </div>
-        <h1>결제가 완료됐어요</h1>
-        <p>예약이 확정됐어요. 예약 내역에서 확인해 주세요.</p>
-        <div className={styles.receipt}>
-          <dl className={styles.rows}>
-            <div>
-              <dt>예약 번호</dt>
-              <dd>{result.reservationId}</dd>
-            </div>
-            <div>
-              <dt>견적명</dt>
-              <dd>{quoteQuery.data?.quoteName ?? '결제한 견적'}</dd>
-            </div>
-            {quoteQuery.data && (
-              <>
-                <div>
-                  <dt>촬영 일시</dt>
-                  <dd>
-                    {formatQuoteDate(toQuoteDraft(quoteQuery.data).date)}{' '}
-                    {formatQuoteTime(toQuoteDraft(quoteQuery.data).startTime)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>촬영 장소</dt>
-                  <dd>{quoteQuery.data.location}</dd>
-                </div>
-              </>
-            )}
-            <div>
-              <dt>결제 수단</dt>
-              <dd>토스페이먼츠</dd>
-            </div>
-            <div>
-              <dt>결제 금액</dt>
-              <dd>{Number(params.get('amount')).toLocaleString('ko-KR')}원</dd>
-            </div>
-          </dl>
-        </div>
-        <div className={styles.completionActions}>
-          <Link className={styles.backLink} href={chatHref}>
-            채팅으로 돌아가기
-          </Link>
-          <Button variant="outline" size="lg" disabled>
-            예약 상세 보기
-          </Button>
-        </div>
-      </PageContainer>
+      <PaymentCompletion
+        reservationId={result.reservationId}
+        amount={Number(params.get('amount'))}
+        quote={quote}
+        chatHref={chatHref}
+      />
     );
   }
   if (!quoteId)
