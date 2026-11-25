@@ -35,6 +35,9 @@ export function useCreateReservationCancel(reservationId: string) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.reservations.listAll(),
         }),
+        // 채팅의 예약 카드와 견적 상태도 함께 갱신
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all }),
       ]);
     },
   });
@@ -77,6 +80,9 @@ export function useUpdateReservationCancel(reservationId: string) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.reservations.listAll(),
         }),
+        // 채팅의 예약 카드와 견적 상태도 함께 갱신
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all }),
       ]);
     },
   });
