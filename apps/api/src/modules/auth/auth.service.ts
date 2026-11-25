@@ -58,6 +58,9 @@ type SocialLoginInput = Extract<LoginInput, { provider: SocialProvider }>;
 const NICKNAME_MIN = 2;
 const NICKNAME_MAX = 20;
 
+// 소셜 가입에서 닉네임이 겹칠 때 임시 닉네임으로 다시 시도하는 횟수
+const NICKNAME_RETRIES = 5;
+
 // 이메일 가입(FE)과 같은 형식의 임시 닉네임
 const temporaryNickname = () =>
   `스냅픽_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
@@ -213,15 +216,23 @@ async function socialSignup(input: SocialSignupInput) {
       return issueTokens(tx, account, input.provider);
     });
 
-  try {
+  // 제공자 닉네임은 본인이 고른 값이 아니므로, 겹쳐도 가입을 막지 않고 임시 닉네임으로 다시 시도한다
+  const createWithRetry = async (
+    candidate: string,
+    retries: number,
+  ): ReturnType<typeof create> => {
     try {
-      return await create(nickname);
+      return await create(candidate);
     } catch (e) {
-      // 제공자 닉네임은 본인이 고른 값이 아니므로, 겹쳐도 가입을 막지 않는다
-      if (!isNicknameConflict(e)) throw e;
-      return await create(temporaryNickname());
+      if (!isNicknameConflict(e) || retries === 0) throw e;
+      return createWithRetry(temporaryNickname(), retries - 1);
     }
+  };
+
+  try {
+    return await createWithRetry(nickname, NICKNAME_RETRIES);
   } catch (e) {
+    if (isNicknameConflict(e)) throw nicknameAlreadyExists();
     // 같은 소셜 계정으로 동시에 가입한 경우 DB 유니크가 막아준다
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&
