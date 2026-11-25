@@ -12,6 +12,8 @@ export type PaymentResult = {
   paymentId: string;
   status: 'SUCCEEDED';
   reservationId: string;
+  /** 화면에 표시하는 예약번호 (SP-…) */
+  reservationNumber: string;
 };
 
 export async function preparePayment(

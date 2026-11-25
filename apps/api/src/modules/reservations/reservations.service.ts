@@ -67,7 +67,10 @@ function toDeliveryDueDate(shootAt: Date): string {
  * XXXX는 UUID 끝 5자리(20비트)를 32진수 4자리로 바꾼 값
  * 저장하지 않는 표시용 값이라 중복을 보장하지 않으므로 예약을 찾을 때는 reservationId를 쓴다
  */
-function toReservationNumber(reservationId: string, createdAt: Date): string {
+export function toReservationNumber(
+  reservationId: string,
+  createdAt: Date,
+): string {
   const [date, time] = new Date(createdAt.getTime() + KST_OFFSET_MS)
     .toISOString()
     .slice(2, 19)
@@ -288,6 +291,10 @@ export async function createReservation(
 
     return {
       reservationId: reservation.id,
+      reservationNumber: toReservationNumber(
+        reservation.id,
+        reservation.created_at,
+      ),
       chatRoomId: quote.chat_room_id,
       photographerNickname: photographer.auth_account.nickname,
       productName: quote.quote_name,

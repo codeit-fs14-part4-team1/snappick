@@ -274,6 +274,7 @@ export default function PaymentFlow({
     return (
       <PaymentCompletion
         reservationId={result.reservationId}
+        reservationNumber={result.reservationNumber}
         amount={quote?.price ?? 0}
         quote={quote}
         chatHref={chatHref}
@@ -416,6 +417,7 @@ export default function PaymentFlow({
     return (
       <PaymentCompletion
         reservationId={result.reservationId}
+        reservationNumber={result.reservationNumber}
         amount={Number(params.get('amount'))}
         quote={quote}
         chatHref={chatHref}

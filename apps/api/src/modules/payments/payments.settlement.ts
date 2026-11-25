@@ -1,7 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 import type { notifications } from '../../generated/prisma/client.js';
 import { HttpError } from '../../utils/http-error.js';
-import { createReservation } from '../reservations/reservations.service.js';
+import {
+  createReservation,
+  toReservationNumber,
+} from '../reservations/reservations.service.js';
 import {
   approveTossPayment,
   cancelTossPayment,
@@ -31,6 +34,7 @@ type SettledPayment =
   | {
       status: 'SUCCEEDED';
       reservationId: string;
+      reservationNumber: string;
       chatRoomId: string | null;
       notifications: notifications[];
     }
@@ -99,7 +103,7 @@ async function completePayment(
         select: {
           status: true,
           pg_payment_id: true,
-          reservation: { select: { id: true } },
+          reservation: { select: { id: true, created_at: true } },
         },
       });
 
@@ -111,6 +115,10 @@ async function completePayment(
         return {
           status: 'SUCCEEDED',
           reservationId: latestPayment.reservation.id,
+          reservationNumber: toReservationNumber(
+            latestPayment.reservation.id,
+            latestPayment.reservation.created_at,
+          ),
           chatRoomId: null,
           notifications: [],
         };
@@ -128,6 +136,7 @@ async function completePayment(
     return {
       status: 'SUCCEEDED',
       reservationId: reservation.reservationId,
+      reservationNumber: reservation.reservationNumber,
       chatRoomId: reservation.chatRoomId,
       notifications: reservation.notifications,
     };

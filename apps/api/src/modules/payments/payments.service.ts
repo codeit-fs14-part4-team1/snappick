@@ -4,7 +4,10 @@ import type {
   PreparePaymentInput,
   ConfirmPaymentInput,
 } from './payments.schema.js';
-import { createReservation } from '../reservations/reservations.service.js';
+import {
+  createReservation,
+  toReservationNumber,
+} from '../reservations/reservations.service.js';
 import {
   failPendingPayment,
   settlePayment,
@@ -259,6 +262,7 @@ export async function preparePayment(
         paymentId: payment.id,
         status: 'SUCCEEDED' as const,
         reservationId: reservation.reservationId,
+        reservationNumber: reservation.reservationNumber,
         chatRoomId: reservation.chatRoomId,
         notifications: reservation.notifications,
       };
@@ -356,7 +360,7 @@ export async function confirmPayment(
 
     const reservation = await prisma.reservations.findUnique({
       where: { payment_id: payment.id },
-      select: { id: true },
+      select: { id: true, created_at: true },
     });
 
     if (!reservation) {
@@ -371,6 +375,10 @@ export async function confirmPayment(
       paymentId: payment.id,
       status: 'SUCCEEDED',
       reservationId: reservation.id,
+      reservationNumber: toReservationNumber(
+        reservation.id,
+        reservation.created_at,
+      ),
       chatRoomId: null,
       notifications: [],
     };
