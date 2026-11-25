@@ -41,6 +41,7 @@ export default function PaymentPage({
   revisedQuoteHref,
   checkoutLocked = false,
   paymentPending = false,
+  expired = false,
 }: {
   quote: QuoteDraft;
   photographerName: string;
@@ -52,6 +53,8 @@ export default function PaymentPage({
   checkoutLocked?: boolean;
   /** 이 견적의 결제 결과를 서버가 확인하는 중 */
   paymentPending?: boolean;
+  /** 촬영 일시가 지나 결제할 수 없는 견적 */
+  expired?: boolean;
 }) {
   const [agreed, setAgreed] = useState(false);
 
@@ -173,7 +176,8 @@ export default function PaymentPage({
               pending ||
               revisedQuoteHref ||
               checkoutLocked ||
-              paymentPending
+              paymentPending ||
+              expired
             )
               return;
             void onPay();
@@ -217,6 +221,7 @@ export default function PaymentPage({
                 type="checkbox"
                 required
                 checked={agreed}
+                disabled={paymentPending || expired}
                 onChange={(event) => setAgreed(event.target.checked)}
               />
               <svg
@@ -252,7 +257,8 @@ export default function PaymentPage({
               pending ||
               Boolean(revisedQuoteHref) ||
               checkoutLocked ||
-              paymentPending
+              paymentPending ||
+              expired
             }
             startIcon={
               pending ? <span className={styles.spinner} /> : undefined
@@ -260,9 +266,11 @@ export default function PaymentPage({
           >
             {paymentPending
               ? '결제 확인 중'
-              : pending
-                ? '결제 진행 중…'
-                : '동의하고 결제하기'}
+              : expired
+                ? '촬영 일시가 지난 견적이에요'
+                : pending
+                  ? '결제 진행 중…'
+                  : '동의하고 결제하기'}
           </Button>
           <p
             className={styles.help}

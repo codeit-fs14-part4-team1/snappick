@@ -30,6 +30,13 @@ const paymentRetryRequired = () =>
     '결제가 실패했거나 만료되었습니다. 결제를 다시 시작해 주세요.',
   );
 
+const quoteExpired = () =>
+  new HttpError(
+    409,
+    'QUOTE_EXPIRED',
+    '촬영 일시가 지나 결제할 수 없는 견적입니다.',
+  );
+
 // 결과가 확정되지 않은 결제. 정리 작업이 이어서 처리한다
 const paymentProcessing = () =>
   new HttpError(409, 'PAYMENT_PROCESSING', '결제 결과를 확인하고 있습니다.');
@@ -198,6 +205,11 @@ export async function preparePayment(
       );
     }
 
+    // 이미 시작된 결제는 위에서 걸러지므로 새 결제만 막음
+    if (quote.shoot_at.getTime() <= Date.now()) {
+      throw quoteExpired();
+    }
+
     // 같은 촬영 건에 이미 준비된 결제가 있으면 중복 생성 차단
     const preparedPayment = relatedPayments.find(
       (payment) => payment.status === 'READY' && payment.quote_id === quote.id,
@@ -265,7 +277,7 @@ export async function confirmPayment(
         },
       },
       quote: {
-        select: { shooting_case_id: true },
+        select: { shooting_case_id: true, shoot_at: true },
       },
     },
   });
@@ -355,6 +367,11 @@ export async function confirmPayment(
         'QUOTE_UNAVAILABLE',
         '결제에 연결된 견적을 찾을 수 없습니다.',
       );
+    }
+
+    // 결제창을 연 사이 촬영 일시가 지난 경우 (아직 승인 전이라 결제되지 않음)
+    if (payment.quote && payment.quote.shoot_at.getTime() <= Date.now()) {
+      throw quoteExpired();
     }
 
     const updated = await prisma.$transaction(async (tx) => {

@@ -39,6 +39,9 @@ export default function PaymentFlow({
   const [quoteSuperseded, setQuoteSuperseded] = useState(false);
   const [supersededDialogDismissed, setSupersededDialogDismissed] =
     useState(false);
+  // 화면을 연 시각 기준. 여는 동안 지난 경우는 서버가 막습니다.
+  const [openedAt] = useState(() => Date.now());
+  const [quoteExpired, setQuoteExpired] = useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
   // 서버가 결제 결과를 확인하는 동안 true
   const [checking, setChecking] = useState(false);
@@ -151,6 +154,15 @@ export default function PaymentFlow({
       if (
         cause instanceof Error &&
         'code' in cause &&
+        cause.code === 'QUOTE_EXPIRED'
+      ) {
+        setQuoteExpired(true);
+        setError('촬영 일시가 지나 결제할 수 없어요.');
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
         cause.code === 'PAYMENT_RETRY_REQUIRED'
       ) {
         setRestartRequired(true);
@@ -212,6 +224,15 @@ export default function PaymentFlow({
       ) {
         setQuoteSuperseded(true);
         void quoteQuery.refetch();
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        cause.code === 'QUOTE_EXPIRED'
+      ) {
+        setQuoteExpired(true);
+        setError('촬영 일시가 지나 결제할 수 없어요.');
         return;
       }
       if (
@@ -298,6 +319,7 @@ export default function PaymentFlow({
             }
             checkoutLocked={showSupersededNotice || mode !== 'checkout'}
             paymentPending={quote.paymentPending}
+            expired={quoteExpired || Date.parse(quote.shootAt) <= openedAt}
           />
         ) : (
           <StateMessage

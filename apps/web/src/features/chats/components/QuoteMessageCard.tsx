@@ -16,6 +16,7 @@ import QuoteNoticeList from './QuoteNoticeList';
 export default function QuoteMessageCard({
   quote: savedQuote,
   createdAt,
+  now,
   received = false,
   superseded = false,
   onEdit,
@@ -23,6 +24,8 @@ export default function QuoteMessageCard({
 }: {
   quote: Quote;
   createdAt: string;
+  /** 촬영 일시가 지났는지 판단할 현재 시각 */
+  now: string;
   received?: boolean;
   superseded?: boolean;
   onEdit?: () => void;
@@ -38,6 +41,7 @@ export default function QuoteMessageCard({
   const hours = quote.durationMinutes / 60;
   const isLatest = savedQuote.isLatest && !superseded;
   const isReserved = Boolean(savedQuote.reservationStatus);
+  const isExpired = Date.parse(savedQuote.shootAt) <= Date.parse(now);
   const isPaymentPending = Boolean(savedQuote.paymentPending) && !isReserved;
 
   return (
@@ -129,8 +133,8 @@ export default function QuoteMessageCard({
         {received && !isReserved && !isPaymentPending && (
           <div className={styles.payment}>
             {isLatest && (
-              <Button fullWidth disabled={!onPay} onClick={onPay}>
-                결제하기
+              <Button fullWidth disabled={!onPay || isExpired} onClick={onPay}>
+                {isExpired ? '촬영 일시가 지난 견적이에요' : '결제하기'}
               </Button>
             )}
             {!isLatest && (
