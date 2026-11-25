@@ -58,9 +58,14 @@ export async function unlikePhoto(userId: string, photoId: string) {
 
 export async function savePhotographer(userId: string, photographerId: string) {
   await assertPhotographerExists(photographerId);
-  await prisma.photographer_saves.createMany({
-    data: [{ user_id: userId, photographer_id: photographerId }],
-    skipDuplicates: true,
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.photographer_saves.createMany({
+      data: [{ user_id: userId, photographer_id: photographerId }],
+      skipDuplicates: true,
+    });
+    if (count > 0) {
+      await createUserActionLog({ userId, type: 'SAVE', photographerId }, tx);
+    }
   });
   return { photographerId, saved: true };
 }
@@ -70,8 +75,14 @@ export async function unsavePhotographer(
   photographerId: string,
 ) {
   await assertPhotographerExists(photographerId);
-  await prisma.photographer_saves.deleteMany({
-    where: { user_id: userId, photographer_id: photographerId },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.photographer_saves.deleteMany({
+      where: { user_id: userId, photographer_id: photographerId },
+    });
+
+    if (count > 0) {
+      await createUserActionLog({ userId, type: 'UNSAVE', photographerId }, tx);
+    }
   });
   return { photographerId, saved: false };
 }
