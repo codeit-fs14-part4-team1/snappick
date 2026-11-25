@@ -6,14 +6,16 @@ import ScrollToEdgeButton from '@/components/ui/ScrollToEdgeButton';
 import ChatAvatar from './ChatAvatar';
 import InquiryCard from './InquiryCard';
 import QuoteMessageCard from './QuoteMessageCard';
+import ReservationEventCard from './ReservationEventCard';
 import type { Quote } from '../quote';
-import type { ChatMessageItem } from '../types';
+import type { ChatMessageItem, ChatViewerRole } from '../types';
 import { useChatScroll } from '../useChatScroll';
 import { formatChatDate, formatChatTime } from '../utils';
 import styles from './ChatMessageList.module.css';
 
 type Props = {
   messages: ChatMessageItem[];
+  viewerRole: ChatViewerRole;
   partnerName: string;
   partnerImageUrl?: string | null;
   now: string;
@@ -35,6 +37,7 @@ export default function ChatMessageList({
   onEditQuote,
   onPayQuote,
   messages,
+  viewerRole,
   partnerName,
   partnerImageUrl = null,
   now,
@@ -159,6 +162,27 @@ export default function ChatMessageList({
                 formatChatDate(previous.createdAt) !==
                   formatChatDate(message.createdAt);
               const system = message.messageType === 'SYSTEM';
+              const confirmedQuote =
+                system &&
+                message.quote?.reservationId &&
+                message.payload &&
+                typeof message.payload === 'object' &&
+                'type' in message.payload &&
+                message.payload.type === 'RESERVATION_CONFIRMED'
+                  ? message.quote
+                  : null;
+              const reservation = confirmedQuote?.reservationId
+                ? {
+                    event: 'RESERVATION_CONFIRMED' as const,
+                    id: confirmedQuote.reservationId,
+                    quoteName: confirmedQuote.quoteName,
+                    shootAt: confirmedQuote.shootAt,
+                    location: confirmedQuote.location,
+                    amount: confirmedQuote.price,
+                  }
+                : system
+                  ? message.reservation
+                  : null;
               return (
                 <Fragment key={message.id}>
                   {showDay && (
@@ -169,8 +193,18 @@ export default function ChatMessageList({
                     </li>
                   )}
                   <li
-                    className={system ? styles.system : styles.message}
-                    data-mine={message.isMine}
+                    className={
+                      system && !reservation ? styles.system : styles.message
+                    }
+                    data-mine={
+                      reservation
+                        ? viewerRole ===
+                          (reservation.event === 'RESERVATION_CONFIRMED' ||
+                          reservation.event === 'RESERVATION_CANCEL_REQUESTED'
+                            ? 'user'
+                            : 'photographer')
+                        : message.isMine
+                    }
                     data-message-id={message.id}
                   >
                     <span className={styles.srOnly}>
@@ -178,16 +212,23 @@ export default function ChatMessageList({
                     </span>
                     <div
                       className={
-                        system
-                          ? styles.systemContent
-                          : message.messageType === 'INITIAL_REQUEST'
-                            ? styles.requestContainer
-                            : message.messageType === 'QUOTE' && message.quote
-                              ? styles.quoteContainer
-                              : styles.bubble
+                        reservation
+                          ? styles.quoteContainer
+                          : system
+                            ? styles.systemContent
+                            : message.messageType === 'INITIAL_REQUEST'
+                              ? styles.requestContainer
+                              : message.messageType === 'QUOTE' && message.quote
+                                ? styles.quoteContainer
+                                : styles.bubble
                       }
                     >
-                      {message.messageType === 'INITIAL_REQUEST' ? (
+                      {reservation ? (
+                        <ReservationEventCard
+                          reservation={reservation}
+                          now={now}
+                        />
+                      ) : message.messageType === 'INITIAL_REQUEST' ? (
                         <InquiryCard
                           payload={message.payload}
                           isMine={message.isMine}
@@ -254,12 +295,31 @@ export default function ChatMessageList({
         <button
           type="button"
           className={styles.newMessage}
-          aria-label={`${partnerName}의 새 메시지: ${newMessage.content}. 최하단으로 이동`}
+          aria-label={
+            newMessage.messageType === 'SYSTEM'
+              ? `새 메시지: ${newMessage.content}. 최하단으로 이동`
+              : `${partnerName}의 새 메시지: ${newMessage.content}. 최하단으로 이동`
+          }
           onClick={scrollToBottom}
         >
-          <ChatAvatar src={partnerImageUrl} nickname={partnerName} size={22} />
-          <strong className={styles.newMessageName}>{partnerName}</strong>
-          <span className={styles.newMessageContent} role="status">
+          {newMessage.messageType !== 'SYSTEM' && (
+            <>
+              <ChatAvatar
+                src={partnerImageUrl}
+                nickname={partnerName}
+                size={22}
+              />
+              <strong className={styles.newMessageName}>{partnerName}</strong>
+            </>
+          )}
+          <span
+            className={
+              newMessage.messageType === 'SYSTEM'
+                ? styles.newSystemMessageContent
+                : styles.newMessageContent
+            }
+            role="status"
+          >
             {newMessage.content}
           </span>
         </button>

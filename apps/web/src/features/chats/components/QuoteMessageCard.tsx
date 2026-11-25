@@ -37,10 +37,7 @@ export default function QuoteMessageCard({
     : '';
   const hours = quote.durationMinutes / 60;
   const isLatest = savedQuote.isLatest && !superseded;
-  // TODO(결제 API 연동): reservationStatus 응답 연결 후 결제 완료 표시와 결제·수정 제한을 검증합니다.
-  const isReserved = Boolean(
-    savedQuote.reservationStatus && savedQuote.reservationStatus !== 'CANCELED',
-  );
+  const isReserved = Boolean(savedQuote.reservationStatus);
 
   return (
     <article className={styles.card} aria-label={`${quote.quoteName} 견적서`}>

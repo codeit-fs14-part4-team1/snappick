@@ -9,6 +9,28 @@ import {
   notificationMessages,
 } from '../notifications/notifications.create.js';
 
+const reservationMessages = [
+  {
+    event: 'RESERVATION_CANCELED',
+    content: [
+      '작가가 예약을 취소했습니다.',
+      '작가가 예약 취소 요청을 수락했습니다.',
+    ],
+  },
+  {
+    event: 'RESERVATION_CANCEL_REQUESTED',
+    content: ['사용자가 예약 취소를 요청했습니다.'],
+  },
+  {
+    event: 'RESERVATION_CANCEL_REJECTED',
+    content: ['작가가 예약 취소 요청을 반려했습니다.'],
+  },
+  {
+    event: 'RESERVATION_DELIVERED',
+    content: ['결과물이 전달됐어요'],
+  },
+] as const;
+
 //사용자 조회
 export async function createChat(accountId: string, photographerId: string) {
   const account = await prisma.auth_accounts.findUnique({
@@ -413,8 +435,18 @@ export async function getMessages(
     orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     take: limit + 1,
     include: {
+      reservation: {
+        select: {
+          id: true,
+          shoot_at: true,
+          location: true,
+          total_amount: true,
+          quote: { select: { quote_name: true } },
+        },
+      },
       quote: {
         include: {
+          reservation: { select: { id: true, status: true } },
           shooting_case: {
             select: {
               quotes: {
@@ -432,39 +464,67 @@ export async function getMessages(
   const hasNext = messages.length > limit;
   const pageMessages = messages.slice(0, limit);
 
-  const items = pageMessages.reverse().map((message) => ({
-    id: message.id,
-    chatRoomId: message.chat_room_id,
-    recipientAccountId: message.recipient_account_id,
-    messageType: message.message_type,
-    content: message.content,
-    payload: message.payload,
-    quote: message.quote
-      ? {
-          id: message.quote.id,
-          chatRoomId: message.quote.chat_room_id,
-          shootingCaseId: message.quote.shooting_case_id,
-          version: message.quote.version,
-          isLatest:
-            message.quote.shooting_case.quotes[0]?.id === message.quote.id,
-          quoteName: message.quote.quote_name,
-          shootAt: message.quote.shoot_at,
-          location: message.quote.location,
-          locationLat: message.quote.location_lat,
-          locationLng: message.quote.location_lng,
-          durationMinutes: message.quote.duration_minutes,
-          price: message.quote.price,
-          photoCount: message.quote.photo_count,
-          includesOriginal: message.quote.includes_original,
-          additionalNotice: message.quote.additional_notice,
-          commonNotice: message.quote.common_notice,
-          createdAt: message.quote.created_at,
-        }
-      : null,
-    reservation: null,
-    readAt: message.read_at,
-    createdAt: message.created_at,
-  }));
+  const items = pageMessages.reverse().map((message) => {
+    const payload = message.payload;
+    const payloadType =
+      payload && typeof payload === 'object' && 'type' in payload
+        ? payload.type
+        : undefined;
+    const reservationEvent =
+      message.message_type === 'SYSTEM' && message.reservation
+        ? reservationMessages.find(
+            ({ event, content }) =>
+              event === payloadType ||
+              content.some((text) => text === message.content),
+          )?.event
+        : undefined;
+
+    return {
+      id: message.id,
+      chatRoomId: message.chat_room_id,
+      recipientAccountId: message.recipient_account_id,
+      messageType: message.message_type,
+      content: message.content,
+      payload: message.payload,
+      quote: message.quote
+        ? {
+            id: message.quote.id,
+            chatRoomId: message.quote.chat_room_id,
+            shootingCaseId: message.quote.shooting_case_id,
+            version: message.quote.version,
+            isLatest:
+              message.quote.shooting_case.quotes[0]?.id === message.quote.id,
+            quoteName: message.quote.quote_name,
+            reservationStatus: message.quote.reservation?.status ?? null,
+            reservationId: message.quote.reservation?.id ?? null,
+            shootAt: message.quote.shoot_at,
+            location: message.quote.location,
+            locationLat: message.quote.location_lat,
+            locationLng: message.quote.location_lng,
+            durationMinutes: message.quote.duration_minutes,
+            price: message.quote.price,
+            photoCount: message.quote.photo_count,
+            includesOriginal: message.quote.includes_original,
+            additionalNotice: message.quote.additional_notice,
+            commonNotice: message.quote.common_notice,
+            createdAt: message.quote.created_at,
+          }
+        : null,
+      reservation:
+        reservationEvent && message.reservation
+          ? {
+              event: reservationEvent,
+              id: message.reservation.id,
+              quoteName: message.reservation.quote?.quote_name ?? null,
+              shootAt: message.reservation.shoot_at,
+              location: message.reservation.location,
+              amount: message.reservation.total_amount,
+            }
+          : null,
+      readAt: message.read_at,
+      createdAt: message.created_at,
+    };
+  });
 
   const nextCursor = hasNext ? (items[0]?.id ?? null) : null;
 

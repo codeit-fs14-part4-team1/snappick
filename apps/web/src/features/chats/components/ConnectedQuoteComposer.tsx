@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { usePhotographerProfile } from '@/features/profile/hooks/usePhotographerProfile';
@@ -15,14 +16,20 @@ export default function ConnectedQuoteComposer({
   initialQuote,
   superseded = false,
   onClose,
+  onNewQuote,
   onSubmit,
 }: {
   initialQuote?: Quote;
   superseded?: boolean;
   onClose: () => void;
+  onNewQuote: () => void;
   onSubmit: (draft: QuoteDraft) => Promise<void>;
 }) {
   const { fetchWithAuth } = useAuth();
+  const [closedCase, setClosedCase] = useState<{
+    id: string;
+    status: 'CANCELED' | 'PURCHASE_CONFIRMED';
+  }>();
   // 로그인 계정 ID와 작가 프로필 ID를 구분해 본인 프로필에서 작가 ID를 조회합니다.
   const profile = usePhotographerProfile(initialQuote ? undefined : 'me');
   const products = usePhotographerProducts(
@@ -40,11 +47,37 @@ export default function ConnectedQuoteComposer({
   const loading = initialQuote
     ? quote.isPending
     : profile.isPending || products.isPending;
-  // TODO(결제 API 연동): 견적 상세의 reservationStatus 연결 후 예약 완료 견적의 수정 진입 제한을 검증합니다.
+  const reservationStatus =
+    closedCase && closedCase.id === initialQuote?.shootingCaseId
+      ? closedCase.status
+      : quote.data?.reservationStatus;
   if (
-    quote.data?.reservationStatus &&
-    quote.data.reservationStatus !== 'CANCELED'
+    reservationStatus === 'CANCELED' ||
+    reservationStatus === 'PURCHASE_CONFIRMED'
   ) {
+    return (
+      <Modal
+        open
+        title={
+          reservationStatus === 'CANCELED'
+            ? '예약이 취소된 촬영 건이에요'
+            : '구매가 확정된 촬영 건이에요'
+        }
+        description="같은 채팅방에서 새 촬영 건으로 견적을 보낼 수 있어요."
+        variant="confirm"
+        onClose={onClose}
+        footer={
+          <>
+            <Button variant="outline" onClick={onClose}>
+              닫기
+            </Button>
+            <Button onClick={onNewQuote}>새 견적 보내기</Button>
+          </>
+        }
+      />
+    );
+  }
+  if (quote.data?.reservationStatus) {
     return (
       <Modal open title="견적 수정" onClose={onClose}>
         <p role="alert">예약이 확정된 견적은 수정할 수 없어요.</p>
@@ -108,7 +141,28 @@ export default function ConnectedQuoteComposer({
         id: product.productId,
       }))}
       initialQuote={quote.data ? toQuoteDraft(quote.data) : undefined}
-      onSubmit={onSubmit}
+      onSubmit={async (draft) => {
+        try {
+          await onSubmit(draft);
+        } catch (error) {
+          if (
+            initialQuote &&
+            error instanceof Error &&
+            'code' in error &&
+            (error.code === 'SHOOTING_CASE_CANCELED' ||
+              error.code === 'SHOOTING_CASE_PURCHASE_CONFIRMED')
+          ) {
+            setClosedCase({
+              id: initialQuote.shootingCaseId,
+              status:
+                error.code === 'SHOOTING_CASE_CANCELED'
+                  ? 'CANCELED'
+                  : 'PURCHASE_CONFIRMED',
+            });
+          }
+          throw error;
+        }
+      }}
     />
   );
 }

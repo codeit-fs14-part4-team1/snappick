@@ -81,6 +81,7 @@ function ChatMessagesContent({
   const [quoteSelection, setQuoteSelection] = useState<'new' | Quote | null>(
     null,
   );
+  const openNewQuote = () => setQuoteSelection('new');
   const [scrollQuoteId, setScrollQuoteId] = useState<string>();
   const quoteMessageId = query.messages.find(
     (message) => message.quote?.id === scrollQuoteId,
@@ -119,6 +120,7 @@ function ChatMessagesContent({
           </div>
         )}
       <ChatMessageList
+        viewerRole={viewerRole}
         startAtTop={showInquiryForm}
         onVisibleMessage={markVisibleMessageRead}
         scrollToMessageId={scrollQuoteId ? quoteMessageId : sentMessageId}
@@ -206,13 +208,14 @@ function ChatMessagesContent({
           viewerRole === 'photographer' && !room.partner.isWithdrawn ? (
             <QuoteActionMenu
               disabled={isSending || quoteMutation.isSending}
-              onSelect={() => setQuoteSelection('new')}
+              onSelect={openNewQuote}
             />
           ) : undefined
         }
       />
       {viewerRole === 'photographer' && quoteSelection && (
         <ConnectedQuoteComposer
+          onNewQuote={openNewQuote}
           initialQuote={quoteSelection === 'new' ? undefined : quoteSelection}
           superseded={
             quoteSelection !== 'new' &&

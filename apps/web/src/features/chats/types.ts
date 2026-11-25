@@ -57,6 +57,21 @@ export type ChatRoomListLoader = (
 
 export type ChatViewerRole = 'user' | 'photographer';
 
+export type ChatReservation = {
+  id: string;
+  quoteName: string | null;
+  shootAt: string;
+  location: string;
+  amount: number;
+};
+
+export type ChatReservationEvent =
+  | 'RESERVATION_CONFIRMED'
+  | 'RESERVATION_CANCELED'
+  | 'RESERVATION_CANCEL_REQUESTED'
+  | 'RESERVATION_CANCEL_REJECTED'
+  | 'RESERVATION_DELIVERED';
+
 /** GET /chats/{chatRoomId}/messages */
 export type ChatMessage = {
   id: string;
@@ -66,7 +81,11 @@ export type ChatMessage = {
   content: string;
   payload: unknown;
   quote: Quote | null;
-  reservation: unknown;
+  reservation:
+    | (ChatReservation & {
+        event: Exclude<ChatReservationEvent, 'RESERVATION_CONFIRMED'>;
+      })
+    | null;
   readAt: string | null;
   createdAt: string;
 };

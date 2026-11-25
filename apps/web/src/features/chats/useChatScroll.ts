@@ -94,7 +94,6 @@ export function useChatScroll({
       .find(
         (message) =>
           !message.isMine &&
-          message.messageType !== 'SYSTEM' &&
           (Date.parse(message.createdAt) > Date.parse(previous.createdAt) ||
             (Date.parse(message.createdAt) === Date.parse(previous.createdAt) &&
               message.id > previous.id)),
