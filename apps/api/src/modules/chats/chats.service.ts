@@ -250,6 +250,7 @@ export async function sendMessage(
   accountId: string,
   chatRoomId: string,
   content: string,
+  viewerIds: string[],
 ) {
   const chatRoom = await prisma.chat_rooms.findUnique({
     where: {
@@ -321,6 +322,7 @@ export async function sendMessage(
         recipientAccountId,
         chatRoomId,
         senderName: sender?.nickname ?? '상대방',
+        isRecipientViewing: viewerIds.includes(recipientAccountId),
       },
       tx,
     );

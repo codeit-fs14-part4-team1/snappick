@@ -100,15 +100,19 @@ export async function sendMessageHandler(req: Request, res: Response) {
 
   const input = result.data;
 
+  // 저장된 메시지를 채팅방 Room에 전달하기 위해
+  // server.ts에서 생성해 Express 앱에 등록한 socket.io 서버 객체를 가져옴.
+  const io: Server = req.app.get('io');
+
+  const sockets = await io.in(`viewing:${params.chatRoomId}`).fetchSockets();
+  const viewerIds: string[] = sockets.map((s) => s.data.auth.accountId);
+
   const { message, notification } = await sendMessage(
     auth.accountId,
     params.chatRoomId,
     input.content,
+    viewerIds,
   );
-
-  // 저장된 메시지를 채팅방 Room에 전달하기 위해
-  // server.ts에서 생성해 Express 앱에 등록한 socket.io 서버 객체를 가져옴.
-  const io: Server = req.app.get('io');
 
   const messageData = {
     id: message.id,
