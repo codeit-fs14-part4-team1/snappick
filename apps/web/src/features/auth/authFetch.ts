@@ -1,3 +1,5 @@
+import { createApiError } from '@/lib/api';
+
 type AuthFetchOptions = {
   accessToken: string;
   refreshToken: () => Promise<string>;
@@ -29,16 +31,24 @@ export async function authFetch<T>(
 
   let response = await request(auth.accessToken);
 
-  // Access Token이 만료되면 한 번만 재발급을 시도함
+  // 401 오류의 원인을 확인하고 Access Token 재발급 여부를 결정함
   if (response.status === 401) {
+    const error = await createApiError(response);
+
+    // 소셜 인가 코드 오류는 토큰 재발급 및 API 재요청 대상에서 제외함
+    if (error.code === 'INVALID_SOCIAL_AUTH') {
+      throw error;
+    }
+
     const newToken = await auth.refreshToken();
 
     auth.onTokenRefresh(newToken);
     response = await request(newToken);
   }
 
+  // HTTP 상태 코드와 서버의 상세 오류 정보를 함께 전달함
   if (!response.ok) {
-    throw new Error(`API 요청 실패: ${response.status}`);
+    throw await createApiError(response);
   }
 
   if (response.status === 204) {
