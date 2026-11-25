@@ -123,6 +123,84 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // 이 연결에서 지금 보고 있는 채팅방 (한 번에 하나)
+  const viewing: { chatRoomId: string | null } = { chatRoomId: null };
+
+  // 채팅방 화면을 보기 시작하면 실행
+  // chat:join은 목록의 모든 방에 입장하므로 보고 있는 방은 따로 구분한다
+  socket.on('chat:view', async (payload: unknown) => {
+    const result = chatRoomParamsSchema.safeParse(payload);
+
+    if (!result.success) {
+      socket.emit('chat:error', {
+        code: 'VALIDATION_FAILED',
+        message: 'chatRoomId는 UUID여야 합니다.',
+      });
+      return;
+    }
+    const chatRoomId = result.data.chatRoomId;
+
+    // 다른 방을 보고 있었다면 그 방에서 나간다
+    if (viewing.chatRoomId && viewing.chatRoomId !== chatRoomId) {
+      void socket.leave(`viewing:${viewing.chatRoomId}`);
+    }
+    viewing.chatRoomId = chatRoomId;
+
+    try {
+      await checkChatRoomAccess(socket.data.auth.accountId, chatRoomId);
+
+      // 확인하는 사이 방을 나갔거나 옮겼으면 입장하지 않는다
+      if (viewing.chatRoomId !== chatRoomId) return;
+
+      await socket.join(`viewing:${chatRoomId}`);
+
+      socket.emit('chat:viewed', {
+        chatRoomId,
+      });
+    } catch (error) {
+      if (viewing.chatRoomId === chatRoomId) {
+        viewing.chatRoomId = null;
+        void socket.leave(`viewing:${chatRoomId}`);
+      }
+
+      if (error instanceof HttpError) {
+        socket.emit('chat:error', {
+          chatRoomId,
+          code: error.code,
+          message: error.message,
+        });
+      } else {
+        console.error(error);
+
+        socket.emit('chat:error', {
+          chatRoomId,
+          code: 'INTERNAL_ERROR',
+          message: '채팅방 보기 처리 중 오류가 발생했습니다.',
+        });
+      }
+    }
+  });
+
+  // 채팅방 화면을 벗어나면 실행 (연결이 끊기면 자동으로 나가진다)
+  socket.on('chat:unview', (payload: unknown) => {
+    const result = chatRoomParamsSchema.safeParse(payload);
+
+    if (!result.success) {
+      socket.emit('chat:error', {
+        code: 'VALIDATION_FAILED',
+        message: 'chatRoomId는 UUID여야 합니다.',
+      });
+      return;
+    }
+    const chatRoomId = result.data.chatRoomId;
+
+    // 이미 다른 방으로 옮겼다면 그 기록은 유지한다
+    if (viewing.chatRoomId === chatRoomId) {
+      viewing.chatRoomId = null;
+    }
+    void socket.leave(`viewing:${chatRoomId}`);
+  });
 });
 
 httpServer.listen(PORT, () => {

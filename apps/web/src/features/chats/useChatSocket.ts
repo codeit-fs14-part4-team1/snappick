@@ -159,6 +159,14 @@ export default function useChatSocket(
       }, 50);
     }
 
+    function syncViewing() {
+      if (!socket.connected || !chatRoomId) return;
+
+      const isViewing =
+        document.visibilityState === 'visible' && document.hasFocus();
+      socket.emit(isViewing ? 'chat:view' : 'chat:unview', { chatRoomId });
+    }
+
     socket.on('connect', () => {
       if (!active) return;
       setStatus('connecting');
@@ -170,6 +178,7 @@ export default function useChatSocket(
       for (const id of subscribedRooms) {
         pendingRooms.add(id);
       }
+      syncViewing();
       if (pendingRooms.size === 0) {
         markConnected();
         refreshConversation();
@@ -198,6 +207,9 @@ export default function useChatSocket(
         subscribedRooms.has(payload.chatRoomId)
       )
         refreshConversation(payload.chatRoomId === chatRoomId);
+    });
+    socket.on('notification:new', () => {
+      if (active) refreshConversation(false);
     });
     socket.on(
       'chat:read',
@@ -279,6 +291,9 @@ export default function useChatSocket(
       // 이 연결을 정리하고 새 토큰으로 다시 접속합니다.
       recoverAuthentication();
     });
+    window.addEventListener('focus', syncViewing);
+    window.addEventListener('blur', syncViewing);
+    document.addEventListener('visibilitychange', syncViewing);
     socket.connect();
 
     return () => {
@@ -289,6 +304,9 @@ export default function useChatSocket(
       clearTimeout(noticeTimer);
       socket.removeAllListeners();
       socket.disconnect();
+      window.removeEventListener('focus', syncViewing);
+      window.removeEventListener('blur', syncViewing);
+      document.removeEventListener('visibilitychange', syncViewing);
     };
   }, [
     url,
