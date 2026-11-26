@@ -302,6 +302,7 @@ export default function ReservationDeliverable({
       photographerName: booking.photographer?.nickname ?? '작가 정보 없음',
       representativeImageUrl:
         booking.photographer?.representativeImageUrl ?? null,
+      profileImageUrl: booking.photographer?.profileImageUrl ?? null,
       quoteName: booking.quoteName ?? '견적 정보 없음',
       shootDate: booking.shootAt,
     });

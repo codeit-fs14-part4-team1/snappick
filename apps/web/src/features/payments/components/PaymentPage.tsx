@@ -58,6 +58,7 @@ export default function PaymentPage({
 }) {
   const [agreed, setAgreed] = useState(false);
 
+  const productImageUrl = representativeImageUrl ?? profileImageUrl;
   const amount = `${quote.price.toLocaleString('ko-KR')}원`;
   const schedule = `${formatQuoteDate(quote.date)} ${formatQuoteTime(quote.startTime)}`;
   const duration = [
@@ -77,13 +78,14 @@ export default function PaymentPage({
           <section className={styles.panel} aria-labelledby="order-title">
             <h2 id="order-title">주문 내역</h2>
             <div className={styles.product}>
-              {representativeImageUrl ? (
+              {productImageUrl ? (
                 <Image
-                  src={representativeImageUrl}
+                  src={productImageUrl}
                   alt=""
                   width={96}
                   height={72}
                   className={styles.productImage}
+                  unoptimized={!representativeImageUrl}
                 />
               ) : (
                 <span className={styles.productImage} aria-hidden="true" />

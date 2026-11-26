@@ -3,6 +3,7 @@ export type ReviewBooking = {
   reservationId: string;
   photographerName: string;
   representativeImageUrl?: string | null;
+  profileImageUrl?: string | null;
   quoteName: string;
   shootDate: string;
 };

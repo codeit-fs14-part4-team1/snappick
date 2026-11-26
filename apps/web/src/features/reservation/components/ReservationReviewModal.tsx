@@ -55,6 +55,8 @@ export default function ReservationReviewModal({
   const createMutation = useCreateReservationReview(booking.reservationId);
 
   const isSaving = createMutation.isPending;
+  const thumbnailUrl =
+    booking.representativeImageUrl ?? booking.profileImageUrl;
 
   const displayedRating = rating === 0 ? (hoverRating ?? 0) : rating;
 
@@ -134,13 +136,14 @@ export default function ReservationReviewModal({
       >
         {/* 리뷰를 작성할 예약 정보 */}
         <div className={styles.summary}>
-          {booking.representativeImageUrl ? (
+          {thumbnailUrl ? (
             <Image
-              src={booking.representativeImageUrl}
+              src={thumbnailUrl}
               alt=""
               width={56}
               height={56}
               className={styles.thumbnail}
+              unoptimized={!booking.representativeImageUrl}
             />
           ) : (
             <span className={styles.thumbnail} aria-hidden="true" />

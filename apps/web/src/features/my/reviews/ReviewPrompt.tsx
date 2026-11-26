@@ -75,6 +75,7 @@ function ReviewPromptForAccount({ accountId }: { accountId: string }) {
         photographerName: booking.photographer?.nickname ?? '작가 정보 없음',
         representativeImageUrl:
           booking.photographer?.representativeImageUrl ?? null,
+        profileImageUrl: booking.photographer?.profileImageUrl ?? null,
         quoteName: booking.quoteName ?? '',
         shootDate: booking.shootAt,
       }}
