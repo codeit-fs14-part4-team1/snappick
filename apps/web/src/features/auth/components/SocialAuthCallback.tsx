@@ -12,6 +12,7 @@ import { linkSocialProvider } from '@/features/my/profile/api';
 import { ApiError } from '@/lib/api';
 
 import { socialLogin, socialSignup } from '../api';
+import { takeReturnPath } from '../returnPath';
 import { consumeSocialAuth } from '../socialAuth';
 import type {
   SocialAuthIntent,
@@ -385,9 +386,10 @@ async function completeSocialAuth(
     );
   }
 
+  // 로그인은 세션이 풀리기 전에 보던 화면으로 돌아가고, 회원가입은 메인으로 이동함
   return {
     status: 'success',
-    href: '/',
+    href: pendingAuth.mode === 'login' ? takeReturnPath() : '/',
   };
 }
 
