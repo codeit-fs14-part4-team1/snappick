@@ -632,12 +632,12 @@ export default function PhotographerProfilePage() {
       (category) =>
         CategoryLabel[category as keyof typeof CategoryLabel] ?? category,
     ),
-    // 0년은 1년 미만으로 표시하고, 경력 미입력 상태는 유지함
+    // 0년은 1년 이하로 표시하고, 경력 미입력 상태는 유지함
     careerLabel:
       activeProfile.career === null
         ? null
         : activeProfile.career === 0
-          ? '경력 1년 미만'
+          ? '경력 1년 이하'
           : `경력 ${activeProfile.career}년`,
 
     // 활동 지역을 공통 한글 라벨로 변환함

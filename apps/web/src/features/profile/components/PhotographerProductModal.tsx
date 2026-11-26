@@ -3,6 +3,7 @@
 import { useId, useState, type FormEvent } from 'react';
 
 import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -57,10 +58,12 @@ export default function PhotographerProductModal({
   const [price, setPrice] = useState(
     product ? product.price.toLocaleString('ko-KR') : '',
   );
+  const [priceError, setPriceError] = useState('');
 
   const [durationHours, setDurationHours] = useState(
     product ? String(product.durationMinutes / 60) : '',
   );
+  const [durationError, setDurationError] = useState('');
 
   const [photoCount, setPhotoCount] = useState(
     product ? String(product.photoCount) : '',
@@ -74,6 +77,24 @@ export default function PhotographerProductModal({
 
   // 상품 삭제 확인 화면의 표시 여부를 관리함
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const canApply =
+    Boolean(name.trim() && price && durationHours && photoCount) &&
+    !priceError &&
+    !durationError;
+  const priceValue = Number(price.replaceAll(',', ''));
+  const hoursValue = Number(durationHours);
+  const minutesValue = hoursValue * 60;
+  const durationMinutes = Math.round(minutesValue);
+  const priceValidation =
+    Number.isInteger(priceValue) && priceValue >= 1 && priceValue <= 100_000_000
+      ? ''
+      : '1~100,000,000원으로 입력해 주세요.';
+  const durationValidation =
+    !Number.isFinite(hoursValue) || hoursValue < 1 || hoursValue > 48
+      ? '촬영 시간은 1~48시간 범위로 입력해 주세요.'
+      : Math.abs(minutesValue - durationMinutes) > 0.000001
+        ? '촬영 시간은 1분 단위로 입력해 주세요.'
+        : '';
 
   // 서버 저장 중에는 모달을 닫지 않도록 보호함
   const handleClose = () => {
@@ -90,10 +111,6 @@ export default function PhotographerProductModal({
     if (isSavingEdit) return;
 
     const trimmedName = name.trim();
-    const priceValue = Number(price.replaceAll(',', ''));
-    const hoursValue = Number(durationHours);
-    const minutesValue = hoursValue * 60;
-    const durationMinutes = Math.round(minutesValue);
     const photoCountValue = Number(photoCount);
     const trimmedNotice = commonNotice.trim();
 
@@ -104,25 +121,9 @@ export default function PhotographerProductModal({
     }
 
     // 기본 가격을 확인함
-    if (
-      price === '' ||
-      !Number.isInteger(priceValue) ||
-      priceValue < 0 ||
-      priceValue > 100_000_000
-    ) {
-      showToast('기본 가격은 0~100,000,000원으로 입력해 주세요.', 'error');
-      return;
-    }
-
-    // 촬영 시간을 분 단위 정수로 변환하고 확인함
-    if (
-      durationHours.trim() === '' ||
-      !Number.isFinite(minutesValue) ||
-      Math.abs(minutesValue - durationMinutes) > 0.000001 ||
-      durationMinutes < 60 ||
-      durationMinutes > 2880
-    ) {
-      showToast('촬영 시간은 1~48시간 범위로 입력해 주세요.', 'error');
+    if (priceValidation || durationValidation) {
+      setPriceError(priceValidation);
+      setDurationError(durationValidation);
       return;
     }
 
@@ -229,7 +230,7 @@ export default function PhotographerProductModal({
                 form={formId}
                 variant="primary"
                 size="lg"
-                disabled={isSavingEdit}
+                disabled={isSavingEdit || !canApply}
               >
                 적용
               </Button>
@@ -251,9 +252,14 @@ export default function PhotographerProductModal({
         <form id={formId} className={styles.form} onSubmit={handleSubmit}>
           {/* 상품명 입력 */}
           <div className={styles.field}>
-            <label htmlFor={`${formId}-name`} className={styles.label}>
-              상품명 <span className={styles.required}>*</span>
-            </label>
+            <div className={styles.labelWithCount}>
+              <label htmlFor={`${formId}-name`} className={styles.label}>
+                상품명 <span className={styles.required}>*</span>
+              </label>
+              <p id={`${formId}-name-help`} className={styles.fieldHint}>
+                {name.length} / 50
+              </p>
+            </div>
 
             <input
               id={`${formId}-name`}
@@ -262,6 +268,7 @@ export default function PhotographerProductModal({
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={50}
+              aria-describedby={`${formId}-name-help`}
               disabled={isSavingEdit}
               required
             />
@@ -282,14 +289,33 @@ export default function PhotographerProductModal({
                   inputMode="numeric"
                   pattern="[0-9,]+"
                   value={price}
-                  onChange={(event) =>
-                    setPrice(formatPrice(event.target.value))
+                  onChange={(event) => {
+                    setPrice(formatPrice(event.target.value));
+                    setPriceError('');
+                  }}
+                  aria-invalid={Boolean(priceError) || undefined}
+                  onBlur={() => setPriceError(price ? priceValidation : '')}
+                  aria-describedby={
+                    priceError ? `${formId}-price-error` : undefined
                   }
+                  onInvalid={(event) => {
+                    if (event.currentTarget.validity.valueMissing) {
+                      event.preventDefault();
+                      setPriceError('기본 가격을 입력해 주세요.');
+                    }
+                  }}
                   required
                 />
 
                 <span className={styles.inputUnit}>원</span>
               </div>
+              <p
+                id={`${formId}-price-error`}
+                className={styles.fieldError}
+                role="alert"
+              >
+                {priceError}
+              </p>
             </div>
 
             <div className={styles.field}>
@@ -302,16 +328,31 @@ export default function PhotographerProductModal({
                   id={`${formId}-hours`}
                   className={styles.input}
                   type="number"
-                  min={1}
-                  max={48}
                   step="any"
                   value={durationHours}
-                  onChange={(event) => setDurationHours(event.target.value)}
+                  onChange={(event) => {
+                    setDurationHours(event.target.value);
+                    setDurationError('');
+                  }}
+                  aria-invalid={Boolean(durationError) || undefined}
+                  onBlur={() =>
+                    setDurationError(durationHours ? durationValidation : '')
+                  }
+                  aria-describedby={
+                    durationError ? `${formId}-hours-error` : undefined
+                  }
                   required
                 />
 
                 <span className={styles.inputUnit}>시간</span>
               </div>
+              <p
+                id={`${formId}-hours-error`}
+                className={styles.fieldError}
+                role="alert"
+              >
+                {durationError}
+              </p>
             </div>
           </div>
 
@@ -355,43 +396,48 @@ export default function PhotographerProductModal({
 
             <div className={styles.choiceGroup}>
               {/* 원본 제공 선택 */}
-              <button
-                type="button"
-                className={styles.choiceButton}
-                data-selected={includesOriginal}
+              <Chip
                 aria-pressed={includesOriginal}
                 onClick={() => setIncludesOriginal(true)}
                 disabled={isSavingEdit}
               >
                 제공
-              </button>
+              </Chip>
 
               {/* 원본 미제공 선택 */}
-              <button
-                type="button"
-                className={styles.choiceButton}
-                data-selected={!includesOriginal}
+              <Chip
                 aria-pressed={!includesOriginal}
                 onClick={() => setIncludesOriginal(false)}
                 disabled={isSavingEdit}
               >
                 미제공
-              </button>
+              </Chip>
             </div>
           </div>
 
           {/* 공통 안내사항 입력 */}
           <div className={styles.field}>
-            <label htmlFor={`${formId}-notice`} className={styles.label}>
-              공통 안내사항 (선택)
-            </label>
+            <div className={styles.labelWithCount}>
+              <label htmlFor={`${formId}-notice`} className={styles.label}>
+                공통 안내사항 (선택)
+              </label>
+              <p id={`${formId}-notice-count`} className={styles.fieldHint}>
+                {commonNotice.length} / 1000
+              </p>
+            </div>
 
             <textarea
               id={`${formId}-notice`}
               className={styles.textarea}
               value={commonNotice}
-              onChange={(event) => setCommonNotice(event.target.value)}
+              onChange={(event) => {
+                const textarea = event.currentTarget;
+                const value = textarea.value.slice(0, textarea.maxLength);
+                if (textarea.value !== value) textarea.value = value;
+                setCommonNotice(value);
+              }}
               maxLength={1000}
+              aria-describedby={`${formId}-notice-count`}
               rows={4}
               placeholder="촬영 조건이나 추가 안내사항을 입력해 주세요."
             />

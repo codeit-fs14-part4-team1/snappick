@@ -119,3 +119,6 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.manageSurface {
+  --photo-editor-image-radius: 12px;
+}

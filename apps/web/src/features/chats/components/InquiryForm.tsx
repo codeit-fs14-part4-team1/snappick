@@ -3,7 +3,7 @@
 import { useId, useRef, useState } from 'react';
 import { Category, Region, Style } from '@snappick/shared';
 import Button from '@/components/ui/Button';
-import { useToast } from '@/components/ui/ToastProvider';
+import Chip from '@/components/ui/Chip';
 import type { InquiryPayload } from '../types';
 import { CategoryLabel, StyleLabel } from '@/constants/enum-labels';
 import styles from './InquiryForm.module.css';
@@ -50,7 +50,6 @@ export default function InquiryForm({
   onSkip,
 }: Props) {
   const id = useId();
-  const { showToast } = useToast();
   const [concept, setConcept] = useState<Style[]>([]);
   const [category, setCategory] = useState<Category>();
   const submitting = useRef(false);
@@ -110,10 +109,7 @@ export default function InquiryForm({
             ...(category && { category }),
           });
         } catch {
-          showToast(
-            '촬영 정보를 보내지 못했어요. 다시 시도해 주세요.',
-            'error',
-          );
+          // 전송 오류 안내는 useSendChatMessage에서 표시합니다.
         } finally {
           setPending(false);
           submitting.current = false;
@@ -137,14 +133,13 @@ export default function InquiryForm({
           <legend>콘셉트·스타일 (최대 5개 선택 가능)</legend>
           <div className={styles.chips}>
             {Object.values(Style).map((value) => (
-              <button
+              <Chip
                 key={value}
-                type="button"
                 aria-pressed={concept.includes(value)}
                 onClick={() => toggle(value)}
               >
                 {StyleLabel[value]}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
@@ -152,16 +147,15 @@ export default function InquiryForm({
           <legend>촬영 목적·카테고리</legend>
           <div className={styles.chips}>
             {Object.values(Category).map((value) => (
-              <button
+              <Chip
                 key={value}
-                type="button"
                 aria-pressed={category === value}
                 onClick={() =>
                   setCategory(category === value ? undefined : value)
                 }
               >
                 {CategoryLabel[value]}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>

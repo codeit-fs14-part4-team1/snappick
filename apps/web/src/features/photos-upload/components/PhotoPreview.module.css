@@ -10,7 +10,7 @@
   display: block;
   width: 260px;
   height: 325px;
-  border-radius: 16px;
+  border-radius: var(--photo-editor-image-radius, 16px);
   background: var(--color-bg-subtle);
   object-fit: cover;
 }

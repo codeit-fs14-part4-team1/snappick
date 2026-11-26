@@ -39,13 +39,41 @@
   color: var(--color-danger);
 }
 
+.labelWithCount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+}
+
+.characterCount {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.field:has(> .fieldError) {
+  position: relative;
+}
+
+.fieldError {
+  position: absolute;
+  inset-block-start: calc(100% + 2px);
+  inset-inline: 0;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 /* 입력 필드 공통 스타일 */
 .input,
 .textarea {
   box-sizing: border-box;
   width: 100%;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--color-bg-base);
   color: var(--color-text-primary);
   font-family: inherit;
@@ -140,9 +168,9 @@
 
 /* 상세 소개 입력 영역 */
 .textarea {
-  min-height: 140px;
+  height: 140px;
   padding: 14px;
-  resize: vertical;
+  resize: none;
 }
 
 /* 입력 필드에 포커스가 생겨도 추가 테두리를 표시하지 않음 */
@@ -233,21 +261,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-/* 선택된 활동 지역을 검은색 칩으로 표시함 */
-.regionChip {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--color-text-primary);
-  color: var(--color-bg-base);
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
 }
 
 /* 지역 추가 버튼을 점선 테두리로 표시함 */
@@ -410,45 +423,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-}
-
-/* 촬영 카테고리의 기본 선택 버튼을 표시함 */
-.categoryChip {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  border: none;
-  border-radius: 999px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-/* 선택된 촬영 카테고리를 검은색으로 강조함 */
-.categoryChip[data-selected='true'] {
-  background: var(--color-text-primary);
-  color: var(--color-bg-base);
-}
-
-/* 선택하지 않은 카테고리에 마우스를 올렸을 때 강조함 */
-.categoryChip[data-selected='false']:hover {
-  background: var(--color-bg-subtle);
-}
-
-/* 키보드로 카테고리를 선택할 때 포커스를 표시함 */
-.categoryChip:focus-visible {
-  outline: 2px solid var(--color-accent-strong);
-  outline-offset: 2px;
+  gap: 8px;
 }
 
 /* 모바일 화면에서 입력 필드와 지역 팝오버의 배치를 조정함 */
@@ -457,6 +432,12 @@
   .fieldRow {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
+  }
+
+  .fieldError {
+    inset-block-start: 100%;
+    font-size: 12px;
+    line-height: 12px;
   }
 
   /* 지역 선택 팝오버가 화면 가로로 넘치지 않도록 처리함 */

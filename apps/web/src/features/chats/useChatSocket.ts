@@ -44,6 +44,7 @@ export default function useChatSocket(
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     let noticeTimer: ReturnType<typeof setTimeout> | undefined;
     let needsMessageRefresh = false;
+    const roomsQuery = { queryKey: queryKeys.chats.rooms().slice(0, -1) };
     const subscribedRooms = new Set<string>(JSON.parse(subscriptionKey));
     const pendingRooms = new Set(subscribedRooms);
 
@@ -135,18 +136,18 @@ export default function useChatSocket(
         const refreshMessages = needsMessageRefresh;
         needsMessageRefresh = false;
         void (async () => {
+          // 첫 목록 요청 중 새 문의를 받으면 이전 응답을 재사용하지 않습니다.
+          const cancellations = [queryClient.cancelQueries(roomsQuery)];
           if (refreshMessages && chatRoomId)
-            await queryClient.cancelQueries({
-              queryKey: queryKeys.chats.messages(chatRoomId),
-              exact: true,
-            });
+            cancellations.push(
+              queryClient.cancelQueries({
+                queryKey: queryKeys.chats.messages(chatRoomId),
+                exact: true,
+              }),
+            );
+          await Promise.all(cancellations);
           if (!active) return;
-          // 페이지 크기와 관계없이 문의 목록만 갱신합니다.
-          const updates = [
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.chats.rooms().slice(0, -1),
-            }),
-          ];
+          const updates = [queryClient.invalidateQueries(roomsQuery)];
           if (refreshMessages && chatRoomId)
             updates.push(
               queryClient.invalidateQueries({
@@ -179,9 +180,10 @@ export default function useChatSocket(
         pendingRooms.add(id);
       }
       syncViewing();
+      // 연결이 끊긴 동안 생긴 문의는 기존 방 입장 응답과 무관하게 조회합니다.
+      refreshConversation(chatRoomId !== null && pendingRooms.size === 0);
       if (pendingRooms.size === 0) {
         markConnected();
-        refreshConversation();
         return;
       }
       for (const id of pendingRooms) joinRoom(id);
@@ -209,6 +211,7 @@ export default function useChatSocket(
         refreshConversation(payload.chatRoomId === chatRoomId);
     });
     socket.on('notification:new', () => {
+      // 새 문의 알림은 계정 소켓으로 오므로 해당 방에 아직 입장하지 않아도 받습니다.
       if (active) refreshConversation(false);
     });
     socket.on(

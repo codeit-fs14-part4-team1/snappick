@@ -3,6 +3,7 @@
 import { useId, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/ToastProvider';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { AccountType } from '@snappick/shared';
@@ -83,6 +84,7 @@ function getPasswordConfirmError(
 
 export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const emailId = useId();
@@ -102,7 +104,7 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
   // 회원가입 요청 중 상태와 결과를 관리함
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupStatus, setSignupStatus] = useState<
-    'idle' | 'success' | 'error' | 'duplicate' | 'sessionError'
+    'idle' | 'success' | 'duplicate' | 'sessionError'
   >('idle');
 
   // 각 입력창을 한 번이라도 벗어났는지 관리함
@@ -214,17 +216,12 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
       ) {
         // 이미 가입된 이메일인 경우
         setSignupStatus('duplicate');
-      } else if (
-        error instanceof ApiError &&
-        error.status === 409 &&
-        error.code === 'NICKNAME_ALREADY_EXISTS'
-      ) {
-        // 임시 닉네임 중복으로 최종 실패한 경우 일반 회원가입 오류로 안내함
-        console.error('임시 닉네임 생성 실패:', error);
-        setSignupStatus('error');
       } else {
         console.error('회원가입 요청 실패:', error);
-        setSignupStatus('error');
+        showToast(
+          '회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.',
+          'error',
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -362,13 +359,6 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         >
           {isSubmitting ? '가입 중...' : '가입하기'}
         </Button>
-
-        {/* 기타 회원가입 오류를 표시함 */}
-        {signupStatus === 'error' && (
-          <p className={styles.errorMessage} role="alert">
-            회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.
-          </p>
-        )}
 
         {/* 회원가입 후 인증 상태 확인 실패를 안내함 */}
         {signupStatus === 'sessionError' && (

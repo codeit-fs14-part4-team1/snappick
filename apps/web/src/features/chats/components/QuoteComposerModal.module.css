@@ -129,6 +129,13 @@
   pointer-events: none;
 }
 
+.nameHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+}
+
 .nameHelp {
   color: var(--color-text-tertiary);
   font-size: 12px;
@@ -203,26 +210,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   font-weight: 700;
-}
-
-.original button {
-  height: 32px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 16px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 20px;
-  cursor: pointer;
-}
-
-.original button[aria-pressed='true'] {
-  background: var(--color-text-primary);
-  color: var(--color-bg-base);
 }
 
 .notice {
@@ -264,10 +253,26 @@
   line-height: 22px;
 }
 
-.error {
+.error,
+.fieldError {
   margin: 0;
   color: var(--color-danger);
   font-size: 13px;
+}
+
+.fieldError {
+  font-weight: 400;
+}
+
+.field:has(> .fieldError) {
+  position: relative;
+}
+
+.fieldError {
+  position: absolute;
+  inset-block-start: calc(100% + 2px);
+  inset-inline: 0;
+  line-height: 20px;
 }
 
 .empty {
@@ -312,12 +317,12 @@
 
   .grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
   }
 
-  .grid .field:nth-child(3),
-  .grid .field:nth-child(5) {
-    margin-top: 8px;
+  .fieldError {
+    inset-block-start: 100%;
+    font-size: 12px;
+    line-height: 12px;
   }
 
   .delivery {

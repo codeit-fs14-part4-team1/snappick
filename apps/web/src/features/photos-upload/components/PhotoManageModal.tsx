@@ -322,7 +322,7 @@ export default function PhotoManageModal({
           requestClose();
         }}
         title="포트폴리오 사진 관리"
-        className={`${uploadStyles.surface} ${uploadStyles.step2}`}
+        className={`${uploadStyles.surface} ${uploadStyles.step2} ${uploadStyles.manageSurface}`}
       >
         {isPending ? (
           <StateMessage

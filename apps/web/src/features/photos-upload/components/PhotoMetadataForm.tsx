@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Category, Style } from '@snappick/shared';
+import Chip from '@/components/ui/Chip';
 import { CategoryLabel, StyleLabel } from '@/constants/enum-labels';
 import styles from './PhotoMetadataForm.module.css';
 
@@ -94,20 +95,23 @@ export default function PhotoMetadataForm({
         aria-labelledby={`${id}-category`}
       >
         <p id={`${id}-category`} className={styles.label}>
-          촬영 카테고리
-          <span className={styles.required}>필수 · 여러 개 선택</span>
+          <span>
+            촬영 카테고리{' '}
+            <span className={styles.required} aria-label="필수">
+              *
+            </span>
+          </span>
+          <span className={styles.meta}>여러 개 선택 가능</span>
         </p>
         <div className={styles.chips}>
           {CATEGORY_ORDER.map((category) => (
-            <button
+            <Chip
               key={category}
-              type="button"
-              className={styles.chip}
               aria-pressed={categories.includes(category)}
               onClick={() => onToggleCategory(category)}
             >
               {CategoryLabel[category]}
-            </button>
+            </Chip>
           ))}
         </div>
       </div>
@@ -127,17 +131,15 @@ export default function PhotoMetadataForm({
           {STYLE_ORDER.map((style) => {
             const selected = selectedStyles.includes(style);
             return (
-              <button
+              <Chip
                 key={style}
-                type="button"
-                className={styles.chip}
                 aria-pressed={selected}
                 //3개 고르면 나머지 막기
                 disabled={styleFull && !selected}
                 onClick={() => onToggleStyle(style)}
               >
                 #{StyleLabel[style]}
-              </button>
+              </Chip>
             );
           })}
         </div>

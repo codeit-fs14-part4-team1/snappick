@@ -36,7 +36,7 @@ export const createProductSchema = z
         ),
       )
       .int('상품 가격은 정수여야 합니다.')
-      .min(0, '상품 가격은 0원 이상이어야 합니다.')
+      .min(1, '상품 가격은 1원 이상이어야 합니다.')
       .max(100_000_000, '상품 가격은 100,000,000원 이하이어야 합니다.'),
     durationMinutes: z
       .number(
