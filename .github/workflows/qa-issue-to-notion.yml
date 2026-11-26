@@ -60,13 +60,28 @@ jobs:
             };
             const ID_PATTERN = /^\[([A-Z]+)-(?:(?:L1|L2|L3|BE|AC)-\d{2}|VW-\d{2}-(?:PC|TB|MO))\]/;
 
+            //기능 이름 검사 (소문자는 대문자로, 목록에 없으면 안내 댓글)
+            const FEATURES = [
+              'FEED', 'DETAIL', 'IMGSHARE', 'MYPICK', 'UPLOAD', 'MANAGE', 'HEADER',
+              'AUTH', 'SOCIAL', 'GUEST', 'PROFILE', 'PROFSHARE', 'PROFEDIT', 'PRODUCT',
+              'INQUIRY', 'QUOTE', 'PAY', 'RESV', 'RESVDETAIL', 'CANCEL', 'DELIVERY',
+              'REVIEW', 'MYPAGE',
+            ];
+            const featureInput = field('기능')?.toUpperCase() ?? null;
+            if (featureInput && !FEATURES.includes(featureInput)) {
+              await commentOnce(
+                `기능 이름 \`${featureInput}\`을 확인해 주세요. 노션 기능 문서의 버그 등록하기 링크로 열면 자동으로 채워집니다.`,
+              );
+              return;
+            }
+
             //ID 정하기: 양식의 기능·구분·번호로 조립, 없으면 제목의 [ID]
             const kind = field('구분');
             const number = field('번호');
             const viewport = field('VW 해상도');
             let id = null;
-            if (field('기능') && kind && /^\d{1,2}$/.test(number ?? '')) {
-              const base = `${field('기능')}-${kind}-${number.padStart(2, '0')}`;
+            if (featureInput && kind && /^\d{1,2}$/.test(number ?? '')) {
+              const base = `${featureInput}-${kind}-${number.padStart(2, '0')}`;
               id = kind === 'VW' ? (viewport ? `${base}-${viewport}` : null) : base;
             }
             id ??= ID_PATTERN.exec(issue.title)?.[0].slice(1, -1) ?? null;

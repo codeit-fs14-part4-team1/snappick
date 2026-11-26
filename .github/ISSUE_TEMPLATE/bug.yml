@@ -9,34 +9,12 @@ body:
         제목에는 증상 한 줄만 적어 주세요. 예: `인기순 스크롤 중 사진 누락`
         아래에서 기능·구분·번호를 고르면 등록 후 제목 앞에 `[FEED-L2-14]` 같은 ID가 자동으로 붙습니다.
 
-  - type: dropdown
+  - type: input
     id: feature
     attributes:
       label: 기능
-      options:
-        - FEED
-        - DETAIL
-        - IMGSHARE
-        - MYPICK
-        - UPLOAD
-        - MANAGE
-        - HEADER
-        - AUTH
-        - SOCIAL
-        - GUEST
-        - PROFILE
-        - PROFSHARE
-        - PROFEDIT
-        - PRODUCT
-        - INQUIRY
-        - QUOTE
-        - PAY
-        - RESV
-        - RESVDETAIL
-        - CANCEL
-        - DELIVERY
-        - REVIEW
-        - MYPAGE
+      description: 노션 기능 문서의 버그 등록하기 링크로 열면 자동으로 채워집니다.
+      placeholder: FEED
     validations:
       required: true
 
