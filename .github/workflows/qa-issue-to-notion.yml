@@ -1,0 +1,253 @@
+# QA 이슈 → 노션 정리
+# 1. qa 라벨 이슈가 열리거나 수정·닫힘·다시 열림 되면 실행
+# 2. 양식의 기능·구분·번호로 ID를 만들어 제목 앞에 붙임 (값이 틀리면 이슈에 안내 댓글)
+# 3. 노션 "QA 이슈" DB에 행을 만들거나 고침 (이슈 주소로 찾음)
+# 4. 노션 기능 문서에서 그 ID의 체크 줄을 찾아 끝에 표시를 붙임
+#    열림: ❌ #번호 · 닫힘: 🔧 #번호 수정됨(재확인)
+# 필요한 것: repo 시크릿 NOTION_TOKEN (노션 내부 통합 토큰, QA 페이지에 연결)
+name: QA issue to Notion
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened, labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: qa-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: contains(github.event.issue.labels.*.name, 'qa')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          # QA 기능 문서 DB · QA 이슈 DB
+          DOCS_DB_ID: 423353ea812c8147954ad5d78e2ce3ce
+          ISSUES_DB_ID: 424353ea812c8156b980d6b078c9e2f9
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const action = context.payload.action;
+            const isOpen = issue.state === 'open';
+            const MARKER = '<!-- qa-to-notion -->';
+
+            //이슈에 안내 댓글 (같은 내용은 한 번만)
+            async function commentOnce(body) {
+              const { data: comments } = await github.rest.issues.listComments({
+                ...context.repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+              if (comments.some((c) => c.body.includes(body))) return;
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: `${MARKER}\n${body}`,
+              });
+            }
+
+            //양식 칸 읽기 (### 칸 이름 아래 값)
+            const field = (label) => {
+              const value = new RegExp(`###\\s*${label}\\s*\\n+([^\\n]+)`)
+                .exec(issue.body ?? '')?.[1]
+                ?.trim();
+              return value && value !== '_No response_' ? value : null;
+            };
+            //여러 줄 칸 읽기 (### 칸 이름 아래부터 다음 ### 전까지)
+            const section = (label) => {
+              const value = new RegExp(`###\\s*${label}\\s*\\n([\\s\\S]*?)(?=\\n###\\s|$)`)
+                .exec(issue.body ?? '')?.[1]
+                ?.trim();
+              return value && value !== '_No response_' ? value : null;
+            };
+            const ID_PATTERN = /^\[([A-Z]+)-(?:(?:L1|L2|L3|BE|AC)-\d{2}|VW-\d{2}-(?:PC|TB|MO))\]/;
+
+            //기능 이름 검사 (소문자는 대문자로, 목록에 없으면 안내 댓글)
+            const FEATURES = [
+              'FEED', 'DETAIL', 'IMGSHARE', 'MYPICK', 'UPLOAD', 'MANAGE', 'HEADER',
+              'AUTH', 'SOCIAL', 'GUEST', 'PROFILE', 'PROFSHARE', 'PROFEDIT', 'PRODUCT',
+              'INQUIRY', 'QUOTE', 'PAY', 'RESV', 'RESVDETAIL', 'CANCEL', 'DELIVERY',
+              'REVIEW', 'MYPAGE',
+            ];
+            const featureInput = field('기능')?.toUpperCase() ?? null;
+            if (featureInput && !FEATURES.includes(featureInput)) {
+              await commentOnce(
+                `기능 이름 \`${featureInput}\`을 확인해 주세요. 노션 기능 문서의 버그 등록하기 링크로 열면 자동으로 채워집니다.`,
+              );
+              return;
+            }
+
+            //ID 정하기: 양식의 기능·구분·번호로 조립, 없으면 제목의 [ID]
+            const kind = field('구분');
+            const number = field('번호');
+            const viewport = field('VW 해상도');
+            let id = null;
+            if (featureInput && kind && /^\d{1,2}$/.test(number ?? '')) {
+              const base = `${featureInput}-${kind}-${number.padStart(2, '0')}`;
+              id = kind === 'VW' ? (viewport ? `${base}-${viewport}` : null) : base;
+            }
+            id ??= ID_PATTERN.exec(issue.title)?.[0].slice(1, -1) ?? null;
+            if (!id || !ID_PATTERN.test(`[${id}]`)) {
+              await commentOnce(
+                '기능·구분·번호를 확인해 주세요. 번호는 숫자 두 자리까지, VW는 해상도도 골라야 합니다.',
+              );
+              return;
+            }
+            const feature = id.split('-')[0];
+
+            //제목 앞에 [ID] 붙이기 (이미 있으면 그대로)
+            const title = issue.title.startsWith(`[${id}]`)
+              ? issue.title
+              : `[${id}] ${issue.title.replace(ID_PATTERN, '').trim()}`;
+            if (title !== issue.title) {
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, title });
+            }
+
+            if (!process.env.NOTION_TOKEN) {
+              core.setFailed('NOTION_TOKEN 시크릿이 없어요.');
+              return;
+            }
+
+            //노션 API
+            async function notion(path, method = 'GET', body) {
+              const res = await fetch(`https://api.notion.com/v1/${path}`, {
+                method,
+                headers: {
+                  Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json',
+                },
+                body: body ? JSON.stringify(body) : undefined,
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(`노션 ${method} ${path} ${res.status}: ${json.message}`);
+              return json;
+            }
+
+            //1. QA 이슈 DB 행 만들기·고치기
+            const severity = /###\s*심각도\s+([123])/.exec(issue.body ?? '')?.[1];
+            const properties = {
+              제목: { title: [{ text: { content: title } }] },
+              ID: { rich_text: [{ text: { content: id } }] },
+              기능: { select: { name: feature } },
+              상태: { select: { name: isOpen ? '열림' : '닫힘' } },
+              이슈: { url: issue.html_url },
+              등록자: { rich_text: [{ text: { content: issue.user.login } }] },
+              등록일: { date: { start: issue.created_at } },
+              ...(severity && { 심각도: { select: { name: severity } } }),
+            };
+            const found = await notion(`databases/${process.env.ISSUES_DB_ID}/query`, 'POST', {
+              filter: { property: '이슈', url: { equals: issue.html_url } },
+            });
+            if (found.results.length > 0) {
+              await notion(`pages/${found.results[0].id}`, 'PATCH', { properties });
+            } else {
+              //처음 만들 때만 본문에 증상을 옮김 (이후 노션 메모는 건드리지 않음)
+              const paragraph = (content, link) => ({
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [{ type: 'text', text: { content: content.slice(0, 2000), ...(link && { link: { url: link } }) } }],
+                },
+              });
+              const symptomLines = (section('증상') ?? '(증상 없음)')
+                .split('\n')
+                .map((line) => line.trimEnd())
+                .filter(Boolean)
+                .slice(0, 90);
+              const meta = [
+                ['계정', field('계정')],
+                ['해상도', field('해상도')],
+                ['발생 시각', field('발생 시각 \\(KST, 선택\\)')],
+              ]
+                .filter(([, value]) => value)
+                .map(([label, value]) => `${label}: ${value}`)
+                .join(' · ');
+              const children = [
+                { object: 'block', type: 'heading_3', heading_3: { rich_text: [{ type: 'text', text: { content: '증상' } }] } },
+                ...symptomLines.map((line) => paragraph(line)),
+                ...(meta ? [paragraph(meta)] : []),
+                paragraph('GitHub 이슈에서 보기 →', issue.html_url),
+              ];
+              await notion('pages', 'POST', {
+                parent: { database_id: process.env.ISSUES_DB_ID },
+                properties,
+                children,
+              });
+            }
+
+            //라벨만 붙은 경우는 체크 줄을 건드리지 않음
+            if (action === 'labeled' && context.payload.label?.name !== 'qa') return;
+
+            //2. 기능 문서 찾기 (제목이 "FEED · …")
+            const docs = await notion(`databases/${process.env.DOCS_DB_ID}/query`, 'POST', {
+              filter: { property: '기능', title: { starts_with: `${feature} ·` } },
+            });
+            const docId = docs.results[0]?.id;
+            if (!docId) {
+              await commentOnce(`노션에서 \`${feature}\` 기능 문서를 찾지 못했어요.`);
+              return;
+            }
+
+            //3. 체크 줄 찾기 (본문 · 표 · 토글 안까지)
+            const text = (rich) => rich.map((r) => r.plain_text).join('');
+            async function findLine(blockId) {
+              let cursor;
+              do {
+                const page = await notion(
+                  `blocks/${blockId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`,
+                );
+                for (const block of page.results) {
+                  if (block.type === 'to_do' && text(block.to_do.rich_text).includes(id)) {
+                    return { block };
+                  }
+                  if (block.type === 'table_row') {
+                    const cell = block.table_row.cells.findIndex((c) => text(c).includes(id));
+                    if (cell !== -1) return { block, cell };
+                  }
+                  if (block.has_children) {
+                    const inner = await findLine(block.id);
+                    if (inner) return inner;
+                  }
+                }
+                cursor = page.has_more ? page.next_cursor : undefined;
+              } while (cursor);
+              return null;
+            }
+            const line = await findLine(docId);
+            if (!line) {
+              await commentOnce(`노션 \`${feature}\` 문서에서 \`${id}\` 줄을 찾지 못했어요. ID를 확인해 주세요.`);
+              return;
+            }
+
+            //4. 줄 끝 표시 바꾸기 (이 이슈의 이전 표시는 지우고 새로 붙임)
+            const clean = (rich) =>
+              rich
+                .filter((r) => r.href !== issue.html_url)
+                .map((r) =>
+                  r.type === 'text'
+                    ? { type: 'text', text: r.text, annotations: r.annotations }
+                    : { type: r.type, [r.type]: r[r.type], annotations: r.annotations },
+                );
+            const mark = {
+              type: 'text',
+              text: {
+                content: isOpen ? ` ❌ #${issue.number}` : ` 🔧 #${issue.number} 수정됨(재확인)`,
+                link: { url: issue.html_url },
+              },
+            };
+            if (line.block.type === 'to_do') {
+              await notion(`blocks/${line.block.id}`, 'PATCH', {
+                to_do: { rich_text: [...clean(line.block.to_do.rich_text), mark] },
+              });
+            } else {
+              const cells = line.block.table_row.cells.map((c, i) =>
+                i === line.cell ? [...clean(c), mark] : clean(c),
+              );
+              await notion(`blocks/${line.block.id}`, 'PATCH', { table_row: { cells } });
+            }
