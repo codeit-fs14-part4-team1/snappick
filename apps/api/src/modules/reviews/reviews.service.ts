@@ -335,16 +335,8 @@ export async function updateMyReview(
   reviewId: string,
   input: UpdateReviewInput,
 ) {
-  const mine = await prisma.reviews.findFirst({
+  const [review] = await prisma.reviews.updateManyAndReturn({
     where: { id: reviewId, user_id: userId, deleted_at: null },
-    select: { id: true },
-  });
-  if (!mine) {
-    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
-  }
-
-  const review = await prisma.reviews.update({
-    where: { id: reviewId },
     data: {
       ...(input.rating !== undefined && { rating: input.rating }),
       ...(input.comment !== undefined && { comment: input.comment }),
@@ -359,6 +351,9 @@ export async function updateMyReview(
       updated_at: true,
     },
   });
+  if (!review) {
+    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
+  }
 
   return {
     reviewId: review.id,
@@ -456,29 +451,33 @@ export async function updateReply(
   reviewId: string,
   input: CreateReplyInput,
 ) {
-  const mine = await prisma.review_replies.findFirst({
-    where: {
-      review_id: reviewId,
-      deleted_at: null,
-      review: { photographer_id: photographerId, deleted_at: null },
-    },
-    select: { id: true },
+  const reply = await prisma.$transaction(async (tx) => {
+    // 답글을 수정하는 동안 원본 리뷰의 삭제와 수정 순서를 맞춘다.
+    const [review] = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM reviews
+      WHERE id = ${reviewId}::uuid
+        AND photographer_id = ${photographerId}::uuid
+        AND deleted_at IS NULL
+      FOR SHARE
+    `;
+    if (!review) return null;
+
+    const [updated] = await tx.review_replies.updateManyAndReturn({
+      where: { review_id: review.id, deleted_at: null },
+      data: { comment: input.comment },
+      select: {
+        id: true,
+        review_id: true,
+        comment: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+    return updated;
   });
-  if (!mine) {
+  if (!reply) {
     throw new HttpError(404, 'REPLY_NOT_FOUND', '답글을 찾을 수 없어요.');
   }
-
-  const reply = await prisma.review_replies.update({
-    where: { id: mine.id },
-    data: { comment: input.comment },
-    select: {
-      id: true,
-      review_id: true,
-      comment: true,
-      created_at: true,
-      updated_at: true,
-    },
-  });
 
   return {
     replyId: reply.id,
