@@ -8,6 +8,7 @@ import { checkChatRoomAccess } from './modules/chats/chats.service.js';
 import { HttpError } from './utils/http-error.js';
 import { startIntervalJob } from './utils/interval-job.js';
 import { emitNotification } from './modules/notifications/notifications.emit.js';
+import { setChatViewerSource } from './modules/notifications/notifications.viewers.js';
 import {
   PENDING_STALE_MS,
   reconcilePendingPayments,
@@ -29,6 +30,8 @@ const io = new Server(httpServer, {
 // Express 앱에 'io'라는 이름으로 socket.io 객체를 등록
 // 'io'는 이름이고, io는 실제 객체
 app.set('io', io);
+// 알림을 만들 때 채팅방을 보고 있는 사람을 확인하는 데 쓴다
+setChatViewerSource(io);
 
 const PORT = Number(process.env.PORT) || 4000;
 
