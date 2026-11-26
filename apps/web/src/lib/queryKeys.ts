@@ -69,7 +69,7 @@ const normalizePhotoExploreFilters = ({
   category,
   styles,
   regions,
-  sort = 'random',
+  sort = 'recommended',
   limit = DEFAULT_LIMIT,
   keyword,
 }: PhotoExploreFilters) => ({
