@@ -1,14 +1,79 @@
 name: 버그 이슈
 description: 발견한 문제를 등록합니다
-title: '[ID] '
 labels:
   - qa
 body:
   - type: markdown
     attributes:
       value: |
-        제목의 `[ID]`를 체크 줄 ID로 바꿔 주세요. 예: `[FEED-L2-14] 인기순 스크롤 중 사진 누락`
-        ID는 하나만 씁니다.
+        제목에는 증상 한 줄만 적어 주세요. 예: `인기순 스크롤 중 사진 누락`
+        아래에서 기능·구분·번호를 고르면 등록 후 제목 앞에 `[FEED-L2-14]` 같은 ID가 자동으로 붙습니다.
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: 기능
+      options:
+        - FEED
+        - DETAIL
+        - IMGSHARE
+        - MYPICK
+        - UPLOAD
+        - MANAGE
+        - HEADER
+        - AUTH
+        - SOCIAL
+        - GUEST
+        - PROFILE
+        - PROFSHARE
+        - PROFEDIT
+        - PRODUCT
+        - INQUIRY
+        - QUOTE
+        - PAY
+        - RESV
+        - RESVDETAIL
+        - CANCEL
+        - DELIVERY
+        - REVIEW
+        - MYPAGE
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 구분
+      options:
+        - L1
+        - L2
+        - L3
+        - VW
+        - BE
+        - AC
+    validations:
+      required: true
+
+  - type: input
+    id: number
+    attributes:
+      label: 번호
+      description: 체크 줄 ID의 숫자입니다. VW는 화면 번호를 적습니다.
+      placeholder: '14'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vw-viewport
+    attributes:
+      label: VW 해상도
+      description: 구분이 VW일 때만 고릅니다.
+      options:
+        - PC
+        - TB
+        - MO
+    validations:
+      required: false
 
   - type: dropdown
     id: severity
@@ -51,11 +116,10 @@ body:
   - type: input
     id: occurred-at
     attributes:
-      label: 발생 시각 (KST)
-      description: QA 도중 수정 배포가 있을 수 있고 같은 staging 데이터를 함께 쓰므로, 문제가 생긴 시각을 적어 주세요.
-      placeholder: 2026-11-26 14:30
+      label: 발생 시각 (KST, 선택)
+      placeholder: 비워두고 등록이 기본이며, 시각을 기재할 필요가 있는 경우에만 적어주세요
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: symptom

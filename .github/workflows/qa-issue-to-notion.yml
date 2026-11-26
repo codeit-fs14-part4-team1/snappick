@@ -1,6 +1,6 @@
 # QA 이슈 → 노션 정리
 # 1. qa 라벨 이슈가 열리거나 수정·닫힘·다시 열림 되면 실행
-# 2. 제목의 [ID]를 읽고, 형식이 틀리면 이슈에 안내 댓글
+# 2. 양식의 기능·구분·번호로 ID를 만들어 제목 앞에 붙임 (값이 틀리면 이슈에 안내 댓글)
 # 3. 노션 "QA 이슈" DB에 행을 만들거나 고침 (이슈 주소로 찾음)
 # 4. 노션 기능 문서에서 그 ID의 체크 줄을 찾아 끝에 표시를 붙임
 #    열림: ❌ #번호 · 닫힘: 🔧 #번호 수정됨(재확인)
@@ -51,19 +51,40 @@ jobs:
               });
             }
 
-            //제목의 [ID] 읽기
-            const match =
-              /^\[([A-Z]+)-(?:(?:L1|L2|L3|BE|AC)-\d{2}|VW-\d{2}-(?:PC|TB|MO))\]/.exec(
-                issue.title,
-              );
-            if (!match) {
+            //양식 칸 읽기 (### 칸 이름 아래 값)
+            const field = (label) => {
+              const value = new RegExp(`###\\s*${label}\\s*\\n+([^\\n]+)`)
+                .exec(issue.body ?? '')?.[1]
+                ?.trim();
+              return value && value !== '_No response_' ? value : null;
+            };
+            const ID_PATTERN = /^\[([A-Z]+)-(?:(?:L1|L2|L3|BE|AC)-\d{2}|VW-\d{2}-(?:PC|TB|MO))\]/;
+
+            //ID 정하기: 양식의 기능·구분·번호로 조립, 없으면 제목의 [ID]
+            const kind = field('구분');
+            const number = field('번호');
+            const viewport = field('VW 해상도');
+            let id = null;
+            if (field('기능') && kind && /^\d{1,2}$/.test(number ?? '')) {
+              const base = `${field('기능')}-${kind}-${number.padStart(2, '0')}`;
+              id = kind === 'VW' ? (viewport ? `${base}-${viewport}` : null) : base;
+            }
+            id ??= ID_PATTERN.exec(issue.title)?.[0].slice(1, -1) ?? null;
+            if (!id || !ID_PATTERN.test(`[${id}]`)) {
               await commentOnce(
-                '제목의 ID 형식을 확인해 주세요. 예: `[FEED-L2-14] 증상` · 화면 점검은 `[FEED-VW-02-MO] 증상`',
+                '기능·구분·번호를 확인해 주세요. 번호는 숫자 두 자리까지, VW는 해상도도 골라야 합니다.',
               );
               return;
             }
-            const id = match[0].slice(1, -1);
-            const feature = match[1];
+            const feature = id.split('-')[0];
+
+            //제목 앞에 [ID] 붙이기 (이미 있으면 그대로)
+            const title = issue.title.startsWith(`[${id}]`)
+              ? issue.title
+              : `[${id}] ${issue.title.replace(ID_PATTERN, '').trim()}`;
+            if (title !== issue.title) {
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, title });
+            }
 
             if (!process.env.NOTION_TOKEN) {
               core.setFailed('NOTION_TOKEN 시크릿이 없어요.');
@@ -89,7 +110,7 @@ jobs:
             //1. QA 이슈 DB 행 만들기·고치기
             const severity = /###\s*심각도\s+([123])/.exec(issue.body ?? '')?.[1];
             const properties = {
-              제목: { title: [{ text: { content: issue.title } }] },
+              제목: { title: [{ text: { content: title } }] },
               ID: { rich_text: [{ text: { content: id } }] },
               기능: { select: { name: feature } },
               상태: { select: { name: isOpen ? '열림' : '닫힘' } },
