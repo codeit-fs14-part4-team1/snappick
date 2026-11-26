@@ -27,6 +27,7 @@
   height: 56px;
   border-radius: 10px;
   background: var(--color-border);
+  object-fit: cover;
 }
 
 /* 예약 정보 텍스트 */

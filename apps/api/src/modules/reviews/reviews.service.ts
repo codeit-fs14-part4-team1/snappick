@@ -22,6 +22,32 @@ const replySelect = {
   deleted_at: true,
 } as const;
 
+const reviewPhotographerSelect = {
+  id: true,
+  auth_account: { select: { nickname: true } },
+  profile_image_url: true,
+  representativePhoto: {
+    select: { photo: { select: { storage_location: true } } },
+  },
+} satisfies Prisma.photographersSelect;
+
+function toReviewPhotographer(
+  photographer: Prisma.photographersGetPayload<{
+    select: typeof reviewPhotographerSelect;
+  }> | null,
+) {
+  return (
+    photographer && {
+      photographerId: photographer.id,
+      nickname: photographer.auth_account.nickname,
+      profileImageUrl: toImageUrl(photographer.profile_image_url),
+      representativeImageUrl: toImageUrl(
+        photographer.representativePhoto?.photo.storage_location ?? null,
+      ),
+    }
+  );
+}
+
 type ReplyRow = {
   id: string;
   comment: string;
@@ -126,13 +152,7 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
         id: true,
         shoot_at: true,
         quote: { select: { quote_name: true } },
-        photographer: {
-          select: {
-            id: true,
-            auth_account: { select: { nickname: true } },
-            profile_image_url: true,
-          },
-        },
+        photographer: { select: reviewPhotographerSelect },
       },
     }),
   ]);
@@ -142,11 +162,7 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
       reservationId: reservation.id,
       quoteName: reservation.quote?.quote_name ?? null,
       shootAt: reservation.shoot_at,
-      photographer: reservation.photographer && {
-        photographerId: reservation.photographer.id,
-        nickname: reservation.photographer.auth_account.nickname,
-        profileImageUrl: toImageUrl(reservation.photographer.profile_image_url),
-      },
+      photographer: toReviewPhotographer(reservation.photographer),
     })),
     page: query.page,
     pageSize: query.pageSize,
@@ -179,13 +195,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
         comment: true,
         created_at: true,
         updated_at: true,
-        photographer: {
-          select: {
-            id: true,
-            auth_account: { select: { nickname: true } },
-            profile_image_url: true,
-          },
-        },
+        photographer: { select: reviewPhotographerSelect },
         reviewReply: { select: replySelect },
       },
     }),
@@ -201,11 +211,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       comment: review.comment,
       createdAt: review.created_at,
       updatedAt: review.updated_at,
-      photographer: review.photographer && {
-        photographerId: review.photographer.id,
-        nickname: review.photographer.auth_account.nickname,
-        profileImageUrl: toImageUrl(review.photographer.profile_image_url),
-      },
+      photographer: toReviewPhotographer(review.photographer),
       reply: toReply(review.reviewReply),
     })),
     page: query.page,

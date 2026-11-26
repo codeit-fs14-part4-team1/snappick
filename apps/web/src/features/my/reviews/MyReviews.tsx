@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Image from 'next/image';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Pagination from '@/components/ui/Pagination';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -63,6 +64,7 @@ export default function MyReviews() {
       reservationId: item.reservationId,
       photographerId: item.photographer?.photographerId,
       photographerName: item.photographer?.nickname ?? '작가 정보 없음',
+      representativeImageUrl: item.photographer?.representativeImageUrl ?? null,
       quoteName: item.quoteName ?? '견적 정보 없음',
       shootDate: item.shootAt,
     }),
@@ -83,6 +85,8 @@ export default function MyReviews() {
       reservationId: review.reservationId ?? '',
       photographerId: review.photographer?.photographerId,
       photographerName: review.photographer?.nickname ?? '작가 정보 없음',
+      representativeImageUrl:
+        review.photographer?.representativeImageUrl ?? null,
       quoteName: review.quoteName ?? '',
       shootDate: review.shootAt ?? '',
     },
@@ -400,7 +404,17 @@ function ReviewEditor({
         }}
       >
         <div className={styles.summary}>
-          <span className={styles.thumbnail} aria-hidden="true" />
+          {editor.booking.representativeImageUrl ? (
+            <Image
+              src={editor.booking.representativeImageUrl}
+              alt=""
+              width={56}
+              height={56}
+              className={styles.thumbnail}
+            />
+          ) : (
+            <span className={styles.thumbnail} aria-hidden="true" />
+          )}
           <div className={styles.bookingText}>
             <p className={styles.bookingName}>
               {editor.booking.photographerName}

@@ -10,15 +10,18 @@ type PageResponse<T> = {
   totalPages: number;
 };
 
+type ReviewPhotographer = {
+  photographerId: string;
+  nickname: string;
+  profileImageUrl: string | null;
+  representativeImageUrl: string | null;
+};
+
 export type EligibleReviewResponse = {
   reservationId: string;
   quoteName: string | null;
   shootAt: string;
-  photographer: {
-    photographerId: string;
-    nickname: string;
-    profileImageUrl: string | null;
-  } | null;
+  photographer: ReviewPhotographer | null;
 };
 
 export type ReviewResponse = {
@@ -29,11 +32,7 @@ export type ReviewResponse = {
   rating: number;
   comment: string;
   createdAt: string;
-  photographer: {
-    photographerId: string;
-    nickname: string;
-    profileImageUrl: string | null;
-  } | null;
+  photographer: ReviewPhotographer | null;
   reply: { comment: string; createdAt: string } | null;
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Image from 'next/image';
 
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -124,7 +125,17 @@ export default function ReservationReviewModal({
       >
         {/* 리뷰를 작성할 예약 정보 */}
         <div className={styles.summary}>
-          <span className={styles.thumbnail} aria-hidden="true" />
+          {booking.representativeImageUrl ? (
+            <Image
+              src={booking.representativeImageUrl}
+              alt=""
+              width={56}
+              height={56}
+              className={styles.thumbnail}
+            />
+          ) : (
+            <span className={styles.thumbnail} aria-hidden="true" />
+          )}
 
           <div className={styles.bookingText}>
             <p className={styles.bookingName}>
