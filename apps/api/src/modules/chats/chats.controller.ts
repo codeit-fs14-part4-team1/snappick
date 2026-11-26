@@ -19,6 +19,7 @@ import {
 import { HttpError } from '../../utils/http-error.js';
 import type { Server } from 'socket.io';
 import { emitNotification } from '../notifications/notifications.emit.js';
+import { getChatViewerIds } from '../notifications/notifications.viewers.js';
 
 export async function createChatHandler(req: Request, res: Response) {
   const auth = getAuth(req);
@@ -104,14 +105,13 @@ export async function sendMessageHandler(req: Request, res: Response) {
   // server.ts에서 생성해 Express 앱에 등록한 socket.io 서버 객체를 가져옴.
   const io: Server = req.app.get('io');
 
-  const sockets = await io.in(`viewing:${params.chatRoomId}`).fetchSockets();
-  const viewerIds: string[] = sockets.map((s) => s.data.auth.accountId);
+  const viewerIds = await getChatViewerIds(params.chatRoomId);
 
   const { message, notification } = await sendMessage(
     auth.accountId,
     params.chatRoomId,
     input.content,
-    viewerIds,
+    [...viewerIds],
   );
 
   const messageData = {

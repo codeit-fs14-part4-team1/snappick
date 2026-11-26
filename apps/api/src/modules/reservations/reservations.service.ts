@@ -20,6 +20,7 @@ import {
   notificationMessages,
   scheduleShootReminders,
 } from '../notifications/notifications.create.js';
+import { getChatViewerIds } from '../notifications/notifications.viewers.js';
 import { createUserActionLog } from '../interactions/interactions.service.js';
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
@@ -207,6 +208,8 @@ export async function createReservation(
     payment.user?.auth_account_id,
     photographer.auth_account_id,
   ].filter((id): id is string => !!id);
+  // 채팅방을 보고 있는 사람은 예약 확정 메시지가 바로 보이므로 확정 알림을 만들지 않는다 (NT-13)
+  const viewerIds = await getChatViewerIds(quote.chat_room_id);
 
   try {
     // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
@@ -238,6 +241,7 @@ export async function createReservation(
 
       const notifications: notifications[] = [];
       for (const accountId of accountIds) {
+        if (viewerIds.has(accountId)) continue;
         notifications.push(
           await createNotification(
             {
@@ -599,6 +603,8 @@ export async function createCancelReservation(
 
     // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
     const notifications: notifications[] = [];
+    // 채팅방을 보고 있는 사람은 아래 시스템 메시지가 바로 보이므로 알림을 만들지 않는다 (NT-13)
+    const viewerIds = await getChatViewerIds(reservation.quote?.chat_room_id);
 
     if (cancelRequest.status === 'ACCEPTED') {
       await tx.reservations.update({
@@ -614,7 +620,7 @@ export async function createCancelReservation(
       const accountIds = [
         reservation.user?.auth_account_id,
         reservation.photographer?.auth_account_id,
-      ].filter((id): id is string => !!id);
+      ].filter((id): id is string => !!id && !viewerIds.has(id));
 
       for (const accountId of accountIds) {
         notifications.push(
@@ -629,7 +635,10 @@ export async function createCancelReservation(
           ),
         );
       }
-    } else if (reservation.photographer) {
+    } else if (
+      reservation.photographer &&
+      !viewerIds.has(reservation.photographer.auth_account_id)
+    ) {
       notifications.push(
         await createNotification(
           {
@@ -799,6 +808,8 @@ export async function patchCancelReservation(
 
     // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
     const notifications: notifications[] = [];
+    // 채팅방을 보고 있는 사람은 아래 시스템 메시지가 바로 보이므로 알림을 만들지 않는다 (NT-13)
+    const viewerIds = await getChatViewerIds(reservation.quote?.chat_room_id);
 
     if (accepted) {
       // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
@@ -808,7 +819,7 @@ export async function patchCancelReservation(
       const accountIds = [
         reservation.user?.auth_account_id,
         reservation.photographer?.auth_account_id,
-      ].filter((id): id is string => !!id);
+      ].filter((id): id is string => !!id && !viewerIds.has(id));
 
       for (const accountId of accountIds) {
         notifications.push(
@@ -823,7 +834,10 @@ export async function patchCancelReservation(
           ),
         );
       }
-    } else if (reservation.user) {
+    } else if (
+      reservation.user &&
+      !viewerIds.has(reservation.user.auth_account_id)
+    ) {
       notifications.push(
         await createNotification(
           {
