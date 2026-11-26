@@ -36,6 +36,27 @@ export function percentileRanks(values: number[]): number[] {
   );
 }
 
+/**
+ * ③ 같은 작가 연속 조정 (추천 기획서 vol.2 6-1)
+ * 위에서부터 채우며, 바로 앞과 같은 작가면 그 아래에서 다른 작가의 첫 사진을 먼저 올린다
+ * 남은 사진이 모두 같은 작가면 그대로 이어 붙인다
+ * 페이지를 자르기 전에 전체 목록에 한 번 적용해야 한다 (앞 페이지의 작가를 알아야 해서)
+ */
+export function spreadPhotographers<T extends { photographerId: string }>(
+  sorted: T[],
+): T[] {
+  const remaining = [...sorted];
+  const result: T[] = [];
+  while (remaining.length > 0) {
+    const last = result.at(-1)?.photographerId;
+    const index = remaining.findIndex(
+      ({ photographerId }) => photographerId !== last,
+    );
+    result.push(...remaining.splice(Math.max(index, 0), 1));
+  }
+  return result;
+}
+
 // ① 유사도 (0~1). 0단계는 유사도가 없어 0이다
 // 사진 벡터·취향 벡터(h)를 연결하면 이 함수만 바꾼다
 export const similarityOf: (photoId: string) => number = () => 0;

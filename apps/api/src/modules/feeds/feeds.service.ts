@@ -5,6 +5,10 @@ import { prisma } from '../../lib/prisma.js';
 import { toImageUrl } from '../../utils/asset-url.js';
 import { nextCursor, readOffset } from '../../utils/cursor.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  finalScores,
+  spreadPhotographers,
+} from '../recommendations/feed-score.js';
 import type { PhotosQuery } from './feeds.schema.js';
 import {
   getListedPhotographerIds,
@@ -201,6 +205,45 @@ const unique = <T>(values: T[]): T[] => [...new Set(values)];
 const seededRank = (seed: string, id: string): string =>
   createHash('md5').update(`${seed}:${id}`).digest('hex');
 
+/**
+ * 추천순 점수 (사진 id → 최종 점수)
+ * 순위 비율이 필터마다 달라지지 않게 필터와 상관없이 전체 사진으로 계산한다
+ * 가치 점수 행이 없는 사진(등록 때 행을 못 만든 경우)은 같은 작가의 다른 사진 값으로 채운다
+ * (작가 점수·새 작가 여부는 같은 작가 사진끼리 같은 값)
+ */
+async function recommendedScores(): Promise<Map<string, number>> {
+  const photos = await prisma.photos.findMany({
+    select: {
+      id: true,
+      photographer_id: true,
+      valueScore: {
+        select: {
+          photo_score: true,
+          photographer_score: true,
+          is_new_photographer: true,
+        },
+      },
+    },
+  });
+  const byPhotographer = new Map(
+    photos.flatMap(({ photographer_id, valueScore }) =>
+      valueScore ? [[photographer_id, valueScore]] : [],
+    ),
+  );
+  return finalScores(
+    photos.map((photo) => {
+      const score =
+        photo.valueScore ?? byPhotographer.get(photo.photographer_id);
+      return {
+        photoId: photo.id,
+        photoScore: photo.valueScore?.photo_score ?? 0,
+        photographerScore: score?.photographer_score ?? 0,
+        isNewPhotographer: score?.is_new_photographer ?? false,
+      };
+    }),
+  );
+}
+
 export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
   if (query.category !== undefined) {
     assertValues(
@@ -271,6 +314,7 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
     where,
     select: {
       id: true,
+      photographer_id: true,
       created_at: true,
       _count: { select: { photoLike: true } },
     },
@@ -286,13 +330,27 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
     candidates.sort(
       (a, b) => b._count.photoLike - a._count.photoLike || byLatest(a, b),
     );
+  } else if (query.sort === 'recommended') {
+    const scores = await recommendedScores();
+    const scoreOf = (id: string) => scores.get(id) ?? 0;
+    candidates.sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || byLatest(a, b));
   } else {
     candidates.sort((a, b) =>
       seededRank(seed ?? '', a.id).localeCompare(seededRank(seed ?? '', b.id)),
     );
   }
+  // 추천순은 정렬한 전체 목록에서 같은 작가가 연달아 나오지 않게 한 번 더 조정한다
+  const ordered =
+    query.sort === 'recommended'
+      ? spreadPhotographers(
+          candidates.map((photo) => ({
+            id: photo.id,
+            photographerId: photo.photographer_id,
+          })),
+        )
+      : candidates;
 
-  const pageIds = candidates
+  const pageIds = ordered
     .slice(offset, offset + query.limit)
     .map(({ id }) => id);
   const [rows, liked] = await Promise.all([

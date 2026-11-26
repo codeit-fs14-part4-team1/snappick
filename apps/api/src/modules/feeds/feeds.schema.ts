@@ -29,7 +29,7 @@ export const photographerPhotosQuerySchema = z.object({
   limit,
 });
 
-export const SORTS = ['random', 'latest', 'popular'] as const;
+export const SORTS = ['random', 'latest', 'popular', 'recommended'] as const;
 
 export const photosQuerySchema = z.object({
   keyword: z.string().trim().max(50).optional(),
