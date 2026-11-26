@@ -30,35 +30,60 @@
 .notificationMenu {
   position: absolute;
   z-index: 500;
-  top: calc(100% + 8px);
+  top: calc(100% + 7.5px);
   right: 0;
+  display: flex;
   width: 380px;
+  flex-direction: column;
+  align-items: flex-start;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: var(--color-bg-base);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  font-family: var(--font-main);
 }
 
 .menuTitle {
+  display: flex;
+  align-items: flex-start;
+  align-self: stretch;
   margin: 0;
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 700;
+  line-height: 24px;
 }
 
-.emptyMessage {
+.emptyMessage,
+.loadingMessage {
   margin: 0;
-  padding: 48px 20px;
   color: var(--color-text-primary);
-  font-size: 16px;
   font-weight: 700;
   text-align: center;
 }
 
+.emptyMessage {
+  display: flex;
+  padding: 48px 24px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.loadingMessage {
+  padding: 48px 20px;
+  font-size: 16px;
+}
+
 .menuBody {
+  align-self: stretch;
   max-height: min(511px, calc(100dvh - 136px));
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -75,13 +100,15 @@
 }
 
 .notificationItem {
-  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px 14px 38px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--color-bg-base);
   color: var(--color-text-secondary);
   font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
   text-decoration: none;
   overflow-wrap: anywhere;
 }
@@ -95,15 +122,22 @@
   background: var(--color-accent-subtle);
 }
 
-.notificationItem[data-unseen='true']::before {
-  position: absolute;
-  top: 14px;
-  left: 20px;
-  width: 8px;
+.notificationItem::before {
+  flex: 0 0 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-accent);
   content: '';
+}
+
+.notificationItem[data-unseen='true']::before {
+  background: var(--color-accent);
+}
+
+.notificationContent {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .notificationItem:hover {
@@ -119,6 +153,7 @@
   color: var(--color-text-tertiary);
   font-size: 12px;
   font-weight: 400;
+  line-height: 18px;
 }
 
 .feedback {
@@ -139,14 +174,20 @@
   cursor: pointer;
 }
 
-/* 모바일: 헤더(56px) 아래 8px, 화면 가로 가운데 */
+@media (max-width: 1199px) {
+  .emptyMessage {
+    border-radius: 0;
+  }
+}
+
 @media (max-width: 767px) {
   .notificationMenu {
-    position: fixed;
-    top: calc(56px + 8px);
-    right: auto;
-    left: 50%;
-    width: min(380px, calc(100vw - var(--page-padding) * 2));
-    transform: translateX(-50%);
+    /* 벨 오른쪽에는 프로필 버튼(40px)과 메뉴 간격(8px)이 있다. */
+    width: min(343px, calc(100vw - var(--page-padding) * 2 - 48px));
+  }
+
+  .emptyMessage {
+    font-size: 16px;
+    line-height: 23px;
   }
 }

@@ -196,7 +196,7 @@ export default function NotificationMenu({
 
           <div className={styles.menuBody}>
             {notifications.isPending && (
-              <p role="status" className={styles.emptyMessage}>
+              <p role="status" className={styles.loadingMessage}>
                 알림을 불러오는 중이에요
               </p>
             )}
@@ -247,13 +247,15 @@ export default function NotificationMenu({
                           });
                         }}
                       >
-                        <span>{item.message}</span>
-                        <time dateTime={timestamp}>
-                          {formatNotificationTime(
-                            timestamp,
-                            notifications.dataUpdatedAt,
-                          )}
-                        </time>
+                        <span className={styles.notificationContent}>
+                          <span>{item.message}</span>
+                          <time dateTime={timestamp}>
+                            {formatNotificationTime(
+                              timestamp,
+                              notifications.dataUpdatedAt,
+                            )}
+                          </time>
+                        </span>
                       </Link>
                     </li>
                   );
