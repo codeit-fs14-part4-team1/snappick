@@ -5,12 +5,20 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import NaverMapPicker from '@/features/map/components/NaverMapPicker';
+import { ApiError } from '@/lib/api';
 import SchedulePicker from './SchedulePicker';
 import TimePicker from './TimePicker';
 import QuoteNoticeList from './QuoteNoticeList';
-import { formatQuoteDate, getQuoteDeliveryDate } from '../quote';
+import {
+  formatQuoteDate,
+  getQuoteDeliveryDate,
+  parseQuoteShootAt,
+} from '../quote';
 import type { QuoteDraft, QuoteProduct } from '../quote';
 import styles from './QuoteComposerModal.module.css';
+
+const PAST_SHOOT_TIME_MESSAGE =
+  '시간이 유효하지 않아요. 시간을 다시 선택해 주세요.';
 
 type Props = {
   open: boolean;
@@ -65,6 +73,8 @@ function QuoteDialog({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [shootTimeError, setShootTimeError] = useState('');
+  const shootTimeErrorId = `${id}-shoot-time-error`;
   const submitting = useRef(false);
   const [mapOpen, setMapOpen] = useState(false);
   const openMapPicker = () => setMapOpen(true);
@@ -159,6 +169,8 @@ function QuoteDialog({
         onSubmit={async (event) => {
           event.preventDefault();
           if (submitting.current) return;
+          setError('');
+          setShootTimeError('');
           if (!selectedProduct && !initialQuote) {
             setError('촬영 상품을 선택해 주세요.');
             return;
@@ -173,7 +185,11 @@ function QuoteDialog({
             return;
           }
           if (!validTime) {
-            setError('촬영 시작 시간을 선택해 주세요.');
+            setShootTimeError('촬영 시작 시간을 선택해 주세요.');
+            return;
+          }
+          if (parseQuoteShootAt(date, startTime).getTime() <= Date.now()) {
+            setShootTimeError(PAST_SHOOT_TIME_MESSAGE);
             return;
           }
           if (!validLocation) {
@@ -192,7 +208,6 @@ function QuoteDialog({
           }
           submitting.current = true;
           setPending(true);
-          setError('');
           try {
             await onSubmit({
               productId: selectedProduct?.id ?? '',
@@ -211,10 +226,17 @@ function QuoteDialog({
               commonNotice,
             });
             onClose();
-          } catch {
-            setError(
-              '견적을 보내지 못했어요. 입력 내용을 확인하고 다시 시도해 주세요.',
-            );
+          } catch (error) {
+            if (
+              error instanceof ApiError &&
+              error.code === 'QUOTE_SHOOT_TIME_PASSED'
+            ) {
+              setShootTimeError(PAST_SHOOT_TIME_MESSAGE);
+            } else {
+              setError(
+                '견적을 보내지 못했어요. 입력 내용을 확인하고 다시 시도해 주세요.',
+              );
+            }
           } finally {
             submitting.current = false;
             setPending(false);
@@ -351,7 +373,10 @@ function QuoteDialog({
                 dateOnly
                 presentation="modal"
                 value={date}
-                onDateChange={setDate}
+                onDateChange={(value) => {
+                  setDate(value);
+                  setShootTimeError('');
+                }}
                 triggerClassName={styles.dateTrigger}
               />
             </div>
@@ -362,8 +387,21 @@ function QuoteDialog({
               <TimePicker
                 value={startTime}
                 date={date}
-                onValueChange={setStartTime}
+                errorId={shootTimeError ? shootTimeErrorId : undefined}
+                onValueChange={(value) => {
+                  setStartTime(value);
+                  setShootTimeError('');
+                }}
               />
+              {shootTimeError && (
+                <p
+                  id={shootTimeErrorId}
+                  className={styles.fieldError}
+                  role="alert"
+                >
+                  {shootTimeError}
+                </p>
+              )}
             </div>
             <label className={`${styles.field} ${styles.full}`}>
               <span>

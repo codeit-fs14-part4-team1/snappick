@@ -46,7 +46,8 @@ export default function useSendQuote(
       if (
         'code' in error &&
         (error.code === 'SHOOTING_CASE_CANCELED' ||
-          error.code === 'SHOOTING_CASE_PURCHASE_CONFIRMED')
+          error.code === 'SHOOTING_CASE_PURCHASE_CONFIRMED' ||
+          error.code === 'QUOTE_SHOOT_TIME_PASSED')
       )
         return;
       const notice =
