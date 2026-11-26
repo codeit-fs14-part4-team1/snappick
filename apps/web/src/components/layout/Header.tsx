@@ -13,10 +13,10 @@ export type HeaderUser = {
 
 type HeaderProps = {
   user: HeaderUser | null;
-  hasUnreadNotifications: boolean;
+  hasUnseenNotifications: boolean;
 };
 
-export default function Header({ user, hasUnreadNotifications }: HeaderProps) {
+export default function Header({ user, hasUnseenNotifications }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -28,7 +28,7 @@ export default function Header({ user, hasUnreadNotifications }: HeaderProps) {
             <>
               <NotificationMenu
                 key={user.id}
-                hasUnreadNotifications={hasUnreadNotifications}
+                hasUnseenNotifications={hasUnseenNotifications}
               />
               <ProfileMenu user={user} />
             </>

@@ -27,7 +27,7 @@ export default function AuthHeader() {
     queryKey: queryKeys.notifications.hasUnread(),
     enabled: headerUser !== null,
     queryFn: async ({ signal }) => {
-      const result = await fetchWithAuth<{ hasUnread: boolean }>(
+      const result = await fetchWithAuth<{ hasUnseen: boolean }>(
         '/me/notifications/has-unread',
         { signal },
       );
@@ -56,6 +56,7 @@ export default function AuthHeader() {
 
     socket.on('notification:new', refreshNotifications);
     socket.on('notification:read', refreshNotifications);
+    socket.on('notification:seen', refreshNotifications);
     socket.on('connect', refreshNotifications);
 
     const retryDelays = [1000, 2000, 4000];
@@ -104,6 +105,7 @@ export default function AuthHeader() {
       clearTimeout(retryTimer);
       socket.off('notification:new', refreshNotifications);
       socket.off('notification:read', refreshNotifications);
+      socket.off('notification:seen', refreshNotifications);
       socket.off('connect', refreshNotifications);
       socket.off('auth:expired', recoverAuthentication);
       socket.off('connect_error', handleConnectError);
@@ -114,7 +116,7 @@ export default function AuthHeader() {
   return (
     <Header
       user={headerUser}
-      hasUnreadNotifications={unreadQuery.data?.hasUnread ?? false}
+      hasUnseenNotifications={unreadQuery.data?.hasUnseen ?? false}
     />
   );
 }

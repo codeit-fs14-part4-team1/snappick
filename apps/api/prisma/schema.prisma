@@ -358,6 +358,7 @@ model notifications {
   target_id       String
   message         String
   scheduled_at    DateTime?
+  seen_at         DateTime?
   read_at         DateTime?
   created_at      DateTime       @default(now())
 

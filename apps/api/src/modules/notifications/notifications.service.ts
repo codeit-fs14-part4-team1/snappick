@@ -57,6 +57,7 @@ export async function getNotifications(accountId: string, query: PageQuery) {
       targetId: row.target_id,
       message: row.message,
       read: row.read_at !== null,
+      seen: row.seen_at !== null,
       createdAt: row.created_at.toISOString(),
       scheduledAt: row.scheduled_at?.toISOString() ?? null,
     })),
@@ -71,11 +72,35 @@ export async function getNotifications(accountId: string, query: PageQuery) {
  * 안 읽은 알림 여부 (GET /me/notifications/has-unread)
  */
 export async function hasUnreadNotifications(accountId: string) {
-  const unread = await prisma.notifications.findFirst({
-    where: { auth_account_id: accountId, read_at: null, ...visibleNow() },
-    select: { id: true },
+  const where = { auth_account_id: accountId, read_at: null, ...visibleNow() };
+  const [unread, unseen] = await Promise.all([
+    prisma.notifications.findFirst({ where, select: { id: true } }),
+    prisma.notifications.findFirst({
+      where: { ...where, seen_at: null },
+      select: { id: true },
+    }),
+  ]);
+  return {
+    hasUnread: unread !== null || unseen !== null,
+    hasUnseen: unseen !== null,
+  };
+}
+
+export async function markNotificationsSeen(
+  accountId: string,
+  notificationIds: string[],
+) {
+  const { count } = await prisma.notifications.updateMany({
+    where: {
+      id: { in: notificationIds },
+      auth_account_id: accountId,
+      read_at: null,
+      seen_at: null,
+      ...visibleNow(),
+    },
+    data: { seen_at: new Date() },
   });
-  return { hasUnread: unread !== null };
+  return { updatedCount: count };
 }
 
 /**

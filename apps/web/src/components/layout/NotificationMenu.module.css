@@ -87,12 +87,15 @@
 }
 
 .notificationItem[data-unread='true'] {
-  background: var(--color-accent-subtle);
   color: var(--color-text-primary);
   font-weight: 500;
 }
 
-.notificationItem[data-unread='true']::before {
+.notificationItem[data-unseen='true'] {
+  background: var(--color-accent-subtle);
+}
+
+.notificationItem[data-unseen='true']::before {
   position: absolute;
   top: 14px;
   left: 20px;

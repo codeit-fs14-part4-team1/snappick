@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useToast } from '@/components/ui/ToastProvider';
 import { queryKeys } from '@/lib/queryKeys';
 import { formatDate, formatTime, isSameDate } from '@/utils/dateTime';
 import { formatRelativeTime } from '@/utils/formatRelativeTime';
@@ -21,6 +22,7 @@ type NotificationItem = {
   targetId: string;
   message: string;
   read: boolean;
+  seen: boolean;
   createdAt: string;
   scheduledAt?: string | null;
 };
@@ -31,6 +33,7 @@ type NotificationPage = {
 };
 
 const PAGE_SIZE = 20;
+const SEEN_BATCH_SIZE = 100;
 
 function notificationHref({ targetType, targetId }: NotificationItem) {
   const id = encodeURIComponent(targetId);
@@ -56,16 +59,17 @@ function formatNotificationTime(timestamp: string, now: number) {
 }
 
 type NotificationMenuProps = {
-  hasUnreadNotifications: boolean;
+  hasUnseenNotifications: boolean;
 };
 
 export default function NotificationMenu({
-  hasUnreadNotifications,
+  hasUnseenNotifications,
 }: NotificationMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { fetchWithAuth } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
   const notifications = useInfiniteQuery({
@@ -100,6 +104,39 @@ export default function NotificationMenu({
     },
   });
   const items = notifications.data?.pages.flatMap((page) => page.items) ?? [];
+  const markSeen = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (let offset = 0; offset < ids.length; offset += SEEN_BATCH_SIZE) {
+        const result = await fetchWithAuth<{ updatedCount: number }>(
+          '/me/notifications/seen',
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              notificationIds: ids.slice(offset, offset + SEEN_BATCH_SIZE),
+            }),
+          },
+        );
+        if (!result) throw new Error('알림 확인 상태를 저장하지 못했어요.');
+      }
+    },
+    onError: () => showToast('알림 확인 상태를 저장하지 못했어요.', 'error'),
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.all,
+      });
+    },
+  });
+
+  function closeMenu() {
+    setIsOpen(false);
+    const ids = items
+      .filter((item) => !item.read && !item.seen)
+      .map((item) => item.notificationId);
+    if (ids.length > 0) markSeen.mutate(ids);
+  }
+
+  const dismissMenu = useEffectEvent(closeMenu);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -109,13 +146,13 @@ export default function NotificationMenu({
       if (!(target instanceof Node)) return;
 
       if (!menuRef.current?.contains(target)) {
-        setIsOpen(false);
+        dismissMenu();
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      setIsOpen(false);
+      dismissMenu();
       buttonRef.current?.focus();
     };
 
@@ -132,14 +169,17 @@ export default function NotificationMenu({
       <button
         type="button"
         ref={buttonRef}
-        aria-label={hasUnreadNotifications ? '알림 (새 알림 있음)' : '알림'}
+        aria-label={hasUnseenNotifications ? '알림 (새 알림 있음)' : '알림'}
         aria-expanded={isOpen}
         aria-controls="notification-menu"
         className={styles.notificationButton}
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => {
+          if (isOpen) closeMenu();
+          else setIsOpen(true);
+        }}
       >
         <Image src="/bell.svg" alt="" width={24} height={24} />
-        {hasUnreadNotifications && (
+        {hasUnseenNotifications && (
           <span aria-hidden="true" className={styles.unreadDot} />
         )}
       </button>
@@ -185,6 +225,7 @@ export default function NotificationMenu({
                         href={href}
                         className={styles.notificationItem}
                         data-unread={!item.read}
+                        data-unseen={!item.read && !item.seen}
                         aria-label={
                           item.read ? undefined : `읽지 않음. ${item.message}`
                         }
@@ -194,13 +235,13 @@ export default function NotificationMenu({
                             return;
                           }
                           if (item.read) {
-                            setIsOpen(false);
+                            closeMenu();
                             return;
                           }
                           event.preventDefault();
                           readNotification.mutate(item.notificationId, {
                             onSuccess: () => {
-                              setIsOpen(false);
+                              closeMenu();
                               router.push(href);
                             },
                           });
