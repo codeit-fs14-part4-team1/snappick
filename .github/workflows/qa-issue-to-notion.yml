@@ -58,6 +58,13 @@ jobs:
                 ?.trim();
               return value && value !== '_No response_' ? value : null;
             };
+            //여러 줄 칸 읽기 (### 칸 이름 아래부터 다음 ### 전까지)
+            const section = (label) => {
+              const value = new RegExp(`###\\s*${label}\\s*\\n([\\s\\S]*?)(?=\\n###\\s|$)`)
+                .exec(issue.body ?? '')?.[1]
+                ?.trim();
+              return value && value !== '_No response_' ? value : null;
+            };
             const ID_PATTERN = /^\[([A-Z]+)-(?:(?:L1|L2|L3|BE|AC)-\d{2}|VW-\d{2}-(?:PC|TB|MO))\]/;
 
             //기능 이름 검사 (소문자는 대문자로, 목록에 없으면 안내 댓글)
@@ -140,9 +147,37 @@ jobs:
             if (found.results.length > 0) {
               await notion(`pages/${found.results[0].id}`, 'PATCH', { properties });
             } else {
+              //처음 만들 때만 본문에 증상을 옮김 (이후 노션 메모는 건드리지 않음)
+              const paragraph = (content, link) => ({
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [{ type: 'text', text: { content: content.slice(0, 2000), ...(link && { link: { url: link } }) } }],
+                },
+              });
+              const symptomLines = (section('증상') ?? '(증상 없음)')
+                .split('\n')
+                .map((line) => line.trimEnd())
+                .filter(Boolean)
+                .slice(0, 90);
+              const meta = [
+                ['계정', field('계정')],
+                ['해상도', field('해상도')],
+                ['발생 시각', field('발생 시각 \\(KST, 선택\\)')],
+              ]
+                .filter(([, value]) => value)
+                .map(([label, value]) => `${label}: ${value}`)
+                .join(' · ');
+              const children = [
+                { object: 'block', type: 'heading_3', heading_3: { rich_text: [{ type: 'text', text: { content: '증상' } }] } },
+                ...symptomLines.map((line) => paragraph(line)),
+                ...(meta ? [paragraph(meta)] : []),
+                paragraph('GitHub 이슈에서 보기 →', issue.html_url),
+              ];
               await notion('pages', 'POST', {
                 parent: { database_id: process.env.ISSUES_DB_ID },
                 properties,
+                children,
               });
             }
 
