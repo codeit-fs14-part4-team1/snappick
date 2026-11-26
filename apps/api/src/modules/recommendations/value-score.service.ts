@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../lib/prisma.js';
 import {
   ACTION_WEIGHTS,
@@ -8,6 +9,48 @@ import {
 } from './value-score.config.js';
 
 type Rating = { average: number; count: number };
+
+/**
+ * 새 작가 여부 (작가 프로필을 만든 지 NEW_PHOTOGRAPHER_PERIOD_MS 이내)
+ */
+const isNewPhotographer = (createdAt: Date, now: Date): boolean =>
+  now.getTime() - createdAt.getTime() < NEW_PHOTOGRAPHER_PERIOD_MS;
+
+/**
+ * 사진을 등록할 때 가치 점수 행을 같이 만든다 (등록 트랜잭션 안에서 호출)
+ * 다음 배치 전까지 0점이 되어 피드에서 밀리지 않게 한다
+ * - 사진 점수: 막 올린 사진이라 0
+ * - 작가 점수: 같은 작가의 다른 사진 행에서 복사 (같은 작가 사진은 같은 값). 첫 사진이면 0
+ */
+export async function createInitialValueScores(
+  tx: Prisma.TransactionClient,
+  photographerId: string,
+  photoIds: string[],
+  now: Date,
+) {
+  if (photoIds.length === 0) {
+    return;
+  }
+  // 트랜잭션은 연결 하나를 쓰므로 순서대로 조회한다
+  const sibling = await tx.photo_value_scores.findFirst({
+    where: { photo: { photographer_id: photographerId } },
+    select: { photographer_score: true },
+  });
+  const photographer = await tx.photographers.findUniqueOrThrow({
+    where: { id: photographerId },
+    select: { created_at: true },
+  });
+  await tx.photo_value_scores.createMany({
+    data: photoIds.map((photoId) => ({
+      photo_id: photoId,
+      photo_score: 0,
+      photographer_score: sibling?.photographer_score ?? 0,
+      is_new_photographer: isNewPhotographer(photographer.created_at, now),
+      updated_at: now,
+    })),
+    skipDuplicates: true,
+  });
+}
 
 /**
  * 작가 평균 평점에 맞는 보정 배수 (리뷰가 적거나 없으면 1)
@@ -107,8 +150,7 @@ export async function refreshValueScores(now: Date) {
         id,
         {
           score: actions * ratingMultiplier(ratingByPhotographer.get(id)),
-          isNew:
-            now.getTime() - created_at.getTime() < NEW_PHOTOGRAPHER_PERIOD_MS,
+          isNew: isNewPhotographer(created_at, now),
         },
       ];
     }),
