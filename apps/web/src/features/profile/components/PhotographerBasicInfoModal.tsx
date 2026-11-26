@@ -273,15 +273,22 @@ export default function PhotographerBasicInfoModal({
             return;
           }
 
-          // 경력이 입력되지 않았다면 PATCH 요청에서 제외하도록 처리함
-          const careerYears = career === '' ? undefined : Number(career);
+          // 경력 미입력 상태와 1년 미만에 해당하는 0을 구분함
+          if (career === '') {
+            showToast(
+              '경력을 입력해 주세요. 1년 미만인 경우 0을 입력해 주세요.',
+              'error',
+            );
+            return;
+          }
+
+          const careerYears = Number(career);
 
           // 경력이 0~80 사이의 정수인지 확인함
           if (
-            careerYears !== undefined &&
-            (!Number.isInteger(careerYears) ||
-              careerYears < 0 ||
-              careerYears > 80)
+            !Number.isInteger(careerYears) ||
+            careerYears < 0 ||
+            careerYears > 80
           ) {
             showToast('경력은 0~80 사이의 정수로 입력해 주세요.', 'error');
             return;
@@ -297,7 +304,7 @@ export default function PhotographerBasicInfoModal({
           onApply(
             {
               nickname,
-              ...(careerYears !== undefined ? { career: careerYears } : {}),
+              career: careerYears,
               introduction: introduction === '' ? null : introduction,
               regions: selectedRegions,
               categories: selectedCategories,
@@ -436,14 +443,14 @@ export default function PhotographerBasicInfoModal({
               경력 <span className={styles.requiredMark}>*</span>
             </label>
 
-            {/* 경력 입력창 오른쪽에 년 단위를 표시함 */}
+            {/* 경력 미입력 상태와 1년 미만인 경우를 구분함 */}
             <div className={styles.careerInputWrapper}>
               <input
                 id={`${formId}-career`}
                 name="career"
                 type="number"
                 className={styles.input}
-                defaultValue={photographer.career ?? 0}
+                defaultValue={photographer.career ?? ''}
                 min={0}
                 max={80}
                 step={1}
@@ -462,8 +469,8 @@ export default function PhotographerBasicInfoModal({
                 aria-invalid={Boolean(careerError) || undefined}
                 aria-describedby={
                   careerError
-                    ? `${formId}-career-unit ${formId}-career-error`
-                    : `${formId}-career-unit`
+                    ? `${formId}-career-unit ${formId}-career-hint ${formId}-career-error`
+                    : `${formId}-career-unit ${formId}-career-hint`
                 }
               />
 
@@ -471,6 +478,12 @@ export default function PhotographerBasicInfoModal({
                 년
               </span>
             </div>
+
+            {/* 경력이 1년 미만인 작가에게 입력 기준을 안내함 */}
+            <p id={`${formId}-career-hint`} className={styles.careerHint}>
+              <span className={styles.careerHintIcon}>※</span>
+              <span>경력 1년 미만은 0으로 입력해 주세요.</span>
+            </p>
             <p
               id={`${formId}-career-error`}
               className={styles.fieldError}

@@ -4,10 +4,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
-import Button from '@/components/ui/Button';
-import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { apiFetch } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
+
+import { startSocialAuth } from '../socialAuth';
+import type { SocialProvider } from '../types';
+
+import Button from '@/components/ui/Button';
 import AuthMethodButtons from './AuthMethodButtons';
 import styles from './LoginForm.module.css';
 
@@ -34,8 +38,8 @@ function getEmailError(value: string): string {
 
 export default function LoginForm() {
   const { login } = useAuth();
-  const { showToast } = useToast();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const emailId = useId();
   const passwordId = useId();
@@ -63,7 +67,7 @@ export default function LoginForm() {
   // 이메일 형식이 올바르고 비밀번호가 입력되면 로그인 버튼을 활성화함
   const isLoginFormValid = getEmailError(email) === '' && password.length > 0;
 
-  // 입력값 검증 후 로그인 API를 호출함
+  // 입력값 검증 후 이메일 로그인 API를 호출함
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -120,6 +124,22 @@ export default function LoginForm() {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // 선택한 소셜 제공자를 통해 로그인 인증을 시작함
+  function handleSocialLogin(provider: SocialProvider) {
+    // 이메일 로그인 요청 중이거나 로그인에 성공한 경우 중복 요청을 방지함
+    if (isSubmitting || loginStatus === 'success') {
+      return;
+    }
+
+    try {
+      startSocialAuth(provider, {
+        mode: 'login',
+      });
+    } catch {
+      showToast('소셜 인증을 시작하지 못했어요. 다시 시도해 주세요.');
     }
   }
 
@@ -230,13 +250,20 @@ export default function LoginForm() {
           </p>
         )}
       </form>
+
       {/* 이메일 로그인과 소셜 로그인 사이를 구분함 */}
       <div className={styles.divider}>
         <span>또는</span>
       </div>
 
-      {/* 로그인 화면에서는 소셜 로그인 버튼만 표시함 */}
-      <AuthMethodButtons />
+      {/* 로그인 화면에서는 소셜 로그인 버튼만 표시하고 인증 기능을 연결함 */}
+      <AuthMethodButtons
+        handlers={{
+          kakao: () => handleSocialLogin('KAKAO'),
+          naver: () => handleSocialLogin('NAVER'),
+          google: () => handleSocialLogin('GOOGLE'),
+        }}
+      />
 
       {/* 회원가입 화면으로 이동함 */}
       <p className={styles.signupPrompt}>

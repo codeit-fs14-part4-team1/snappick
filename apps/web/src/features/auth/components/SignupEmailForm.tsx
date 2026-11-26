@@ -4,7 +4,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/ToastProvider';
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { AccountType } from '@snappick/shared';
 import styles from './SignupEmailForm.module.css';
@@ -14,6 +14,8 @@ type SignupEmailFormProps = {
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 임시 닉네임 중복 시 회원가입을 시도할 최대 횟수
+const MAX_SIGNUP_ATTEMPTS = 3;
 
 type SignupResponse = {
   accessToken: string;
@@ -153,22 +155,42 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
     let signupApiSucceeded = false;
 
     try {
-      const response = await apiFetch<SignupResponse>('/auth/signup', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accountType: accountType,
-          provider: 'BASIC',
-          providerEmail: email.trim(),
-          password,
-          nickname: generateRandomNickname(),
-        }),
-      });
+      let response: SignupResponse | undefined;
 
-      signupApiSucceeded = true;
+      // 임시 닉네임 중복 시 새로운 닉네임으로 제한적으로 재시도함
+      for (let attempt = 1; attempt <= MAX_SIGNUP_ATTEMPTS; attempt++) {
+        try {
+          response = await apiFetch<SignupResponse>('/auth/signup', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              accountType,
+              provider: 'BASIC',
+              providerEmail: email.trim(),
+              password,
+              nickname: generateRandomNickname(),
+            }),
+          });
+
+          signupApiSucceeded = true;
+          break;
+        } catch (error) {
+          // 닉네임 중복 오류인 경우에만 새로운 닉네임으로 재시도함
+          if (
+            error instanceof ApiError &&
+            error.status === 409 &&
+            error.code === 'NICKNAME_ALREADY_EXISTS' &&
+            attempt < MAX_SIGNUP_ATTEMPTS
+          ) {
+            continue;
+          }
+
+          throw error;
+        }
+      }
 
       if (!response?.accessToken) {
         throw new Error('회원가입 응답에 Access Token이 없습니다.');
@@ -188,8 +210,9 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
         console.error('회원가입 후 인증 상태 확인 실패:', error);
         setSignupStatus('sessionError');
       } else if (
-        error instanceof Error &&
-        error.message === 'API 요청 실패: 409'
+        error instanceof ApiError &&
+        error.status === 409 &&
+        error.code === 'ACCOUNT_ALREADY_EXISTS'
       ) {
         // 이미 가입된 이메일인 경우
         setSignupStatus('duplicate');

@@ -29,6 +29,8 @@ import type {
   CreatePhotographerProductInput,
 } from '@/features/profile/types';
 
+import { ApiError } from '@/lib/api';
+
 import PhotographerProfileInfo from '@/features/profile/components/PhotographerProfileInfo';
 import PhotographerReviewSummary from '@/features/profile/components/PhotographerReviewSummary';
 import PhotographerProfileTabs from '@/features/profile/components/PhotographerProfileTabs';
@@ -450,7 +452,38 @@ export default function PhotographerProfilePage() {
     let requestedServerChange = false;
 
     try {
-      // 새 프로필 이미지가 있다면 기본 정보와 상품보다 먼저 서버에 저장함
+      // 활동명 중복 오류 발생 시 이미지와 상품이 먼저 저장되지 않도록
+      // 기본 정보 변경 사항을 가장 먼저 서버에 저장함
+      if (isBasicInfoChanged) {
+        requestedServerChange = true;
+
+        try {
+          await updateProfileMutation.mutateAsync({
+            nickname: editDraft.basicInfo.nickname,
+            ...(editDraft.basicInfo.career !== null
+              ? { career: editDraft.basicInfo.career }
+              : {}),
+            introduction: editDraft.basicInfo.introduction,
+            regions: editDraft.basicInfo.regions,
+            categories: editDraft.basicInfo.categories,
+          });
+        } catch (error) {
+          // 활동명이 중복되면 임시 변경 사항과 편집 모드를 유지함
+          if (
+            error instanceof ApiError &&
+            error.status === 409 &&
+            error.code === 'NICKNAME_ALREADY_EXISTS'
+          ) {
+            showToast('이미 사용 중인 활동명이에요.', 'error');
+            return;
+          }
+
+          // 활동명 중복 이외의 오류는 기존 최종 저장 오류 처리로 전달함
+          throw error;
+        }
+      }
+
+      // 기본 정보 저장 이후 변경된 프로필 이미지를 저장함
       if (editDraft.profileImageFile) {
         await savePhotographerProfileImage(
           editDraft.profileImageFile,
@@ -462,20 +495,6 @@ export default function PhotographerProfilePage() {
 
         // Header에도 변경된 프로필 이미지가 반영되도록 사용자 정보를 갱신함
         await refreshUser();
-      }
-
-      // 신규 상품 등록이 서버의 기본 정보 완료 검사를 통과하도록 먼저 저장함
-      if (isBasicInfoChanged) {
-        requestedServerChange = true;
-        await updateProfileMutation.mutateAsync({
-          nickname: editDraft.basicInfo.nickname,
-          ...(editDraft.basicInfo.career !== null
-            ? { career: editDraft.basicInfo.career }
-            : {}),
-          introduction: editDraft.basicInfo.introduction,
-          regions: editDraft.basicInfo.regions,
-          categories: editDraft.basicInfo.categories,
-        });
       }
 
       // 최대 3개 제한을 유지하기 위해 삭제를 신규 등록보다 먼저 처리함
@@ -613,6 +632,7 @@ export default function PhotographerProfilePage() {
       (category) =>
         CategoryLabel[category as keyof typeof CategoryLabel] ?? category,
     ),
+    // 0년은 1년 이하로 표시하고, 경력 미입력 상태는 유지함
     careerLabel:
       activeProfile.career === null
         ? null
