@@ -1,9 +1,13 @@
 'use client';
-
 import Link from 'next/link';
+
+import { useToast } from '@/components/ui/ToastProvider';
+import { startSocialAuth } from '../socialAuth';
+import type { SocialProvider } from '../types';
 import { useRouter } from 'next/navigation';
-import AuthMethodButtons from './AuthMethodButtons';
 import type { AccountType } from '@snappick/shared';
+
+import AuthMethodButtons from './AuthMethodButtons';
 import styles from './SignupMethodSelector.module.css';
 
 type SignupMethodSelectorProps = {
@@ -14,10 +18,23 @@ export default function SignupMethodSelector({
   accountType,
 }: SignupMethodSelectorProps) {
   const router = useRouter();
+  const { showToast } = useToast();
 
   // 선택한 회원 유형을 유지하며 이메일 회원가입 화면으로 이동함
   const handleEmailSignup = () => {
     router.push(`/signup/email?accountType=${accountType}`);
+  };
+
+  // 선택한 회원 유형을 유지하며 소셜 회원가입 인증을 시작함
+  const handleSocialSignup = (provider: SocialProvider) => {
+    try {
+      startSocialAuth(provider, {
+        mode: 'signup',
+        accountType,
+      });
+    } catch {
+      showToast('소셜 인증을 시작하지 못했어요. 다시 시도해 주세요.');
+    }
   };
 
   return (
@@ -34,6 +51,9 @@ export default function SignupMethodSelector({
       <AuthMethodButtons
         showEmail
         handlers={{
+          kakao: () => handleSocialSignup('KAKAO'),
+          naver: () => handleSocialSignup('NAVER'),
+          google: () => handleSocialSignup('GOOGLE'),
           email: handleEmailSignup,
         }}
       />

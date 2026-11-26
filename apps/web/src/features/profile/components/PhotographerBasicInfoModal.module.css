@@ -90,6 +90,54 @@
   pointer-events: none;
 }
 
+:root {
+  --color-primary: #353535;
+  --color-accent: #9bb700;
+  --color-accent-subtle: #f5f8e6;
+  --color-accent-soft: #f0f4d9;
+  --color-accent-strong: #556500;
+  --color-danger: #cc1f1a;
+  --color-danger-subtle: #ffe2df;
+  --color-text-primary: #111111;
+  --color-text-secondary: #595959;
+  --color-text-tertiary: #8c8c8c;
+  --color-bg-base: #ffffff;
+  --color-bg-subtle: #f5f5f5;
+  --color-border: #e5e5e5;
+  --color-dim: #000000;
+
+  --font-main: 'Noto Sans KR', sans-serif;
+
+  --container-default: 1200px;
+  --container-wide: 1440px;
+  --page-padding: 40px;
+}
+
+/* 경력 안내 사항 */
+.careerHint {
+  display: flex;
+  align-items: center;
+  margin: 0px 0px 0px 3px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.careerHintIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 20px;
+  padding: 0 3px;
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* 상세 소개 입력 영역 */
 .textarea {
   min-height: 140px;
@@ -271,7 +319,7 @@
 
 /* 선택된 활동 지역을 연두색 배경으로 강조함 */
 .regionOption[data-selected='true'] {
-  background: var(--color-accent-subtle);
+  background: var(--color-accent);
   color: var(--color-accent-strong);
 }
 
@@ -296,8 +344,8 @@
 /* 선택된 체크박스를 연두색으로 표시함 */
 .regionCheckbox:checked {
   position: relative;
-  border-color: var(--color-accent);
-  background: var(--color-accent);
+  border-color: var(--color-accent-soft);
+  background: var(--color-accent-soft);
 }
 
 /* 선택된 체크박스 내부에 체크 표시를 추가함 */

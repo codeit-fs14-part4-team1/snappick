@@ -21,7 +21,7 @@ import type {
   FetchWithAuth,
   FetchWithAuthOptions,
 } from '@/features/auth/types';
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
 
 // 인증 상태를 구분하는 타입 정의
 type AuthStatus =
@@ -216,8 +216,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return result;
       } catch (error) {
-        // 갱신 실패 또는 재요청의 401은 해당 세션·토큰이 여전히 현재 것일 때만 초기화함
+        // 소셜 인가 코드 인증 실패는 기존 로그인 세션 오류와 구분함
+        const isInvalidSocialAuth =
+          error instanceof ApiError && error.code === 'INVALID_SOCIAL_AUTH';
+
+        // 갱신 실패 또는 재요청의 401은 현재 세션의 인증 오류일 때만 초기화함
         if (
+          !isInvalidSocialAuth &&
           error instanceof Error &&
           error.message === 'API 요청 실패: 401' &&
           sessionVersionRef.current === requestSessionVersion &&
