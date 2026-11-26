@@ -365,6 +365,7 @@ model notifications {
   auth_account auth_accounts @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
 
   @@index([auth_account_id, created_at])
+  @@index([type, scheduled_at])
 }
 
 // 영일님 파트

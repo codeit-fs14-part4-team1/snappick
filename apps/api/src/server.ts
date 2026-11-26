@@ -8,6 +8,7 @@ import { checkChatRoomAccess } from './modules/chats/chats.service.js';
 import { HttpError } from './utils/http-error.js';
 import { startIntervalJob } from './utils/interval-job.js';
 import { emitNotification } from './modules/notifications/notifications.emit.js';
+import { startShootReminderNotifications } from './modules/notifications/notifications.reminders.js';
 import {
   PENDING_STALE_MS,
   reconcilePendingPayments,
@@ -211,6 +212,8 @@ io.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
+
+  startShootReminderNotifications(io);
 
   // 예약 상태 자동 전환 (촬영 완료, 구매 확정)
   startIntervalJob(

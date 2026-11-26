@@ -20,17 +20,39 @@ function readCursor(cursor: string): { createdAt: Date; id: string } {
   return { createdAt, id: id.data };
 }
 
-// 예약 알림은 보낼 시각이 지난 뒤에만 사용자에게 보인다
-const visibleNow = (): Prisma.notificationsWhereInput => ({
-  OR: [{ scheduled_at: null }, { scheduled_at: { lte: new Date() } }],
-});
+async function visibleForAccount(
+  accountId: string,
+): Promise<Prisma.notificationsWhereInput> {
+  const now = new Date();
+  // 취소 전 확인했거나 읽은 리마인더는 이력에 남긴다.
+  const hidden = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT n.id
+    FROM notifications n
+    JOIN reservations r ON r.id = CASE
+      WHEN n.target_id ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+      THEN n.target_id::uuid
+    END
+    WHERE n.auth_account_id = ${accountId}::uuid
+      AND n.type = 'SHOOT_REMINDER'
+      AND n.target_type = 'RESERVATION'
+      AND n.scheduled_at <= ${now}
+      AND n.read_at IS NULL
+      AND n.seen_at IS NULL
+      AND r.status = 'CANCELED'
+  `;
+
+  return {
+    OR: [{ scheduled_at: null }, { scheduled_at: { lte: now } }],
+    id: { notIn: hidden.map(({ id }) => id) },
+  };
+}
 
 /**
  * 알림 목록 (GET /me/notifications)
  * 최신순. scheduled_at이 있으면 그 시각이 지난 알림만 보여 준다
  */
 export async function getNotifications(accountId: string, query: PageQuery) {
-  const conditions = [visibleNow()];
+  const conditions = [await visibleForAccount(accountId)];
   if (query.cursor) {
     const { createdAt, id } = readCursor(query.cursor);
     conditions.push({
@@ -72,7 +94,11 @@ export async function getNotifications(accountId: string, query: PageQuery) {
  * 안 읽은 알림 여부 (GET /me/notifications/has-unread)
  */
 export async function hasUnreadNotifications(accountId: string) {
-  const where = { auth_account_id: accountId, read_at: null, ...visibleNow() };
+  const where = {
+    auth_account_id: accountId,
+    read_at: null,
+    ...(await visibleForAccount(accountId)),
+  };
   const [unread, unseen] = await Promise.all([
     prisma.notifications.findFirst({ where, select: { id: true } }),
     prisma.notifications.findFirst({
@@ -96,7 +122,7 @@ export async function markNotificationsSeen(
       auth_account_id: accountId,
       read_at: null,
       seen_at: null,
-      ...visibleNow(),
+      AND: await visibleForAccount(accountId),
     },
     data: { seen_at: new Date() },
   });
@@ -114,9 +140,8 @@ export async function readNotification(
   const notFound = () =>
     new HttpError(404, 'NOTIFICATION_NOT_FOUND', '알림을 찾을 수 없어요.');
 
-  // 아직 보낼 시각이 안 된 알림은 없는 알림으로 본다
   const notification = await prisma.notifications.findFirst({
-    where: { id: notificationId, ...visibleNow() },
+    where: { id: notificationId, AND: await visibleForAccount(accountId) },
     select: { auth_account_id: true },
   });
   if (!notification) {

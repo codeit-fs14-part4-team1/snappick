@@ -146,9 +146,10 @@ export async function readMessageNotifications(
 
 const HOUR_MS = 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * HOUR_MS;
+export const KST_DAY_MS = 24 * HOUR_MS;
 
 // 촬영일 오전 6시(한국 시간)
-function shootDayMorning(shootAt: Date): Date {
+export function shootDayMorning(shootAt: Date): Date {
   const kst = new Date(shootAt.getTime() + KST_OFFSET_MS);
   return new Date(
     Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 6) -
@@ -182,7 +183,7 @@ export async function scheduleShootReminders(
   const time = `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${minute}`;
   const schedule = [
     {
-      at: new Date(today.getTime() - 24 * HOUR_MS),
+      at: new Date(today.getTime() - KST_DAY_MS),
       day: '내일' as const,
     },
     { at: today, day: '오늘' as const },
