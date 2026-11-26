@@ -58,6 +58,7 @@ export async function getNotifications(accountId: string, query: PageQuery) {
       message: row.message,
       read: row.read_at !== null,
       createdAt: row.created_at.toISOString(),
+      scheduledAt: row.scheduled_at?.toISOString() ?? null,
     })),
     nextCursor:
       rows.length > query.limit && last

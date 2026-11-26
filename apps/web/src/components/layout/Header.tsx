@@ -27,6 +27,7 @@ export default function Header({ user, hasUnreadNotifications }: HeaderProps) {
           {user ? (
             <>
               <NotificationMenu
+                key={user.id}
                 hasUnreadNotifications={hasUnreadNotifications}
               />
               <ProfileMenu user={user} />
