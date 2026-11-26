@@ -36,5 +36,24 @@ export function readOffset(cursor: string | undefined, key: string): number {
   return o;
 }
 
-export const nextCursor = (offset: number, key: string): string =>
-  encodeCursor({ o: offset, k: key });
+/**
+ * 커서에 담은 기준 시각(t). 첫 페이지(커서 없음)면 null
+ * 첫 페이지 시각으로 목록을 고정할 때 쓴다 (readOffset으로 같은 목록인지 먼저 확인)
+ */
+export function readCursorTime(cursor: string | undefined): Date | null {
+  if (!cursor) {
+    return null;
+  }
+  const { t } = decodeCursor(cursor);
+  if (typeof t !== 'number' || !Number.isFinite(t)) {
+    throw new HttpError(400, 'INVALID_CURSOR', '목록을 다시 불러와 주세요.');
+  }
+  return new Date(t);
+}
+
+export const nextCursor = (
+  offset: number,
+  key: string,
+  time?: Date | null,
+): string =>
+  encodeCursor({ o: offset, k: key, ...(time && { t: time.getTime() }) });
