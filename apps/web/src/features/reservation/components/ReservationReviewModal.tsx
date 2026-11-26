@@ -6,6 +6,10 @@ import Image from 'next/image';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
+import {
+  isReviewAlreadyExists,
+  REVIEW_ALREADY_EXISTS_MESSAGE,
+} from '@/features/my/reviews/api';
 import { formatDateWithWeekday } from '@/utils/dateTime';
 
 import type { ReviewBooking } from '@/features/my/reviews/types';
@@ -84,7 +88,12 @@ export default function ReservationReviewModal({
 
       showToast('리뷰를 저장했어요.');
       onClose();
-    } catch {
+    } catch (error) {
+      if (isReviewAlreadyExists(error)) {
+        showToast(REVIEW_ALREADY_EXISTS_MESSAGE);
+        onClose();
+        return;
+      }
       showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error');
     }
   };

@@ -1,6 +1,12 @@
 import type { FetchWithAuth } from '@/features/auth/types';
+import { ApiError } from '@/lib/api';
 
 export const REVIEW_PAGE_SIZE = 5;
+export const REVIEW_ALREADY_EXISTS_MESSAGE = '이미 작성된 리뷰가 있어요.';
+
+export function isReviewAlreadyExists(error: unknown) {
+  return error instanceof ApiError && error.code === 'REVIEW_ALREADY_EXISTS';
+}
 
 type PageResponse<T> = {
   items: T[];

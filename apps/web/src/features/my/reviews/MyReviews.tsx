@@ -10,6 +10,8 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   getEligibleReviews,
   getMyReviews,
+  isReviewAlreadyExists,
+  REVIEW_ALREADY_EXISTS_MESSAGE,
   REVIEW_PAGE_SIZE,
   saveMyReview,
 } from './api';
@@ -127,8 +129,16 @@ export default function MyReviews() {
       invalidateReviewQueries(result.photographerId);
       showToast('리뷰를 저장했어요.');
     },
-    onError: () =>
-      showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error'),
+    onError: (error) => {
+      if (isReviewAlreadyExists(error)) {
+        setEditor(null);
+        setPage(1);
+        invalidateReviewQueries();
+        showToast(REVIEW_ALREADY_EXISTS_MESSAGE);
+        return;
+      }
+      showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error');
+    },
   });
   const remove = useMutation({
     mutationFn: async (review: MyReview) => {
