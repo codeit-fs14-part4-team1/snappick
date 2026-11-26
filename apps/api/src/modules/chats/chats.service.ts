@@ -447,6 +447,11 @@ export async function getMessages(
       quote: {
         include: {
           reservation: { select: { id: true, status: true } },
+          payment: {
+            where: { status: 'PENDING' },
+            take: 1,
+            select: { id: true },
+          },
           shooting_case: {
             select: {
               quotes: {
@@ -497,6 +502,7 @@ export async function getMessages(
             quoteName: message.quote.quote_name,
             reservationStatus: message.quote.reservation?.status ?? null,
             reservationId: message.quote.reservation?.id ?? null,
+            paymentPending: message.quote.payment.length > 0,
             shootAt: message.quote.shoot_at,
             location: message.quote.location,
             locationLat: message.quote.location_lat,

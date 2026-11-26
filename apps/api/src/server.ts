@@ -7,9 +7,15 @@ import { chatRoomParamsSchema } from './modules/chats/chats.schema.js';
 import { checkChatRoomAccess } from './modules/chats/chats.service.js';
 import { HttpError } from './utils/http-error.js';
 import { startIntervalJob } from './utils/interval-job.js';
+import { emitNotification } from './modules/notifications/notifications.emit.js';
+import {
+  PENDING_STALE_MS,
+  reconcilePendingPayments,
+} from './modules/payments/payments.settlement.js';
 import { advanceReservationStatuses } from './modules/reservations/reservations.service.js';
 
 const RESERVATION_STATUS_JOB_INTERVAL_MS = 10 * 60 * 1000;
+const PAYMENT_RECONCILE_JOB_INTERVAL_MS = 60 * 1000;
 
 const httpServer = createServer(app);
 
@@ -214,6 +220,31 @@ httpServer.listen(PORT, () => {
       const result = await advanceReservationStatuses(new Date());
       if (Object.values(result).some((count) => count > 0)) {
         console.log('[job:reservation-status]', result);
+      }
+    },
+  );
+
+  // 처리 중에 멈춘 결제를 토스 상태에 맞춤
+  // 시작 직후에는 이전 프로세스가 남긴 결제를 바로 처리하도록 모든 건을 확인
+  let firstReconcile = true;
+  startIntervalJob(
+    'payment-reconcile',
+    PAYMENT_RECONCILE_JOB_INTERVAL_MS,
+    async () => {
+      const minAgeMs = firstReconcile ? 0 : PENDING_STALE_MS;
+      firstReconcile = false;
+      const { counts, events } = await reconcilePendingPayments(
+        new Date(),
+        minAgeMs,
+      );
+      for (const { chatRoomId, notifications } of events) {
+        emitNotification(io, notifications);
+        if (chatRoomId) {
+          io.to(`chat:${chatRoomId}`).emit('message:new', { chatRoomId });
+        }
+      }
+      if (Object.values(counts).some((count) => count > 0)) {
+        console.log('[job:payment-reconcile]', counts);
       }
     },
   );

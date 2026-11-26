@@ -237,6 +237,7 @@ export default function ChatMessageList({
                         <QuoteMessageCard
                           quote={message.quote}
                           createdAt={message.createdAt}
+                          now={now}
                           received={!message.isMine}
                           onPay={
                             !message.isMine && onPayQuote

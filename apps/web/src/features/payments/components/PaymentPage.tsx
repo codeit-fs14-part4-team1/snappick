@@ -40,6 +40,8 @@ export default function PaymentPage({
   pending,
   revisedQuoteHref,
   checkoutLocked = false,
+  paymentPending = false,
+  expired = false,
 }: {
   quote: QuoteDraft;
   photographerName: string;
@@ -49,6 +51,10 @@ export default function PaymentPage({
   pending: boolean;
   revisedQuoteHref?: string;
   checkoutLocked?: boolean;
+  /** 이 견적의 결제 결과를 서버가 확인하는 중 */
+  paymentPending?: boolean;
+  /** 촬영 일시가 지나 결제할 수 없는 견적 */
+  expired?: boolean;
 }) {
   const [agreed, setAgreed] = useState(false);
 
@@ -154,10 +160,12 @@ export default function PaymentPage({
             <h2 id="method-title">결제 수단</h2>
             <label className={styles.method}>
               <input type="radio" name="payment-method" defaultChecked />
-              토스페이먼츠
+              {quote.price === 0 ? '무료' : '토스페이먼츠'}
             </label>
             <p className={styles.help}>
-              결제수단은 토스페이먼츠 결제창에서 선택할 수 있어요.
+              {quote.price === 0
+                ? '결제 없이 예약이 확정돼요.'
+                : '결제수단은 토스페이먼츠 결제창에서 선택할 수 있어요.'}
             </p>
           </section>
         </div>
@@ -165,7 +173,14 @@ export default function PaymentPage({
           className={`${styles.panel} ${styles.summary}`}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!agreed || pending || revisedQuoteHref || checkoutLocked)
+            if (
+              !agreed ||
+              pending ||
+              revisedQuoteHref ||
+              checkoutLocked ||
+              paymentPending ||
+              expired
+            )
               return;
             void onPay();
           }}
@@ -208,6 +223,7 @@ export default function PaymentPage({
                 type="checkbox"
                 required
                 checked={agreed}
+                disabled={paymentPending || expired}
                 onChange={(event) => setAgreed(event.target.checked)}
               />
               <svg
@@ -239,15 +255,33 @@ export default function PaymentPage({
             fullWidth
             type="submit"
             disabled={
-              !agreed || pending || Boolean(revisedQuoteHref) || checkoutLocked
+              !agreed ||
+              pending ||
+              Boolean(revisedQuoteHref) ||
+              checkoutLocked ||
+              paymentPending ||
+              expired
             }
             startIcon={
               pending ? <span className={styles.spinner} /> : undefined
             }
           >
-            {pending ? '결제 진행 중…' : '동의하고 결제하기'}
+            {paymentPending
+              ? '결제 확인 중'
+              : expired
+                ? '촬영 일시가 지난 견적이에요'
+                : pending
+                  ? '결제 진행 중…'
+                  : '동의하고 결제하기'}
           </Button>
-          <p className={styles.help}>결제가 완료되면 예약이 바로 확정돼요.</p>
+          <p
+            className={styles.help}
+            role={paymentPending ? 'status' : undefined}
+          >
+            {paymentPending
+              ? '결제 결과를 확인하고 있어요. 나가도 자동으로 처리돼요.'
+              : '결제가 완료되면 예약이 바로 확정돼요.'}
+          </p>
         </form>
       </div>
     </PageContainer>

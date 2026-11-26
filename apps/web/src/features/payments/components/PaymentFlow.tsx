@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { getQuote, getChatRooms } from '@/features/chats/api';
 import useChatRooms from '@/features/chats/useChatRooms';
 import { toQuoteDraft } from '@/features/chats/quote';
+import AccessDenied from '@/components/ui/AccessDenied';
 import StateMessage from '@/components/ui/StateMessage';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -16,6 +17,19 @@ import useTossPaymentWindow from '../useTossPaymentWindow';
 import PaymentCompletion from './PaymentCompletion';
 import PaymentPage from './PaymentPage';
 import styles from './PaymentPage.module.css';
+
+// 주소의 message는 조작될 수 있어 쓰지 않고, 알려진 코드만 문구로 바꿉니다.
+const failReasons: Record<string, string> = {
+  PAY_PROCESS_CANCELED: '결제를 취소했어요. 다시 결제할 수 있어요.',
+  PAY_PROCESS_ABORTED:
+    '결제 진행 중 문제가 생겼어요. 결제를 다시 시도해 주세요.',
+  REJECT_CARD_COMPANY:
+    '카드사에서 결제를 거절했어요. 다른 결제 수단으로 시도해 주세요.',
+};
+
+function isForbidden(error: unknown) {
+  return error instanceof Error && 'status' in error && error.status === 403;
+}
 
 export default function PaymentFlow({
   mode = 'checkout',
@@ -39,7 +53,13 @@ export default function PaymentFlow({
   const [quoteSuperseded, setQuoteSuperseded] = useState(false);
   const [supersededDialogDismissed, setSupersededDialogDismissed] =
     useState(false);
+  // 화면을 연 시각 기준. 여는 동안 지난 경우는 서버가 막습니다.
+  const [openedAt] = useState(() => Date.now());
+  const [quoteExpired, setQuoteExpired] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
+  // 서버가 결제 결과를 확인하는 동안 true
+  const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<PaymentResult | null>(null);
   const started = useRef(false);
   const busy = useRef(false);
@@ -49,11 +69,20 @@ export default function PaymentFlow({
     queryFn: ({ signal }) => getQuote(quoteId, fetchWithAuth, signal),
     enabled: Boolean(quoteId && user?.accountType === 'USER'),
     staleTime: 0,
+    // 권한 오류는 다시 요청해도 같으므로 재시도하지 않습니다.
+    retry: (count, error) => !isForbidden(error) && count < 3,
+    // 결제 결과가 확정되면 화면을 자동으로 갱신합니다.
+    refetchInterval: (query) =>
+      query.state.data?.paymentPending ? 3000 : false,
   });
   const chatRoomId = quoteQuery.data?.chatRoomId ?? validReturnChatRoomId;
   const chatHref = chatRoomId
     ? `/chats/${encodeURIComponent(chatRoomId)}`
     : '/chats';
+  const failCode = mode === 'fail' ? (params.get('code') ?? '') : '';
+  const retryMessage =
+    (Object.hasOwn(failReasons, failCode) && failReasons[failCode]) ||
+    '결제를 다시 시도해 주세요.';
   const checkoutHref = `/payments?${new URLSearchParams({ quoteId })}`;
   const showCallbackError =
     mode === 'fail' || (mode === 'success' && Boolean(error));
@@ -96,6 +125,18 @@ export default function PaymentFlow({
     fetchNextPage,
   ]);
 
+  async function completePayment(approved: PaymentResult) {
+    setResult(approved);
+    await Promise.allSettled([
+      client.invalidateQueries({ queryKey: queryKeys.quotes.all }),
+      client.invalidateQueries({
+        queryKey: queryKeys.chats.all,
+        refetchType: 'all',
+      }),
+      client.invalidateQueries({ queryKey: queryKeys.reservations.all }),
+    ]);
+  }
+
   async function approve() {
     if (busy.current) return;
     const paymentKey = params.get('paymentKey');
@@ -116,22 +157,20 @@ export default function PaymentFlow({
     setPending(true);
     setError('');
     setRestartRequired(false);
+    setChecking(false);
     try {
       // 서버는 orderId의 소유자와 DB 금액을 다시 검증합니다.
       const approved = await confirmPayment(
         { paymentKey, orderId, amount },
         fetchWithAuth,
       );
-      setResult(approved);
-      await Promise.allSettled([
-        client.invalidateQueries({ queryKey: queryKeys.quotes.all }),
-        client.invalidateQueries({
-          queryKey: queryKeys.chats.all,
-          refetchType: 'all',
-        }),
-        client.invalidateQueries({ queryKey: queryKeys.reservations.all }),
-      ]);
+      await completePayment(approved);
     } catch (cause) {
+      if (isForbidden(cause)) {
+        setAccessDenied(true);
+        return;
+      }
+      void client.invalidateQueries({ queryKey: queryKeys.chats.all });
       if (
         cause instanceof Error &&
         'code' in cause &&
@@ -144,15 +183,29 @@ export default function PaymentFlow({
       if (
         cause instanceof Error &&
         'code' in cause &&
+        cause.code === 'QUOTE_EXPIRED'
+      ) {
+        setQuoteExpired(true);
+        setError('촬영 일시가 지나 결제할 수 없어요.');
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
         cause.code === 'PAYMENT_RETRY_REQUIRED'
       ) {
         setRestartRequired(true);
         setError('결제에 실패했어요');
         return;
       }
-      setError(
-        '결제 결과를 확인하지 못했어요. 결제 내역을 확인한 뒤 다시 시도해 주세요.',
-      );
+      const latest = await quoteQuery.refetch();
+      if (!latest.isError && latest.data?.paymentPending) {
+        setChecking(true);
+        return;
+      }
+      // 이미 처리된 결제라면 결제 준비 단계에서 서버가 막습니다.
+      setRestartRequired(true);
+      setError('결제를 완료하지 못했어요');
     } finally {
       busy.current = false;
       setPending(false);
@@ -168,6 +221,15 @@ export default function PaymentFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, user?.accountType]);
 
+  useEffect(() => {
+    if (!checking || pending || quoteQuery.data?.paymentPending !== false)
+      return;
+    // 서버가 처리를 마쳤으면 확정된 결과를 한 번 더 받아옵니다.
+    const timer = setTimeout(() => void approve(), 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking, pending, quoteQuery.data?.paymentPending]);
+
   async function pay() {
     if (busy.current || !user || !quoteQuery.data) return;
     busy.current = true;
@@ -176,22 +238,22 @@ export default function PaymentFlow({
     try {
       const payment = await preparePayment(quoteId, fetchWithAuth);
       if (!active.current) return;
+      if (payment.status === 'SUCCEEDED') {
+        await completePayment(payment);
+        return;
+      }
       const query = new URLSearchParams({
         quoteId,
         chatRoomId: quoteQuery.data.chatRoomId,
       });
 
-      if (payment.status === 'PENDING') {
-        query.set('paymentKey', payment.paymentKey);
-        query.set('orderId', payment.orderId);
-        query.set('amount', String(payment.amount));
-        router.replace(`/payments/success?${query}`);
-        return;
-      }
-
       await openPaymentWindow(user.id, payment, query);
     } catch (cause) {
       if (!active.current) return;
+      if (isForbidden(cause)) {
+        setAccessDenied(true);
+        return;
+      }
       if (
         cause instanceof Error &&
         'code' in cause &&
@@ -200,6 +262,23 @@ export default function PaymentFlow({
         setQuoteSuperseded(true);
         void quoteQuery.refetch();
         return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        cause.code === 'QUOTE_EXPIRED'
+      ) {
+        setQuoteExpired(true);
+        setError('촬영 일시가 지나 결제할 수 없어요.');
+        return;
+      }
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        cause.code === 'PAYMENT_IN_PROGRESS'
+      ) {
+        const latest = await quoteQuery.refetch();
+        if (!latest.isError && latest.data?.paymentPending) return;
       }
       const message = cause instanceof Error ? cause.message : '';
       setError(
@@ -219,7 +298,19 @@ export default function PaymentFlow({
   if (user?.accountType !== 'USER')
     return <StateMessage title="일반 사용자만 결제할 수 있어요" />;
 
+  if (accessDenied || isForbidden(quoteQuery.error)) return <AccessDenied />;
+
   const quote = quoteQuery.data;
+  if (mode === 'checkout' && result)
+    return (
+      <PaymentCompletion
+        reservationId={result.reservationId}
+        reservationNumber={result.reservationNumber}
+        amount={quote?.price ?? 0}
+        quote={quote}
+        chatHref={chatHref}
+      />
+    );
   const callbackCanRestart = mode === 'fail' || restartRequired;
   const canShowReservedQuote =
     callbackCanRestart || (mode === 'checkout' && !quoteQuery.isError);
@@ -255,15 +346,11 @@ export default function PaymentFlow({
       else if (mode === 'checkout') setError('');
       else router.replace(callbackCanRestart ? checkoutHref : chatHref);
     };
-    const resultUnknown =
-      !showSupersededNotice && mode === 'success' && !restartRequired;
     const dialogDescription = showSupersededNotice
       ? '재견적이 도착해서 이 견적으로는 결제할 수 없어요.'
       : callbackCanRestart
-        ? '현재 견적으로 다시 결제할 수 있어요.'
-        : resultUnknown
-          ? '결제가 정상적으로 끝나지 않았어요. 결제 내역에서 승인 여부를 확인한 뒤 다시 시도해 주세요.'
-          : error;
+        ? retryMessage
+        : error;
 
     return (
       <>
@@ -280,6 +367,8 @@ export default function PaymentFlow({
               showSupersededNotice || !quote.isLatest ? chatHref : undefined
             }
             checkoutLocked={showSupersededNotice || mode !== 'checkout'}
+            paymentPending={quote.paymentPending}
+            expired={quoteExpired || Date.parse(quote.shootAt) <= openedAt}
           />
         ) : (
           <StateMessage
@@ -300,16 +389,12 @@ export default function PaymentFlow({
           variant="confirm"
           className={styles.paymentDialog}
           title={
-            resultUnknown
-              ? '결제 결과를 확인하지 못했어요'
+            callbackCanRestart && !showSupersededNotice
+              ? '결제를 완료하지 못했어요'
               : '결제를 진행할 수 없어요'
           }
           description={dialogDescription}
-          footer={
-            <Button onClick={closeDialog}>
-              {resultUnknown ? '이전 페이지로' : '확인'}
-            </Button>
-          }
+          footer={<Button onClick={closeDialog}>확인</Button>}
         />
       </>
     );
@@ -327,7 +412,7 @@ export default function PaymentFlow({
       <StateMessage
         className={styles.state}
         title="결제가 완료되지 않았어요"
-        description="결제창을 닫았거나 결제에 실패했어요. 다시 시도할 수 있어요."
+        description={retryMessage}
         link={{
           label: '결제 페이지로 돌아가기',
           href: checkoutHref,
@@ -344,7 +429,9 @@ export default function PaymentFlow({
           description={
             restartRequired
               ? '결제 페이지로 돌아가 다시 진행해 주세요.'
-              : '승인 결과 확인 전에는 결제를 다시 시작하지 마세요.'
+              : checking
+                ? '이 화면을 나가도 자동으로 처리돼요.'
+                : '승인 결과 확인 전에는 결제를 다시 시작하지 마세요.'
           }
           {...(restartRequired
             ? {
@@ -353,14 +440,15 @@ export default function PaymentFlow({
                   href: checkoutHref,
                 },
               }
-            : error
-              ? { link: { label: '이전 페이지로', href: chatHref } }
+            : error || checking
+              ? { link: { label: '채팅으로 가기', href: chatHref } }
               : {})}
         />
       );
     return (
       <PaymentCompletion
         reservationId={result.reservationId}
+        reservationNumber={result.reservationNumber}
         amount={Number(params.get('amount'))}
         quote={quote}
         chatHref={chatHref}

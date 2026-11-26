@@ -3,14 +3,17 @@
 import Image from 'next/image';
 
 import { useMyPageAccount } from '@/features/my/components/MyPageLayout';
-import { useReservationDetail } from '../hooks/useReservationDetail';
+import {
+  isReservationNotFound,
+  useReservationDetail,
+} from '../hooks/useReservationDetail';
 import type { ReservationStatus } from '@snappick/shared';
 import { formatReservationDDay } from '../utils/formatReservationDDay';
 import { useState } from 'react';
 import { formatDateWithWeekday, formatTime } from '@/utils/dateTime';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useUpdateReservationCancel } from '../hooks/useReservationCancel';
-import { useRouter } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 
 import Modal from '@/components/ui/Modal';
 import ReservationNotice from './ReservationNotice';
@@ -118,7 +121,7 @@ export default function ReservationDetail({
   // 취소 요청 반려 확인 모달의 열림 상태
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const { data, isPending, isError, isFetching, refetch } =
+  const { data, error, isPending, isError, isFetching, refetch } =
     useReservationDetail(reservationId);
 
   // 일반 사용자 취소 요청 모달
@@ -133,6 +136,11 @@ export default function ReservationDetail({
         <p role="status">예약 상세 정보를 불러오는 중이에요.</p>
       </>
     );
+  }
+
+  // 마이페이지 메뉴까지 공통 404 화면으로 교체
+  if (isReservationNotFound(error)) {
+    notFound();
   }
 
   if (isError) {
@@ -522,10 +530,12 @@ export default function ReservationDetail({
               <dt>결제 수단</dt>
               <dd className={data.payment ? undefined : styles.unavailable}>
                 {data.payment
-                  ? formatPaymentMethod(
-                      data.payment.paymentMethod,
-                      data.payment.paymentProvider,
-                    )
+                  ? data.totalAmount === 0
+                    ? '무료'
+                    : formatPaymentMethod(
+                        data.payment.paymentMethod,
+                        data.payment.paymentProvider,
+                      )
                   : '-'}
               </dd>
             </div>

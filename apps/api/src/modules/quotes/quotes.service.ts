@@ -283,6 +283,7 @@ export async function getQuote(accountId: string, quoteId: string) {
     },
     include: {
       reservation: { select: { id: true, status: true } },
+      payment: { where: { status: 'PENDING' }, take: 1, select: { id: true } },
       shooting_case: {
         select: {
           quotes: {

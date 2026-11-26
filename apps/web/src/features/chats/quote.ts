@@ -37,6 +37,8 @@ export type Quote = {
   isLatest: boolean;
   reservationStatus?: ReservationStatus | null;
   reservationId?: string | null;
+  /** 결제 결과를 서버가 확인하는 중이면 true */
+  paymentPending?: boolean;
   representativeImageUrl?: string | null;
   quoteName: string;
   shootAt: string;

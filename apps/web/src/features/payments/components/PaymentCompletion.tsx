@@ -10,11 +10,13 @@ import styles from './PaymentPage.module.css';
 
 export default function PaymentCompletion({
   reservationId,
+  reservationNumber,
   amount,
   quote,
   chatHref,
 }: {
   reservationId: string;
+  reservationNumber: string;
   amount: number;
   quote?: Quote;
   chatHref: string;
@@ -31,7 +33,7 @@ export default function PaymentCompletion({
         <dl className={styles.rows}>
           <div>
             <dt>예약 번호</dt>
-            <dd>{reservationId}</dd>
+            <dd>{reservationNumber}</dd>
           </div>
           <div>
             <dt>견적명</dt>
@@ -54,7 +56,7 @@ export default function PaymentCompletion({
           )}
           <div>
             <dt>결제 수단</dt>
-            <dd>토스페이먼츠</dd>
+            <dd>{amount === 0 ? '무료' : '토스페이먼츠'}</dd>
           </div>
           <div>
             <dt>결제 금액</dt>

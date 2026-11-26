@@ -5,27 +5,35 @@ export type PreparedPayment = {
   orderId: string;
   orderName: string;
   amount: number;
-} & ({ status: 'READY' } | { status: 'PENDING'; paymentKey: string });
+  status: 'READY';
+};
 
 export type PaymentResult = {
   paymentId: string;
   status: 'SUCCEEDED';
   reservationId: string;
+  /** 화면에 표시하는 예약번호 (SP-…) */
+  reservationNumber: string;
 };
 
 export async function preparePayment(
   quoteId: string,
   fetchWithAuth: FetchWithAuth,
 ) {
-  const result = await fetchWithAuth<PreparedPayment>('/payments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ quoteId }),
-  });
+  const result = await fetchWithAuth<PreparedPayment | PaymentResult>(
+    '/payments',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quoteId }),
+    },
+  );
+  // 0원 견적은 결제창 없이 바로 예약이 확정됩니다.
+  if (result?.status === 'SUCCEEDED' && result.reservationId) return result;
   if (
-    !result?.orderId ||
-    (result.status !== 'READY' &&
-      (result.status !== 'PENDING' || !result.paymentKey)) ||
+    !result ||
+    result.status !== 'READY' ||
+    !result.orderId ||
     !Number.isSafeInteger(result.amount) ||
     result.amount < 0
   )

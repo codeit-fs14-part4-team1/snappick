@@ -27,6 +27,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
     isLatest: true,
     reservationStatus: null,
     reservationId: null,
+    paymentPending: false,
     quoteName: quote.quote_name,
     shootAt: quote.shoot_at,
     location: quote.location,
@@ -79,6 +80,7 @@ export async function getQuoteHandler(req: Request, res: Response) {
     isLatest: quote.shooting_case.quotes[0]?.id === quote.id,
     reservationStatus: quote.reservation?.status ?? null,
     reservationId: quote.reservation?.id ?? null,
+    paymentPending: quote.payment.length > 0,
     representativeImageUrl: toImageUrl(
       quote.chat_room?.photographer?.representativePhoto?.photo
         .storage_location ?? null,

@@ -1,0 +1,9 @@
+.state {
+  min-height: calc(100dvh - 81px - var(--page-padding));
+}
+
+@media (max-width: 767px) {
+  .state {
+    min-height: calc(100dvh - 57px - var(--page-padding));
+  }
+}

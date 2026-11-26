@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { takeReturnPath } from '@/features/auth/returnPath';
 import { apiFetch } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -107,8 +108,8 @@ export default function LoginForm() {
       // 사용자 정보 조회까지 성공하면 로그인 완료로 처리함
       setLoginStatus('success');
 
-      // 로그인 완료 후 메인 페이지로 이동함
-      router.replace('/');
+      // 로그인 완료 후 원래 화면으로 이동함 (없으면 메인 페이지)
+      router.replace(takeReturnPath());
     } catch (error) {
       // 로그인 API의 인증 정보 오류만 invalid로 처리함
       if (
