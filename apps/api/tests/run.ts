@@ -20,6 +20,7 @@ const LABELS: Record<string, string> = {
   cancel: 'CANCEL · 취소 요청 · 확정 · 반려',
   reviews: 'REVIEW · 리뷰 · 작가 답글',
   delivery: 'DELIVERY · 결과물 전달 · 구매 확정',
+  guest: 'GUEST · 비회원 접근 제어',
 };
 
 const testsDir = new URL('.', import.meta.url);
