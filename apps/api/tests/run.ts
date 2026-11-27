@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   'reservation-detail': 'RESVDETAIL · 예약 상세 · 자동 촬영 완료',
   cancel: 'CANCEL · 취소 요청 · 확정 · 반려',
   reviews: 'REVIEW · 리뷰 · 작가 답글',
+  delivery: 'DELIVERY · 결과물 전달 · 구매 확정',
 };
 
 const testsDir = new URL('.', import.meta.url);
