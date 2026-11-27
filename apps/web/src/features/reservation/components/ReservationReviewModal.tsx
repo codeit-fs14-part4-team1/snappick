@@ -1,10 +1,15 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Image from 'next/image';
 
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/ToastProvider';
+import {
+  isReviewAlreadyExists,
+  REVIEW_ALREADY_EXISTS_MESSAGE,
+} from '@/features/my/reviews/api';
 import { formatDateWithWeekday } from '@/utils/dateTime';
 
 import type { ReviewBooking } from '@/features/my/reviews/types';
@@ -50,6 +55,8 @@ export default function ReservationReviewModal({
   const createMutation = useCreateReservationReview(booking.reservationId);
 
   const isSaving = createMutation.isPending;
+  const thumbnailUrl =
+    booking.representativeImageUrl ?? booking.profileImageUrl;
 
   const displayedRating = rating === 0 ? (hoverRating ?? 0) : rating;
 
@@ -83,7 +90,12 @@ export default function ReservationReviewModal({
 
       showToast('리뷰를 저장했어요.');
       onClose();
-    } catch {
+    } catch (error) {
+      if (isReviewAlreadyExists(error)) {
+        showToast(REVIEW_ALREADY_EXISTS_MESSAGE);
+        onClose();
+        return;
+      }
       showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error');
     }
   };
@@ -124,7 +136,18 @@ export default function ReservationReviewModal({
       >
         {/* 리뷰를 작성할 예약 정보 */}
         <div className={styles.summary}>
-          <span className={styles.thumbnail} aria-hidden="true" />
+          {thumbnailUrl ? (
+            <Image
+              src={thumbnailUrl}
+              alt=""
+              width={56}
+              height={56}
+              className={styles.thumbnail}
+              unoptimized={!booking.representativeImageUrl}
+            />
+          ) : (
+            <span className={styles.thumbnail} aria-hidden="true" />
+          )}
 
           <div className={styles.bookingText}>
             <p className={styles.bookingName}>

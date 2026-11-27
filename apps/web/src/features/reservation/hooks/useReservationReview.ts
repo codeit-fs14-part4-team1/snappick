@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { queryKeys } from '@/lib/queryKeys';
 
-import { getEligibleReviews, saveMyReview } from '@/features/my/reviews/api';
+import {
+  getEligibleReviews,
+  isReviewAlreadyExists,
+  saveMyReview,
+} from '@/features/my/reviews/api';
 
 // 특정 예약의 리뷰 작성 가능 여부를 조회
 export function useReservationReviewEligibility(
@@ -60,6 +64,14 @@ export function useCreateReservationReview(reservationId: string) {
   const { fetchWithAuth } = useAuth();
   const queryClient = useQueryClient();
 
+  function refreshReviewLists() {
+    queryClient.setQueryData(
+      [...queryKeys.reviews.all, 'detail', reservationId, 'eligibility'],
+      null,
+    );
+    return queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all });
+  }
+
   return useMutation({
     mutationFn: ({ rating, comment }: { rating: number; comment: string }) =>
       saveMyReview(fetchWithAuth, {
@@ -69,18 +81,7 @@ export function useCreateReservationReview(reservationId: string) {
       }),
 
     onSuccess: async (response) => {
-      // 리뷰 등록에 성공하면 해당 예약은 작성 불가 상태로 변경
-      queryClient.setQueryData(
-        [...queryKeys.reviews.all, 'detail', reservationId, 'eligibility'],
-        null,
-      );
-
-      // 작성 가능한 리뷰 및 작성한 리뷰 목록 갱신
-      const invalidations = [
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.reviews.all,
-        }),
-      ];
+      const invalidations = [refreshReviewLists()];
 
       // 해당 작가의 프로필 및 AI 리뷰 요약 캐시 갱신
       if (response.photographerId) {
@@ -97,6 +98,9 @@ export function useCreateReservationReview(reservationId: string) {
       }
 
       await Promise.all(invalidations);
+    },
+    onError: (error) => {
+      if (isReviewAlreadyExists(error)) void refreshReviewLists();
     },
   });
 }

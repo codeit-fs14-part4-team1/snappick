@@ -1,6 +1,12 @@
 import type { FetchWithAuth } from '@/features/auth/types';
+import { ApiError } from '@/lib/api';
 
 export const REVIEW_PAGE_SIZE = 5;
+export const REVIEW_ALREADY_EXISTS_MESSAGE = '이미 작성된 리뷰가 있어요.';
+
+export function isReviewAlreadyExists(error: unknown) {
+  return error instanceof ApiError && error.code === 'REVIEW_ALREADY_EXISTS';
+}
 
 type PageResponse<T> = {
   items: T[];
@@ -10,15 +16,18 @@ type PageResponse<T> = {
   totalPages: number;
 };
 
+type ReviewPhotographer = {
+  photographerId: string;
+  nickname: string;
+  profileImageUrl: string | null;
+  representativeImageUrl: string | null;
+};
+
 export type EligibleReviewResponse = {
   reservationId: string;
   quoteName: string | null;
   shootAt: string;
-  photographer: {
-    photographerId: string;
-    nickname: string;
-    profileImageUrl: string | null;
-  } | null;
+  photographer: ReviewPhotographer | null;
 };
 
 export type ReviewResponse = {
@@ -29,11 +38,7 @@ export type ReviewResponse = {
   rating: number;
   comment: string;
   createdAt: string;
-  photographer: {
-    photographerId: string;
-    nickname: string;
-    profileImageUrl: string | null;
-  } | null;
+  photographer: ReviewPhotographer | null;
   reply: { comment: string; createdAt: string } | null;
 };
 

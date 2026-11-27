@@ -3,6 +3,7 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import {
   getNotificationsHandler,
   hasUnreadNotificationsHandler,
+  markNotificationsSeenHandler,
   readNotificationHandler,
 } from './notifications.controller.js';
 
@@ -16,6 +17,7 @@ notificationsRouter.get(
   authenticate,
   hasUnreadNotificationsHandler,
 );
+notificationsRouter.patch('/seen', authenticate, markNotificationsSeenHandler);
 notificationsRouter.patch(
   '/:notificationId/read',
   authenticate,

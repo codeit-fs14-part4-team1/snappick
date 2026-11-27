@@ -92,6 +92,11 @@ export function toQuoteDraft(quote: Quote): QuoteDraft {
   };
 }
 
+// 브라우저의 시간대와 관계없이 견적에 입력한 촬영 시각은 한국 시간이다.
+export function parseQuoteShootAt(date: string, startTime: string) {
+  return new Date(`${date}T${startTime}:00+09:00`);
+}
+
 export function createQuoteInput(
   roomId: string,
   draft: QuoteDraft,
@@ -108,10 +113,7 @@ export function createQuoteInput(
     ...(shootingCaseId && { expectedVersion }),
     ...(draft.productId && { productId: draft.productId }),
     quoteName: draft.quoteName,
-    // 브라우저의 시간대와 관계없이 촬영 시작 시간은 한국 시간으로 전송합니다.
-    shootAt: new Date(
-      `${draft.date}T${draft.startTime}:00+09:00`,
-    ).toISOString(),
+    shootAt: parseQuoteShootAt(draft.date, draft.startTime).toISOString(),
     location: draft.location,
     locationLat: draft.locationLat,
     locationLng: draft.locationLng,

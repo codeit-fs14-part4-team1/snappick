@@ -5,6 +5,7 @@ import {
   createNotification,
   notificationMessages,
 } from '../notifications/notifications.create.js';
+import { getChatViewerIds } from '../notifications/notifications.viewers.js';
 
 export async function createQuote(accountId: string, input: CreateQuoteInput) {
   const chatRoom = await prisma.chat_rooms.findUnique({
@@ -67,6 +68,9 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
   if (input.productId && !product) {
     throw new HttpError(404, 'PRODUCT_NOT_FOUND', '상품을 찾을 수 없습니다.');
   }
+
+  // 받는 사람이 채팅방을 보고 있으면 견적 카드가 바로 보이므로 알림을 만들지 않는다 (NT-13)
+  const viewerIds = await getChatViewerIds(input.chatRoomId);
 
   // 촬영 건, 견적, 채팅 메시지를 하나의 트랜잭션에서 처리
   return prisma.$transaction(async (tx) => {
@@ -209,6 +213,15 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       );
     }
 
+    const shootAt = new Date(input.shootAt);
+    if (shootAt.getTime() <= Date.now()) {
+      throw new HttpError(
+        400,
+        'QUOTE_SHOOT_TIME_PASSED',
+        '시간이 유효하지 않아요. 시간을 다시 선택해 주세요.',
+      );
+    }
+
     // 견적 저장
     const quote = await tx.quotes.create({
       data: {
@@ -217,7 +230,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         photographer_id: photographer.id,
         quote_name: input.quoteName,
         version: nextVersion,
-        shoot_at: new Date(input.shootAt),
+        shoot_at: shootAt,
         location: input.location,
         location_lat: input.locationLat,
         location_lng: input.locationLng,
@@ -256,17 +269,19 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       },
     });
 
-    const notification = await createNotification(
-      {
-        accountId: recipientAccountId,
-        type: 'NEW_QUOTE',
-        targetId: input.chatRoomId,
-        message: notificationMessages.newQuote(
-          photographer.auth_account.nickname,
-        ),
-      },
-      tx,
-    );
+    const notification = viewerIds.has(recipientAccountId)
+      ? null
+      : await createNotification(
+          {
+            accountId: recipientAccountId,
+            type: 'NEW_QUOTE',
+            targetId: input.chatRoomId,
+            message: notificationMessages.newQuote(
+              photographer.auth_account.nickname,
+            ),
+          },
+          tx,
+        );
 
     return {
       quote,

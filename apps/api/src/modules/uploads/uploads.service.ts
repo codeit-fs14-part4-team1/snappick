@@ -5,6 +5,7 @@ import { toImageUrl } from '../../utils/asset-url.js';
 import { HttpError } from '../../utils/http-error.js';
 import type { AccessTokenPayload } from '../../utils/tokens.js';
 import { getMyReadiness } from '../photographers/photographers.service.js';
+import { createInitialValueScores } from '../recommendations/value-score.service.js';
 import {
   oneAtATime,
   toStoredWebp,
@@ -246,6 +247,13 @@ async function saveNewPhotos(
         });
         registered.set(item.photoKey, photo);
       }
+      // 추천 피드 가치 점수 행 (다음 배치 전까지 0점이 되지 않게)
+      await createInitialValueScores(
+        tx,
+        photographerId,
+        stored.flatMap(({ item }) => registered.get(item.photoKey)?.id ?? []),
+        new Date(),
+      );
 
       // PF-12: 작가당 1장, 새로 지정하면 기존 대표를 바꾼다. 대표로 고른 사진이 실패하면 바꾸지 않는다
       const representative = items.find(

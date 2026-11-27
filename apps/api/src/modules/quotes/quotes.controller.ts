@@ -61,7 +61,9 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   io.to(`chat:${input.chatRoomId}`).emit('message:new', messageData);
 
-  emitNotification(io, [notification]);
+  if (notification) {
+    emitNotification(io, [notification]);
+  }
 
   res.status(201).json(quoteData);
 }

@@ -82,6 +82,9 @@ export default function useReadChatMessages(roomId: string) {
             void client.invalidateQueries({
               queryKey: queryKeys.chats.rooms().slice(0, -1),
             });
+            void client.invalidateQueries({
+              queryKey: queryKeys.notifications.hasUnread(),
+            });
             if (pending.current && !newer(pending.current, target))
               pending.current = null;
           }

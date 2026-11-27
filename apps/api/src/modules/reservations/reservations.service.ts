@@ -20,7 +20,36 @@ import {
   notificationMessages,
   scheduleShootReminders,
 } from '../notifications/notifications.create.js';
+import { getChatViewerIds } from '../notifications/notifications.viewers.js';
 import { createUserActionLog } from '../interactions/interactions.service.js';
+
+type ReservationParticipant = {
+  auth_account_id: string;
+  auth_account: { nickname: string };
+};
+
+function reservationNotificationRecipients(
+  user: ReservationParticipant | null,
+  photographer: ReservationParticipant | null,
+) {
+  return [
+    {
+      accountId: user?.auth_account_id,
+      counterpart: photographer
+        ? `${photographer.auth_account.nickname} 작가님`
+        : undefined,
+    },
+    {
+      accountId: photographer?.auth_account_id,
+      counterpart: user ? `${user.auth_account.nickname}님` : undefined,
+    },
+  ].filter(
+    (
+      recipient,
+    ): recipient is { accountId: string; counterpart: string | undefined } =>
+      Boolean(recipient.accountId),
+  );
+}
 
 // 결제 1건·견적 1건당 예약은 1개 (payment_id, quote_id unique)
 // 프론트는 details.reservationId로 기존 예약에 연결한다
@@ -141,7 +170,12 @@ export async function createReservation(
       status: true,
       pg_provider: true,
       paid_at: true,
-      user: { select: { auth_account_id: true } },
+      user: {
+        select: {
+          auth_account_id: true,
+          auth_account: { select: { nickname: true } },
+        },
+      },
       photographer: {
         select: {
           id: true,
@@ -203,10 +237,12 @@ export async function createReservation(
 
   const { quote, photographer } = payment;
   // 예약 확정·촬영일 알림을 받을 유저와 작가의 계정
-  const accountIds = [
-    payment.user?.auth_account_id,
-    photographer.auth_account_id,
-  ].filter((id): id is string => !!id);
+  const recipients = reservationNotificationRecipients(
+    payment.user,
+    photographer,
+  );
+  // 채팅방을 보고 있는 사람은 예약 확정 메시지가 바로 보이므로 확정 알림을 만들지 않는다 (NT-13)
+  const viewerIds = await getChatViewerIds(quote.chat_room_id);
 
   try {
     // 예약이 생성될 때만 알림이 남도록 같은 트랜잭션에서 저장한다
@@ -237,14 +273,15 @@ export async function createReservation(
       );
 
       const notifications: notifications[] = [];
-      for (const accountId of accountIds) {
+      for (const { accountId, counterpart } of recipients) {
+        if (viewerIds.has(accountId)) continue;
         notifications.push(
           await createNotification(
             {
               accountId,
               type: 'RESERVATION_CONFIRMED',
               targetId: created.id,
-              message: notificationMessages.reservationConfirmed(),
+              message: notificationMessages.reservationConfirmed(counterpart),
             },
             tx,
           ),
@@ -255,7 +292,7 @@ export async function createReservation(
         {
           reservationId: created.id,
           shootAt: created.shoot_at,
-          accountIds,
+          recipients,
         },
         tx,
       );
@@ -534,6 +571,7 @@ export async function createCancelReservation(
         photographer: {
           select: {
             auth_account_id: true,
+            auth_account: { select: { nickname: true } },
           },
         },
         reservation_cancel_request: {
@@ -599,6 +637,8 @@ export async function createCancelReservation(
 
     // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
     const notifications: notifications[] = [];
+    // 채팅방을 보고 있는 사람은 아래 시스템 메시지가 바로 보이므로 알림을 만들지 않는다 (NT-13)
+    const viewerIds = await getChatViewerIds(reservation.quote?.chat_room_id);
 
     if (cancelRequest.status === 'ACCEPTED') {
       await tx.reservations.update({
@@ -611,25 +651,30 @@ export async function createCancelReservation(
       await cancelShootReminders(reservationId, tx);
 
       // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
-      const accountIds = [
-        reservation.user?.auth_account_id,
-        reservation.photographer?.auth_account_id,
-      ].filter((id): id is string => !!id);
-
-      for (const accountId of accountIds) {
+      for (const {
+        accountId,
+        counterpart,
+      } of reservationNotificationRecipients(
+        reservation.user,
+        reservation.photographer,
+      )) {
+        if (viewerIds.has(accountId)) continue;
         notifications.push(
           await createNotification(
             {
               accountId,
               type: 'RESERVATION_CANCELED',
               targetId: reservationId,
-              message: notificationMessages.reservationCanceled(),
+              message: notificationMessages.reservationCanceled(counterpart),
             },
             tx,
           ),
         );
       }
-    } else if (reservation.photographer) {
+    } else if (
+      reservation.photographer &&
+      !viewerIds.has(reservation.photographer.auth_account_id)
+    ) {
       notifications.push(
         await createNotification(
           {
@@ -723,12 +768,14 @@ export async function patchCancelReservation(
         user: {
           select: {
             auth_account_id: true,
+            auth_account: { select: { nickname: true } },
           },
         },
         // 예약 취소를 알릴 작가의 계정 ID를 가져옴
         photographer: {
           select: {
             auth_account_id: true,
+            auth_account: { select: { nickname: true } },
           },
         },
         reservation_cancel_request: {
@@ -799,38 +846,47 @@ export async function patchCancelReservation(
 
     // 컨트롤러가 실시간 전송에 쓰고 응답에서는 뺀다
     const notifications: notifications[] = [];
+    // 채팅방을 보고 있는 사람은 아래 시스템 메시지가 바로 보이므로 알림을 만들지 않는다 (NT-13)
+    const viewerIds = await getChatViewerIds(reservation.quote?.chat_room_id);
 
     if (accepted) {
       // 취소된 예약의 촬영일 알림이 가지 않도록 지운다
       await cancelShootReminders(reservationId, tx);
 
       // 예약 취소를 유저와 작가에게 알린다 (탈퇴한 쪽은 제외)
-      const accountIds = [
-        reservation.user?.auth_account_id,
-        reservation.photographer?.auth_account_id,
-      ].filter((id): id is string => !!id);
-
-      for (const accountId of accountIds) {
+      for (const {
+        accountId,
+        counterpart,
+      } of reservationNotificationRecipients(
+        reservation.user,
+        reservation.photographer,
+      )) {
+        if (viewerIds.has(accountId)) continue;
         notifications.push(
           await createNotification(
             {
               accountId,
               type: 'RESERVATION_CANCELED',
               targetId: reservationId,
-              message: notificationMessages.reservationCanceled(),
+              message: notificationMessages.reservationCanceled(counterpart),
             },
             tx,
           ),
         );
       }
-    } else if (reservation.user) {
+    } else if (
+      reservation.user &&
+      !viewerIds.has(reservation.user.auth_account_id)
+    ) {
       notifications.push(
         await createNotification(
           {
             accountId: reservation.user.auth_account_id,
             type: 'CANCEL_REJECTED',
             targetId: reservationId,
-            message: notificationMessages.cancelRejected(),
+            message: notificationMessages.cancelRejected(
+              reservation.photographer?.auth_account.nickname,
+            ),
           },
           tx,
         ),
@@ -1133,7 +1189,7 @@ export async function createDeliverable(
               type: 'DELIVERY_COMPLETED',
               targetId: reservationId,
               message: notificationMessages.deliveryCompleted(
-                reservation.photographer?.auth_account.nickname ?? '작가',
+                reservation.photographer?.auth_account.nickname,
               ),
             },
             tx,

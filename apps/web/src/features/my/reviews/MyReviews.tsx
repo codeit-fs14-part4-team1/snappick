@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Image from 'next/image';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Pagination from '@/components/ui/Pagination';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -9,6 +10,8 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   getEligibleReviews,
   getMyReviews,
+  isReviewAlreadyExists,
+  REVIEW_ALREADY_EXISTS_MESSAGE,
   REVIEW_PAGE_SIZE,
   saveMyReview,
 } from './api';
@@ -63,6 +66,8 @@ export default function MyReviews() {
       reservationId: item.reservationId,
       photographerId: item.photographer?.photographerId,
       photographerName: item.photographer?.nickname ?? '작가 정보 없음',
+      representativeImageUrl: item.photographer?.representativeImageUrl ?? null,
+      profileImageUrl: item.photographer?.profileImageUrl ?? null,
       quoteName: item.quoteName ?? '견적 정보 없음',
       shootDate: item.shootAt,
     }),
@@ -83,6 +88,9 @@ export default function MyReviews() {
       reservationId: review.reservationId ?? '',
       photographerId: review.photographer?.photographerId,
       photographerName: review.photographer?.nickname ?? '작가 정보 없음',
+      representativeImageUrl:
+        review.photographer?.representativeImageUrl ?? null,
+      profileImageUrl: review.photographer?.profileImageUrl ?? null,
       quoteName: review.quoteName ?? '',
       shootDate: review.shootAt ?? '',
     },
@@ -123,8 +131,16 @@ export default function MyReviews() {
       invalidateReviewQueries(result.photographerId);
       showToast('리뷰를 저장했어요.');
     },
-    onError: () =>
-      showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error'),
+    onError: (error) => {
+      if (isReviewAlreadyExists(error)) {
+        setEditor(null);
+        setPage(1);
+        invalidateReviewQueries();
+        showToast(REVIEW_ALREADY_EXISTS_MESSAGE);
+        return;
+      }
+      showToast('리뷰를 저장하지 못했어요. 다시 시도해 주세요.', 'error');
+    },
   });
   const remove = useMutation({
     mutationFn: async (review: MyReview) => {
@@ -361,6 +377,8 @@ function ReviewEditor({
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const displayedRating = rating === 0 ? (hoverRating ?? 0) : rating;
   const [comment, setComment] = useState(editor.review?.comment ?? '');
+  const thumbnailUrl =
+    editor.booking.representativeImageUrl ?? editor.booking.profileImageUrl;
   const canSubmit =
     !pending &&
     rating > 0 &&
@@ -400,7 +418,18 @@ function ReviewEditor({
         }}
       >
         <div className={styles.summary}>
-          <span className={styles.thumbnail} aria-hidden="true" />
+          {thumbnailUrl ? (
+            <Image
+              src={thumbnailUrl}
+              alt=""
+              width={56}
+              height={56}
+              className={styles.thumbnail}
+              unoptimized={!editor.booking.representativeImageUrl}
+            />
+          ) : (
+            <span className={styles.thumbnail} aria-hidden="true" />
+          )}
           <div className={styles.bookingText}>
             <p className={styles.bookingName}>
               {editor.booking.photographerName}

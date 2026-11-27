@@ -1,0 +1,111 @@
+name: 버그 이슈
+description: 발견한 문제를 등록합니다
+labels:
+  - qa
+body:
+  - type: markdown
+    attributes:
+      value: |
+        제목에는 증상 한 줄만 적어 주세요. 예: `인기순 스크롤 중 사진 누락`
+        아래에서 기능·구분·번호를 고르면 등록 후 제목 앞에 `[FEED-L2-14]` 같은 ID가 자동으로 붙습니다.
+
+  - type: input
+    id: feature
+    attributes:
+      label: 기능
+      description: 노션 기능 문서의 버그 등록하기 링크로 열면 자동으로 채워집니다.
+      placeholder: FEED
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 구분
+      options:
+        - L1
+        - L2
+        - L3
+        - VW
+        - BE
+        - AC
+    validations:
+      required: true
+
+  - type: input
+    id: number
+    attributes:
+      label: 번호
+      description: 체크 줄 ID의 숫자입니다. VW는 화면 번호를 적습니다.
+      placeholder: '14'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vw-viewport
+    attributes:
+      label: VW 해상도
+      description: 구분이 VW일 때만 고릅니다.
+      options:
+        - PC
+        - TB
+        - MO
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      description: 최초 판단은 잠정이고 트리아지(확정회의)에서 확정합니다.
+      options:
+        - 1 · 흐름이 막히거나 데이터·권한 문제
+        - 2 · 잘못 동작하거나 정책과 다르지만 우회 가능
+        - 3 · 화면·문구 문제
+    validations:
+      required: true
+
+  - type: dropdown
+    id: viewport
+    attributes:
+      label: 해상도
+      multiple: true
+      options:
+        - PC (1920)
+        - Tablet (768)
+        - Mobile (375)
+        - 실제 휴대폰
+        - 해당 없음 (BE·AC)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: account
+    attributes:
+      label: 계정
+      multiple: true
+      options:
+        - 비회원
+        - 일반
+        - 작가
+    validations:
+      required: true
+
+  - type: input
+    id: occurred-at
+    attributes:
+      label: 발생 시각 (KST, 선택)
+      placeholder: 비워두고 등록이 기본이며, 시각을 기재할 필요가 있는 경우에만 적어주세요
+    validations:
+      required: false
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 증상
+      description: 무엇을 했을 때, 무엇이 보였는지 적어 주세요. 스크린샷이나 콘솔 로그를 붙여도 됩니다.
+      placeholder: |
+        1. 인기순으로 바꾸고 3페이지까지 스크롤
+        2. 같은 사진이 두 번 보임
+    validations:
+      required: true

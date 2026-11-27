@@ -358,12 +358,14 @@ model notifications {
   target_id       String
   message         String
   scheduled_at    DateTime?
+  seen_at         DateTime?
   read_at         DateTime?
   created_at      DateTime       @default(now())
 
   auth_account auth_accounts @relation(fields: [auth_account_id], references: [id], onDelete: Cascade)
 
   @@index([auth_account_id, created_at])
+  @@index([type, scheduled_at])
 }
 
 // 영일님 파트
