@@ -84,15 +84,42 @@
 .reasonOption.selected {
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
+  font-weight: 700;
 }
 
+/* 취소 사유 라디오 버튼 */
 .reasonRadio {
+  appearance: none;
+  box-sizing: border-box;
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   margin: 0;
-  accent-color: var(--color-accent);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-bg-base);
   cursor: pointer;
+}
+
+/* 선택된 라디오 버튼 */
+.reasonRadio:checked {
+  border-color: var(--color-accent);
+  background-image: radial-gradient(
+    circle,
+    var(--color-accent) 0 4px,
+    transparent 4px
+  );
+}
+
+/* 키보드로 접근할 때 포커스 표시 */
+.reasonRadio:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 요청 중 비활성화 상태 */
+.reasonRadio:disabled {
+  cursor: not-allowed;
 }
 
 /* 기타 사유 직접 입력 */

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 
 import { useMyPageAccount } from '@/features/my/components/MyPageLayout';
+import { usePhotographerProfile } from '@/features/profile/hooks/usePhotographerProfile';
 import {
   isReservationNotFound,
   useReservationDetail,
@@ -15,6 +16,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { useUpdateReservationCancel } from '../hooks/useReservationCancel';
 import { notFound, useRouter } from 'next/navigation';
 
+import StateMessage from '@/components/ui/StateMessage';
 import Modal from '@/components/ui/Modal';
 import ReservationNotice from './ReservationNotice';
 import ReservationCancelModal from './ReservationCancelModal';
@@ -28,6 +30,22 @@ import NaverMapView from '@/features/map/components/NaverMapView';
 import { naverMapSearchUrl } from '@/features/map/naver-maps';
 
 import styles from './ReservationDetail.module.css';
+
+// 분 단위의 촬영 시간을 시간과 분으로 변환
+function formatDurationMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) {
+    return `${remainingMinutes}분`;
+  }
+
+  if (remainingMinutes === 0) {
+    return `${hours}시간`;
+  }
+
+  return `${hours}시간 ${remainingMinutes}분`;
+}
 
 // 예약 상세 페이지 제목과 화면 표시용 예약번호
 function ReservationDetailHeading({
@@ -124,16 +142,28 @@ export default function ReservationDetail({
   const { data, error, isPending, isError, isFetching, refetch } =
     useReservationDetail(reservationId);
 
+  // 일반 사용자 화면에서만 예약 상대 사진작가의 별점과 리뷰 수를 조회
+  const { data: photographerProfile, isSuccess: isPhotographerProfileSuccess } =
+    usePhotographerProfile(
+      account.accountType === 'USER'
+        ? data?.photographer?.photographerId
+        : undefined,
+    );
+
   // 일반 사용자 취소 요청 모달
   const [isCancelRequestModalOpen, setIsCancelRequestModalOpen] =
     useState(false);
 
+  // 예약 상세 조회 중 로딩 상태를 표시
   if (isPending) {
     return (
       <>
         <ReservationDetailHeading />
 
-        <p role="status">예약 상세 정보를 불러오는 중이에요.</p>
+        <StateMessage
+          title="예약 상세 정보를 불러오는 중이에요."
+          role="status"
+        />
       </>
     );
   }
@@ -143,30 +173,35 @@ export default function ReservationDetail({
     notFound();
   }
 
+  // 예약 상세 조회 실패 시 재시도 버튼을 표시
   if (isError) {
     return (
       <>
         <ReservationDetailHeading />
 
-        <div role="alert">
-          <p>예약 상세 정보를 불러오지 못했어요.</p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-          >
-            다시 시도
-          </button>
-        </div>
+        <StateMessage
+          title="예약 상세 정보를 불러오지 못했어요."
+          description="잠시 후 다시 시도해 주세요."
+          role="alert"
+          button={{
+            label: '다시 시도',
+            onClick: () => {
+              void refetch();
+            },
+            disabled: isFetching,
+          }}
+        />
       </>
     );
   }
+
+  // 조회된 예약 정보가 없는 경우
   if (!data) {
     return (
       <>
         <ReservationDetailHeading />
 
-        <p role="status">예약 정보를 찾을 수 없어요.</p>
+        <StateMessage title="예약 정보를 찾을 수 없어요." role="status" />
       </>
     );
   }
@@ -472,29 +507,20 @@ export default function ReservationDetail({
               <dt>촬영 시간</dt>
               <dd>
                 {data.durationMinutes !== null
-                  ? `${data.durationMinutes}분`
+                  ? formatDurationMinutes(data.durationMinutes)
                   : '정보 없음'}
               </dd>
             </div>
 
+            {/* 제공 사진 수와 원본 제공 여부 */}
             <div className={styles.infoRow}>
               <dt>제공 사진</dt>
               <dd>
                 {data.photoCount !== null
                   ? `${data.photoCount}장`
                   : '정보 없음'}
-              </dd>
-            </div>
-
-            {/* 견적서에 포함된 원본 제공 여부 */}
-            <div className={styles.infoRow}>
-              <dt>원본 제공</dt>
-              <dd>
-                {data.quote
-                  ? data.quote.includesOriginal
-                    ? '포함'
-                    : '미포함'
-                  : '정보 없음'}
+                {data.quote &&
+                  ` · ${data.quote.includesOriginal ? '원본 제공' : '원본 미제공'}`}
               </dd>
             </div>
 
@@ -580,9 +606,25 @@ export default function ReservationDetail({
               <span className={styles.avatarFallback} aria-hidden="true" />
             )}
 
-            <strong className={styles.counterpartName}>
-              {counterpart?.nickname ?? '상대방 정보 없음'}
-            </strong>
+            <div className={styles.counterpartInfo}>
+              <strong className={styles.counterpartName}>
+                {counterpart?.nickname ?? '상대방 정보 없음'}
+              </strong>
+
+              {/* 일반 사용자에게만 사진작가의 평균 별점과 리뷰 수를 표시 */}
+              {!isPhotographer &&
+                isPhotographerProfileSuccess &&
+                photographerProfile && (
+                  <p className={styles.counterpartRating}>
+                    ★{' '}
+                    {photographerProfile.ratingAvg !== null
+                      ? photographerProfile.ratingAvg.toFixed(1)
+                      : '-'}{' '}
+                    (리뷰{' '}
+                    {photographerProfile.reviewCount.toLocaleString('ko-KR')})
+                  </p>
+                )}
+            </div>
           </div>
         </section>
 
@@ -622,7 +664,7 @@ export default function ReservationDetail({
                 <>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="md"
                     disabled={isRejecting}
                     onClick={handleCloseRejectModal}
                   >
@@ -631,7 +673,7 @@ export default function ReservationDetail({
 
                   <Button
                     variant="primary"
-                    size="sm"
+                    size="md"
                     disabled={isRejecting || rejectCancelMutation.isSuccess}
                     onClick={() => void handleRejectCancelRequest()}
                   >

@@ -44,6 +44,12 @@ export default function PhotographerBasicInfoModal({
   const formId = useId();
   const [nickname, setNickname] = useState(photographer.nickname);
   const [nicknameTooShort, setNicknameTooShort] = useState(false);
+
+  // 경력 미입력 상태와 0년을 구분하여 관리함
+  const [careerInput, setCareerInput] = useState(
+    photographer.career?.toString() ?? '',
+  );
+
   const [careerError, setCareerError] = useState('');
   const [introduction, setIntroduction] = useState(
     photographer.introduction ?? '',
@@ -194,6 +200,7 @@ export default function PhotographerBasicInfoModal({
     formRef.current?.reset();
     setNickname(photographer.nickname);
     setNicknameTooShort(false);
+    setCareerInput(photographer.career?.toString() ?? '');
     setCareerError('');
     setIntroduction(photographer.introduction ?? '');
 
@@ -213,6 +220,30 @@ export default function PhotographerBasicInfoModal({
     handleClose();
   };
 
+  // 필수 항목의 유효성을 확인함
+  const nicknameLength = nickname.trim().length;
+  const introductionLength = introduction.trim().length;
+  const parsedCareer = Number(careerInput);
+
+  const hasProfileImage = Boolean(
+    selectedImage?.file || photographer.profileImageUrl?.trim(),
+  );
+
+  // 모든 필수 항목이 유효한 경우에만 기본 정보 적용을 허용함
+  const canApply =
+    !isSavingEdit &&
+    hasProfileImage &&
+    nicknameLength >= 2 &&
+    nicknameLength <= 20 &&
+    careerInput.trim() !== '' &&
+    Number.isInteger(parsedCareer) &&
+    parsedCareer >= 0 &&
+    parsedCareer <= 80 &&
+    introductionLength > 0 &&
+    introductionLength <= 1000 &&
+    selectedRegions.length > 0 &&
+    selectedCategories.length > 0;
+
   return (
     <Modal
       open={open}
@@ -231,13 +262,13 @@ export default function PhotographerBasicInfoModal({
             취소
           </Button>
 
-          {/* 최종 서버 저장 전 화면에 입력값을 임시 적용함 */}
+          {/* 모든 필수 항목이 유효할 때만 입력값을 임시 적용함 */}
           <Button
             type="submit"
             form={formId}
             variant="primary"
             size="lg"
-            disabled={isSavingEdit}
+            disabled={!canApply}
           >
             적용
           </Button>
@@ -300,12 +331,17 @@ export default function PhotographerBasicInfoModal({
             return;
           }
 
+          // 필수 항목이 누락되었거나 유효하지 않으면 적용하지 않음
+          if (!canApply) {
+            return;
+          }
+
           // 최종 수정 완료를 누르기 전에는 PATCH 요청을 실행하지 않음
           onApply(
             {
               nickname,
               career: careerYears,
-              introduction: introduction === '' ? null : introduction,
+              introduction,
               regions: selectedRegions,
               categories: selectedCategories,
             },
@@ -450,7 +486,8 @@ export default function PhotographerBasicInfoModal({
                 name="career"
                 type="number"
                 className={styles.input}
-                defaultValue={photographer.career ?? ''}
+                value={careerInput}
+                onChange={(event) => setCareerInput(event.currentTarget.value)}
                 min={0}
                 max={80}
                 step={1}

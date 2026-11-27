@@ -77,24 +77,32 @@ export default function PhotographerProductModal({
 
   // 상품 삭제 확인 화면의 표시 여부를 관리함
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const canApply =
-    Boolean(name.trim() && price && durationHours && photoCount) &&
-    !priceError &&
-    !durationError;
+
   const priceValue = Number(price.replaceAll(',', ''));
   const hoursValue = Number(durationHours);
   const minutesValue = hoursValue * 60;
   const durationMinutes = Math.round(minutesValue);
+
+  // 기본 가격은 1원 이상 1억 원 이하의 정수만 허용함
   const priceValidation =
     Number.isInteger(priceValue) && priceValue >= 1 && priceValue <= 100_000_000
       ? ''
       : '1~100,000,000원으로 입력해 주세요.';
+
   const durationValidation =
     !Number.isFinite(hoursValue) || hoursValue < 1 || hoursValue > 48
       ? '촬영 시간은 1~48시간 범위로 입력해 주세요.'
       : Math.abs(minutesValue - durationMinutes) > 0.000001
         ? '촬영 시간은 1분 단위로 입력해 주세요.'
         : '';
+
+  // 필수 항목과 입력값이 유효한 경우에만 적용을 허용함
+  const canApply =
+    Boolean(name.trim() && price && durationHours && photoCount) &&
+    !priceValidation &&
+    !durationValidation &&
+    !priceError &&
+    !durationError;
 
   // 서버 저장 중에는 모달을 닫지 않도록 보호함
   const handleClose = () => {

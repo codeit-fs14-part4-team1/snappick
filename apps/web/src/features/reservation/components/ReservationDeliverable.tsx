@@ -567,11 +567,6 @@ export default function ReservationDeliverable({
               >
                 결과물 수정
               </Button>
-
-              <p className={styles.deliverableHint}>
-                고객이 구매를 확정하기 전까지 수정할 수 있어요. 수정하면
-                고객에게 다시 알림이 가요.
-              </p>
             </div>
           )}
 
