@@ -23,6 +23,7 @@ const LABELS: Record<string, string> = {
   guest: 'GUEST · 비회원 접근 제어',
   quotes: 'QUOTE · 견적 보내기 · 재견적 · 조회',
   inquiry: 'INQUIRY · 문의 · 채팅 · 읽음',
+  notifications: 'NOTI · 알림 목록 · 확인 · 읽음 · 생성',
 };
 
 const testsDir = new URL('.', import.meta.url);
