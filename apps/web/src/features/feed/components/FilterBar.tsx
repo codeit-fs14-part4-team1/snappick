@@ -37,7 +37,7 @@ const CATEGORY_TABS: TabItem[] = [
 ];
 //정렬
 const SORT_LABEL = {
-  random: '기본순',
+  recommended: '추천순',
   latest: '최신순',
   popular: '인기순',
 } satisfies Record<FeedSort, string>;
@@ -139,7 +139,7 @@ export default function FilterBar({
         </div>
         <SortSelect
           items={SORT_ITEMS}
-          value={filters.sort ?? 'random'}
+          value={filters.sort ?? 'recommended'}
           onValueChange={changeSort}
         />
       </div>

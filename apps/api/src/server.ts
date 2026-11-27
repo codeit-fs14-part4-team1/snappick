@@ -14,6 +14,8 @@ import {
   reconcilePendingPayments,
 } from './modules/payments/payments.settlement.js';
 import { advanceReservationStatuses } from './modules/reservations/reservations.service.js';
+import { VALUE_SCORE_JOB_INTERVAL_MS } from './modules/recommendations/value-score.config.js';
+import { refreshValueScores } from './modules/recommendations/value-score.service.js';
 
 const RESERVATION_STATUS_JOB_INTERVAL_MS = 10 * 60 * 1000;
 const PAYMENT_RECONCILE_JOB_INTERVAL_MS = 60 * 1000;
@@ -226,6 +228,11 @@ httpServer.listen(PORT, () => {
       }
     },
   );
+
+  // 추천 피드의 가치 점수 (하루 1번, 시작할 때도 1번)
+  startIntervalJob('value-scores', VALUE_SCORE_JOB_INTERVAL_MS, async () => {
+    console.log('[job:value-scores]', await refreshValueScores(new Date()));
+  });
 
   // 처리 중에 멈춘 결제를 토스 상태에 맞춤
   // 시작 직후에는 이전 프로세스가 남긴 결제를 바로 처리하도록 모든 건을 확인

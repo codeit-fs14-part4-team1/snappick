@@ -29,15 +29,19 @@ export const photographerPhotosQuerySchema = z.object({
   limit,
 });
 
-export const SORTS = ['random', 'latest', 'popular'] as const;
+export const SORTS = ['recommended', 'latest', 'popular'] as const;
 
 export const photosQuerySchema = z.object({
   keyword: z.string().trim().max(50).optional(),
   category: z.string().optional(),
   styles: csv,
   regions: csv,
-  sort: z.enum(SORTS).default('random'),
-  seed: z.string().trim().min(1).max(32).optional(),
+  // 기본순(random)은 추천순으로 바뀌었다. FE가 recommended로 바꿀 때까지 random도 추천순으로 받는다
+  // FE 반영 후 preprocess를 지운다. seed는 더 쓰지 않아 보내도 무시한다
+  sort: z.preprocess(
+    (value) => (value === 'random' ? 'recommended' : value),
+    z.enum(SORTS).default('recommended'),
+  ),
   cursor: z.string().min(1).optional(),
   limit,
 });

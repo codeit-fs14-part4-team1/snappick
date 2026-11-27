@@ -1,10 +1,13 @@
-import { createHash, randomBytes } from 'node:crypto';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { Category, Region, Style } from '../../generated/prisma/enums.js';
 import { prisma } from '../../lib/prisma.js';
 import { toImageUrl } from '../../utils/asset-url.js';
-import { nextCursor, readOffset } from '../../utils/cursor.js';
+import { nextCursor, readCursorTime, readOffset } from '../../utils/cursor.js';
 import { HttpError } from '../../utils/http-error.js';
+import {
+  finalScores,
+  spreadPhotographers,
+} from '../recommendations/feed-score.js';
 import type { PhotosQuery } from './feeds.schema.js';
 import {
   getListedPhotographerIds,
@@ -198,8 +201,46 @@ function assertValues(
 
 const unique = <T>(values: T[]): T[] => [...new Set(values)];
 
-const seededRank = (seed: string, id: string): string =>
-  createHash('md5').update(`${seed}:${id}`).digest('hex');
+/**
+ * 추천순 점수 (사진 id → 최종 점수)
+ * 순위 비율이 필터마다 달라지지 않게 필터와 상관없이 전체 사진으로 계산한다
+ * baseTime 이후에 올라온 사진은 빼서, 스크롤 도중 새 사진 때문에 다른 사진의 비율이 바뀌지 않게 한다
+ * 가치 점수 행이 없는 사진(등록 때 행을 못 만든 경우)은 같은 작가의 다른 사진 값으로 채운다
+ * (작가 점수·새 작가 여부는 같은 작가 사진끼리 같은 값)
+ */
+async function recommendedScores(baseTime: Date): Promise<Map<string, number>> {
+  const photos = await prisma.photos.findMany({
+    where: { created_at: { lte: baseTime } },
+    select: {
+      id: true,
+      photographer_id: true,
+      valueScore: {
+        select: {
+          photo_score: true,
+          photographer_score: true,
+          is_new_photographer: true,
+        },
+      },
+    },
+  });
+  const byPhotographer = new Map(
+    photos.flatMap(({ photographer_id, valueScore }) =>
+      valueScore ? [[photographer_id, valueScore]] : [],
+    ),
+  );
+  return finalScores(
+    photos.map((photo) => {
+      const score =
+        photo.valueScore ?? byPhotographer.get(photo.photographer_id);
+      return {
+        photoId: photo.id,
+        photoScore: photo.valueScore?.photo_score ?? 0,
+        photographerScore: score?.photographer_score ?? 0,
+        isNewPhotographer: score?.is_new_photographer ?? false,
+      };
+    }),
+  );
+}
 
 export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
   if (query.category !== undefined) {
@@ -227,24 +268,32 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
   const styles = unique(query.styles) as Style[];
   const regions = unique(query.regions) as Region[];
   const keyword = query.keyword || undefined;
-  // 기본순은 시드로 순서를 고정한다 (EXP-09). 시드가 없으면 서버가 새로 만든다
-  const seed =
-    query.sort === 'random'
-      ? (query.seed ?? `s_${randomBytes(4).toString('hex')}`)
-      : null;
+  const isRecommended = query.sort === 'recommended';
+  // 추천순은 사용자 유형마다 목록이 달라진다 (1단계부터). 스크롤 도중 로그인·로그아웃하면 INVALID_CURSOR
+  const viewerType = viewer.userId
+    ? 'user'
+    : viewer.photographerId
+      ? 'photographer'
+      : 'guest';
 
   const key = JSON.stringify([
     query.sort,
-    seed,
+    isRecommended ? viewerType : null,
     category ?? null,
     [...styles].sort(),
     [...regions].sort(),
     keyword ?? null,
   ]);
   const offset = readOffset(query.cursor, key);
+  // 추천순은 첫 페이지 시각(기준 시각)을 커서에 담아 순서를 고정한다
+  // 그 뒤에 올라온 사진은 이번 목록에서 빼서, 앞에 끼어들어 사진이 중복되지 않게 한다
+  const baseTime = isRecommended
+    ? (readCursorTime(query.cursor) ?? new Date())
+    : null;
 
   const where: Prisma.photosWhereInput = {
     photographer_id: { in: await getListedPhotographerIds() },
+    ...(baseTime && { created_at: { lte: baseTime } }),
     ...(category && { categories: { has: category } }),
     ...(styles.length > 0 && { styles: { hasSome: styles } }),
     ...(regions.length > 0 && {
@@ -271,6 +320,7 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
     where,
     select: {
       id: true,
+      photographer_id: true,
       created_at: true,
       _count: { select: { photoLike: true } },
     },
@@ -286,13 +336,22 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
     candidates.sort(
       (a, b) => b._count.photoLike - a._count.photoLike || byLatest(a, b),
     );
-  } else {
-    candidates.sort((a, b) =>
-      seededRank(seed ?? '', a.id).localeCompare(seededRank(seed ?? '', b.id)),
-    );
+  } else if (baseTime) {
+    const scores = await recommendedScores(baseTime);
+    const scoreOf = (id: string) => scores.get(id) ?? 0;
+    candidates.sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || byLatest(a, b));
   }
+  // 추천순은 정렬한 전체 목록에서 같은 작가가 연달아 나오지 않게 한 번 더 조정한다
+  const ordered = isRecommended
+    ? spreadPhotographers(
+        candidates.map((photo) => ({
+          id: photo.id,
+          photographerId: photo.photographer_id,
+        })),
+      )
+    : candidates;
 
-  const pageIds = candidates
+  const pageIds = ordered
     .slice(offset, offset + query.limit)
     .map(({ id }) => id);
   const [rows, liked] = await Promise.all([
@@ -341,10 +400,9 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
         : [];
     }),
     totalCount: candidates.length,
-    seed,
     nextCursor:
       offset + query.limit < candidates.length
-        ? nextCursor(offset + query.limit, key)
+        ? nextCursor(offset + query.limit, key, baseTime)
         : null,
   };
 }

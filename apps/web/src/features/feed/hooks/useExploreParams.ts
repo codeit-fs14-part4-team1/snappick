@@ -41,7 +41,7 @@ function parseFilters(searchParams: URLSearchParams): FeedFilters {
     category: pickOne(searchParams.get('category'), CATEGORIES),
     styles: pickMany(searchParams.get('styles'), STYLES),
     regions: pickMany(searchParams.get('regions'), REGIONS),
-    sort: pickOne(searchParams.get('sort'), FEED_SORTS) ?? 'random',
+    sort: pickOne(searchParams.get('sort'), FEED_SORTS) ?? 'recommended',
     keyword: keyword || undefined,
   };
 }
@@ -54,7 +54,7 @@ function toQueryString(filters: FeedFilters): string {
   if (filters.category) params.set('category', filters.category);
   if (styles.length > 0) params.set('styles', styles.join(','));
   if (regions.length > 0) params.set('regions', regions.join(','));
-  if (filters.sort && filters.sort !== 'random')
+  if (filters.sort && filters.sort !== 'recommended')
     params.set('sort', filters.sort);
   if (keyword) params.set('keyword', keyword);
 

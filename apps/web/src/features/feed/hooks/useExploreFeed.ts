@@ -5,17 +5,15 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { getFeedPhotos } from '../api';
-import { getFeedSeed } from '../seed';
 import type { FeedPhotosParams } from '../types';
 
 const FEED_LIMIT = 20;
 
 //훅이 받는 '탐색 조건' 타입
-export type FeedFilters = Omit<FeedPhotosParams, 'seed' | 'cursor' | 'limit'>;
+export type FeedFilters = Omit<FeedPhotosParams, 'cursor' | 'limit'>;
 
 //커서기반 탐색
 export function useExploreFeed(filters: FeedFilters) {
-  const isRandom = (filters.sort ?? 'random') === 'random';
   const { user, authStatus, fetchWithAuth } = useAuth();
 
   return useInfiniteQuery({
@@ -31,7 +29,6 @@ export function useExploreFeed(filters: FeedFilters) {
           ...filters,
           limit: FEED_LIMIT,
           cursor: pageParam,
-          seed: isRandom ? getFeedSeed() : undefined,
         },
         fetchWithAuth,
       ),
