@@ -24,6 +24,15 @@ export default function Header({ user, hasUnseenNotifications }: HeaderProps) {
           <Image src="/logo.svg" alt="" width={107} height={23} />
         </Link>
         <nav aria-label="사용자 메뉴" className={styles.nav}>
+          {/* 개인정보처리방침: 비회원도 볼 수 있어야 해서 로그인 여부와 관계없이 보여 준다 */}
+          <Link
+            href="/privacy"
+            aria-label="개인정보처리방침"
+            title="개인정보처리방침"
+            className={styles.infoLink}
+          >
+            <Image src="/info.svg" alt="" width={24} height={24} />
+          </Link>
           {user ? (
             <>
               <NotificationMenu

@@ -37,6 +37,22 @@
   gap: 4px;
 }
 
+/* 알림 버튼(NotificationMenu .notificationButton)과 같은 크기 */
+.infoLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.infoLink:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
 /* 공통 Button(PR #29)의 outline · md 스타일을 링크에 맞춤 */
 /* 추후 수정예정 */
 .loginLink {
