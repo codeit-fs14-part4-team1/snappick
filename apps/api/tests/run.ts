@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   feeds: 'FEED · 탐색 피드',
   payments: 'PAY · 결제 (토스 테스트 API 호출, 인터넷 필요)',
   reservations: 'RESV · 예약 목록 · 예약 생성',
+  'reservation-detail': 'RESVDETAIL · 예약 상세 · 자동 촬영 완료',
 };
 
 const testsDir = new URL('.', import.meta.url);
