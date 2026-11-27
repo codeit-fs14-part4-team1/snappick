@@ -213,6 +213,15 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
       );
     }
 
+    const shootAt = new Date(input.shootAt);
+    if (shootAt.getTime() <= Date.now()) {
+      throw new HttpError(
+        400,
+        'QUOTE_SHOOT_TIME_PASSED',
+        '시간이 유효하지 않아요. 시간을 다시 선택해 주세요.',
+      );
+    }
+
     // 견적 저장
     const quote = await tx.quotes.create({
       data: {
@@ -221,7 +230,7 @@ export async function createQuote(accountId: string, input: CreateQuoteInput) {
         photographer_id: photographer.id,
         quote_name: input.quoteName,
         version: nextVersion,
-        shoot_at: new Date(input.shootAt),
+        shoot_at: shootAt,
         location: input.location,
         location_lat: input.locationLat,
         location_lng: input.locationLng,

@@ -22,6 +22,32 @@ const replySelect = {
   deleted_at: true,
 } as const;
 
+const reviewPhotographerSelect = {
+  id: true,
+  auth_account: { select: { nickname: true } },
+  profile_image_url: true,
+  representativePhoto: {
+    select: { photo: { select: { storage_location: true } } },
+  },
+} satisfies Prisma.photographersSelect;
+
+function toReviewPhotographer(
+  photographer: Prisma.photographersGetPayload<{
+    select: typeof reviewPhotographerSelect;
+  }> | null,
+) {
+  return (
+    photographer && {
+      photographerId: photographer.id,
+      nickname: photographer.auth_account.nickname,
+      profileImageUrl: toImageUrl(photographer.profile_image_url),
+      representativeImageUrl: toImageUrl(
+        photographer.representativePhoto?.photo.storage_location ?? null,
+      ),
+    }
+  );
+}
+
 type ReplyRow = {
   id: string;
   comment: string;
@@ -126,13 +152,7 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
         id: true,
         shoot_at: true,
         quote: { select: { quote_name: true } },
-        photographer: {
-          select: {
-            id: true,
-            auth_account: { select: { nickname: true } },
-            profile_image_url: true,
-          },
-        },
+        photographer: { select: reviewPhotographerSelect },
       },
     }),
   ]);
@@ -142,11 +162,7 @@ export async function getEligibleReviews(userId: string, query: ReviewsQuery) {
       reservationId: reservation.id,
       quoteName: reservation.quote?.quote_name ?? null,
       shootAt: reservation.shoot_at,
-      photographer: reservation.photographer && {
-        photographerId: reservation.photographer.id,
-        nickname: reservation.photographer.auth_account.nickname,
-        profileImageUrl: toImageUrl(reservation.photographer.profile_image_url),
-      },
+      photographer: toReviewPhotographer(reservation.photographer),
     })),
     page: query.page,
     pageSize: query.pageSize,
@@ -179,13 +195,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
         comment: true,
         created_at: true,
         updated_at: true,
-        photographer: {
-          select: {
-            id: true,
-            auth_account: { select: { nickname: true } },
-            profile_image_url: true,
-          },
-        },
+        photographer: { select: reviewPhotographerSelect },
         reviewReply: { select: replySelect },
       },
     }),
@@ -201,11 +211,7 @@ export async function getMyReviews(userId: string, query: ReviewsQuery) {
       comment: review.comment,
       createdAt: review.created_at,
       updatedAt: review.updated_at,
-      photographer: review.photographer && {
-        photographerId: review.photographer.id,
-        nickname: review.photographer.auth_account.nickname,
-        profileImageUrl: toImageUrl(review.photographer.profile_image_url),
-      },
+      photographer: toReviewPhotographer(review.photographer),
       reply: toReply(review.reviewReply),
     })),
     page: query.page,
@@ -329,16 +335,8 @@ export async function updateMyReview(
   reviewId: string,
   input: UpdateReviewInput,
 ) {
-  const mine = await prisma.reviews.findFirst({
+  const [review] = await prisma.reviews.updateManyAndReturn({
     where: { id: reviewId, user_id: userId, deleted_at: null },
-    select: { id: true },
-  });
-  if (!mine) {
-    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
-  }
-
-  const review = await prisma.reviews.update({
-    where: { id: reviewId },
     data: {
       ...(input.rating !== undefined && { rating: input.rating }),
       ...(input.comment !== undefined && { comment: input.comment }),
@@ -353,6 +351,9 @@ export async function updateMyReview(
       updated_at: true,
     },
   });
+  if (!review) {
+    throw new HttpError(404, 'REVIEW_NOT_FOUND', '리뷰를 찾을 수 없어요.');
+  }
 
   return {
     reviewId: review.id,
@@ -450,29 +451,33 @@ export async function updateReply(
   reviewId: string,
   input: CreateReplyInput,
 ) {
-  const mine = await prisma.review_replies.findFirst({
-    where: {
-      review_id: reviewId,
-      deleted_at: null,
-      review: { photographer_id: photographerId, deleted_at: null },
-    },
-    select: { id: true },
+  const reply = await prisma.$transaction(async (tx) => {
+    // 답글을 수정하는 동안 원본 리뷰의 삭제와 수정 순서를 맞춘다.
+    const [review] = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM reviews
+      WHERE id = ${reviewId}::uuid
+        AND photographer_id = ${photographerId}::uuid
+        AND deleted_at IS NULL
+      FOR SHARE
+    `;
+    if (!review) return null;
+
+    const [updated] = await tx.review_replies.updateManyAndReturn({
+      where: { review_id: review.id, deleted_at: null },
+      data: { comment: input.comment },
+      select: {
+        id: true,
+        review_id: true,
+        comment: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+    return updated;
   });
-  if (!mine) {
+  if (!reply) {
     throw new HttpError(404, 'REPLY_NOT_FOUND', '답글을 찾을 수 없어요.');
   }
-
-  const reply = await prisma.review_replies.update({
-    where: { id: mine.id },
-    data: { comment: input.comment },
-    select: {
-      id: true,
-      review_id: true,
-      comment: true,
-      created_at: true,
-      updated_at: true,
-    },
-  });
 
   return {
     replyId: reply.id,

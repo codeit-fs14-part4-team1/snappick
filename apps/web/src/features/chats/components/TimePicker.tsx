@@ -11,6 +11,7 @@ type Props = {
   date?: string;
   onValueChange: (value: string) => void;
   triggerClassName?: string;
+  errorId?: string | undefined;
 };
 
 export default function TimePicker({
@@ -18,6 +19,7 @@ export default function TimePicker({
   date,
   onValueChange,
   triggerClassName,
+  errorId,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value || '09:00');
@@ -53,6 +55,7 @@ export default function TimePicker({
         aria-label="촬영 시작 시간"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-describedby={errorId}
         data-empty={!value}
         onClick={() => {
           setDraft(value || '09:00');

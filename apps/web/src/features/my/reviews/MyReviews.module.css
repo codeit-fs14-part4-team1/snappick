@@ -149,6 +149,7 @@
   height: 56px;
   border-radius: 10px;
   background: var(--color-border);
+  object-fit: cover;
 }
 .ratingField {
   min-width: 0;
