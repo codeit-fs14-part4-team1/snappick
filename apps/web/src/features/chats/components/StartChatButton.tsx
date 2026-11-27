@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import { useGuestLoginModal } from '@/components/ui/GuestLoginProvider';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AUTH_UNKNOWN_MESSAGE } from '@/features/auth/messages';
 import { queryKeys } from '@/lib/queryKeys';
 import { createChat } from '../api';
 
@@ -32,10 +33,7 @@ export default function StartChatButton({
       return;
     }
     if (authStatus !== 'authenticated' || !user) {
-      showToast(
-        '로그인 정보를 확인하지 못했어요. 새로고침 후 다시 시도해 주세요.',
-        'error',
-      );
+      showToast(AUTH_UNKNOWN_MESSAGE, 'error');
       return;
     }
     if (user.accountType !== 'USER') {
