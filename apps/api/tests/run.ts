@@ -6,6 +6,7 @@
  * - 바로 실행: pnpm --filter api test feeds payments   (파트 이름, all이면 전체)
  * - vitest 옵션은 -- 뒤에: pnpm --filter api test payments -- -t "PAY-BE-13"
  * - 터미널이 아니면(CI 등) 메뉴 없이 전체를 실행한다
+ * - QA 문서에 BE·AC 줄이 없는 파트(NO_BE_PARTS)는 메뉴에만 있고, 고르면 안내만 보여 준다
  */
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
@@ -37,22 +38,83 @@ const LABELS: Record<string, string> = {
   detail: 'DETAIL · 사진 상세 · 작가의 다른 사진',
 };
 
+// QA 문서에 BE·AC 줄이 없어 서버로 검증할 것이 없는 파트 (화면 동작만 있음)
+// 고르면 테스트를 돌리지 않고 안내만 보여 준다
+const NO_BE_PARTS: Record<string, { label: string; reason: string }> = {
+  imgshare: {
+    label: 'IMGSHARE · 사진 공유',
+    reason: '공유 주소는 화면에서 만들고, 상세 조회는 DETAIL에서 본다',
+  },
+  header: {
+    label: 'HEADER · 공통 헤더 · 메뉴 · 공통 모달',
+    reason: '로그아웃·토큰 갱신은 AUTH, 새 알림 여부는 NOTI에서 본다',
+  },
+  profshare: {
+    label: 'PROFSHARE · 프로필 링크 공유',
+    reason: '공유 주소는 화면에서 만들고, 프로필 조회는 PROFILE에서 본다',
+  },
+};
+const NO_BE_MESSAGE = '검증할 BE 로직이 존재하지 않습니다.';
+
+// 메뉴 순서 (QA 문서 목록 순서). 여기에 없는 새 폴더는 맨 뒤에 붙는다
+const ORDER = [
+  'payments',
+  'quotes',
+  'inquiry',
+  'notifications',
+  'products',
+  'reservations',
+  'auth',
+  'reservation-detail',
+  'social',
+  'cancel',
+  'profile',
+  'profile-edit',
+  'reviews',
+  'delivery',
+  'mypage',
+  'mypick',
+  'upload',
+  'manage',
+  'detail',
+  'feeds',
+  'header',
+  'imgshare',
+  'guest',
+  'profshare',
+];
+const orderOf = (name: string) => {
+  const index = ORDER.indexOf(name);
+  return index === -1 ? ORDER.length : index;
+};
+
 const testsDir = new URL('.', import.meta.url);
 
-const parts = readdirSync(testsDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => ({
-    name: entry.name,
-    files: readdirSync(new URL(`${entry.name}/`, testsDir)).filter((file) =>
-      file.endsWith('.test.ts'),
-    ),
-  }))
-  .filter(({ files }) => files.length > 0)
-  .map(({ name, files }) => ({
+type Part = { name: string; label: string; fileCount: number; noBe: boolean };
+
+const parts: Part[] = [
+  ...readdirSync(testsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => ({
+      name: entry.name,
+      files: readdirSync(new URL(`${entry.name}/`, testsDir)).filter((file) =>
+        file.endsWith('.test.ts'),
+      ),
+    }))
+    .filter(({ files }) => files.length > 0)
+    .map(({ name, files }) => ({
+      name,
+      label: LABELS[name] ?? name,
+      fileCount: files.length,
+      noBe: false,
+    })),
+  ...Object.entries(NO_BE_PARTS).map(([name, { label }]) => ({
     name,
-    label: LABELS[name] ?? name,
-    fileCount: files.length,
-  }));
+    label,
+    fileCount: 0,
+    noBe: true,
+  })),
+].sort((a, b) => orderOf(a.name) - orderOf(b.name));
 
 const args = process.argv.slice(2);
 const separator = args.indexOf('--');
@@ -81,7 +143,7 @@ async function choose(): Promise<string[] | null> {
   console.log('  0) 전체');
   parts.forEach((part, i) =>
     console.log(
-      `  ${i + 1}) ${part.label}  [${part.name}, 파일 ${part.fileCount}개]`,
+      `  ${i + 1}) ${part.label}  [${part.name}, ${part.noBe ? 'BE 로직 없음' : `파일 ${part.fileCount}개`}]`,
     ),
   );
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -109,9 +171,20 @@ if (selected === null) {
   process.exit(0);
 }
 
-const targets = selected.map((name) => `tests/${name}`);
+// BE 로직이 없는 파트는 안내만 하고 실행 대상에서 뺀다
+const noBeSelected = selected.filter((name) => name in NO_BE_PARTS);
+for (const name of noBeSelected) {
+  const { label, reason } = NO_BE_PARTS[name]!;
+  console.log(`\n${label}: ${NO_BE_MESSAGE}\n  (${reason})`);
+}
+const runnable = selected.filter((name) => !(name in NO_BE_PARTS));
+if (selected.length > 0 && runnable.length === 0) {
+  process.exit(0);
+}
+
+const targets = runnable.map((name) => `tests/${name}`);
 console.log(
-  `\n실행: ${selected.length === 0 ? '전체' : selected.map((name) => LABELS[name] ?? name).join(', ')}\n`,
+  `\n실행: ${runnable.length === 0 ? '전체' : runnable.map((name) => LABELS[name] ?? name).join(', ')}\n`,
 );
 
 const result = spawnSync('npx', ['vitest', 'run', ...targets, ...vitestArgs], {
