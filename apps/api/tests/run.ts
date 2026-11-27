@@ -34,6 +34,7 @@ const LABELS: Record<string, string> = {
   mypick: 'MYPICK · 좋아요한 사진 · 저장한 작가',
   upload: 'UPLOAD · 사진 업로드 주소 발급 · 등록 (로컬 저장소)',
   manage: 'MANAGE · 포트폴리오 사진 일괄 수정 · 삭제 · 대표 변경',
+  detail: 'DETAIL · 사진 상세 · 작가의 다른 사진',
 };
 
 const testsDir = new URL('.', import.meta.url);
