@@ -31,6 +31,7 @@ const LABELS: Record<string, string> = {
   'profile-edit':
     'PROFEDIT · 프로필 기본 정보 수정 · 준비 상태 · 프로필 이미지',
   mypage: 'MYPAGE · 내 정보 · 닉네임 · 비밀번호 변경',
+  mypick: 'MYPICK · 좋아요한 사진 · 저장한 작가',
 };
 
 const testsDir = new URL('.', import.meta.url);
