@@ -30,6 +30,7 @@ const LABELS: Record<string, string> = {
   profile: 'PROFILE · 작가 프로필 · 사진 · 상품 · 리뷰',
   'profile-edit':
     'PROFEDIT · 프로필 기본 정보 수정 · 준비 상태 · 프로필 이미지',
+  mypage: 'MYPAGE · 내 정보 · 닉네임 · 비밀번호 변경',
 };
 
 const testsDir = new URL('.', import.meta.url);
