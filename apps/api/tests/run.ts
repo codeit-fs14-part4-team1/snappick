@@ -21,6 +21,7 @@ const LABELS: Record<string, string> = {
   reviews: 'REVIEW · 리뷰 · 작가 답글',
   delivery: 'DELIVERY · 결과물 전달 · 구매 확정',
   guest: 'GUEST · 비회원 접근 제어',
+  quotes: 'QUOTE · 견적 보내기 · 재견적 · 조회',
 };
 
 const testsDir = new URL('.', import.meta.url);
