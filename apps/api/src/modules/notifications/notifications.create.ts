@@ -27,16 +27,27 @@ export const notificationMessages = {
   newInquiry: (userName: string) => `${userName}님이 문의를 보냈어요.`,
   newQuote: (photographerName: string) =>
     `${photographerName}님이 견적을 보냈어요.`,
-  reservationConfirmed: () => '예약이 확정됐어요.',
-  shootTomorrow: () => '내일 촬영이 있어요.',
-  shootToday: () => '오늘 촬영이 있어요.',
-  deliveryCompleted: (photographerName: string) =>
-    `${photographerName}님이 결과물을 보냈어요.`,
+  reservationConfirmed: (counterpart?: string) =>
+    counterpart
+      ? `${counterpart}과의 예약이 확정됐어요.`
+      : '예약이 확정됐어요.',
+  shootReminder: (day: '내일' | '오늘', time: string, counterpart?: string) =>
+    `${day} ${time}${counterpart ? ` ${counterpart}과` : ''} 촬영이 있어요.`,
+  deliveryCompleted: (photographerName?: string) =>
+    photographerName
+      ? `${photographerName} 작가님이 결과물을 전달했어요.`
+      : '작가님이 결과물을 전달했어요.',
   newReview: (userName: string) => `${userName}님이 리뷰를 남겼어요.`,
   cancelRequested: (userName: string) =>
     `${userName}님이 예약 취소를 요청했어요.`,
-  cancelRejected: () => '예약 취소 요청이 반려됐어요.',
-  reservationCanceled: () => '예약이 취소됐어요.',
+  cancelRejected: (photographerName?: string) =>
+    photographerName
+      ? `${photographerName} 작가님이 취소 요청을 반려했어요.`
+      : '작가님이 취소 요청을 반려했어요.',
+  reservationCanceled: (counterpart?: string) =>
+    counterpart
+      ? `${counterpart}과의 예약이 취소됐어요.`
+      : '예약이 취소됐어요.',
 };
 
 type NewNotification = {
@@ -135,9 +146,10 @@ export async function readMessageNotifications(
 
 const HOUR_MS = 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * HOUR_MS;
+export const KST_DAY_MS = 24 * HOUR_MS;
 
 // 촬영일 오전 6시(한국 시간)
-function shootDayMorning(shootAt: Date): Date {
+export function shootDayMorning(shootAt: Date): Date {
   const kst = new Date(shootAt.getTime() + KST_OFFSET_MS);
   return new Date(
     Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 6) -
@@ -148,8 +160,7 @@ function shootDayMorning(shootAt: Date): Date {
 type ShootReminders = {
   reservationId: string;
   shootAt: Date;
-  /** 일반 사용자와 작가의 계정 ID */
-  accountIds: string[];
+  recipients: { accountId: string; counterpart: string | undefined }[];
 };
 
 /**
@@ -166,24 +177,28 @@ export async function scheduleShootReminders(
 
   const now = Date.now();
   const today = shootDayMorning(input.shootAt);
+  const shootAtKst = new Date(input.shootAt.getTime() + KST_OFFSET_MS);
+  const hour = shootAtKst.getUTCHours();
+  const minute = String(shootAtKst.getUTCMinutes()).padStart(2, '0');
+  const time = `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${minute}`;
   const schedule = [
     {
-      at: new Date(today.getTime() - 24 * HOUR_MS),
-      message: notificationMessages.shootTomorrow(),
+      at: new Date(today.getTime() - KST_DAY_MS),
+      day: '내일' as const,
     },
-    { at: today, message: notificationMessages.shootToday() },
+    { at: today, day: '오늘' as const },
   ].filter(
     ({ at }) => at.getTime() > now && at.getTime() < input.shootAt.getTime(),
   );
 
   const { count } = await db.notifications.createMany({
-    data: input.accountIds.flatMap((accountId) =>
-      schedule.map(({ at, message }) => ({
+    data: input.recipients.flatMap(({ accountId, counterpart }) =>
+      schedule.map(({ at, day }) => ({
         auth_account_id: accountId,
         type: 'SHOOT_REMINDER' as const,
         target_type: TARGET_TYPES.SHOOT_REMINDER,
         target_id: input.reservationId,
-        message,
+        message: notificationMessages.shootReminder(day, time, counterpart),
         scheduled_at: at,
         created_at: at,
       })),
