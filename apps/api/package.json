@@ -15,7 +15,10 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "db:setup": "prisma migrate dev && prisma generate && prisma db seed"
+    "db:setup": "prisma migrate dev && prisma generate && prisma db seed",
+    "test": "tsx tests/run.ts",
+    "test:watch": "vitest",
+    "test:all": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -46,9 +49,12 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
     "eslint": "^9.39.5",
+    "supertest": "^7.3.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.1.2"
   }
 }

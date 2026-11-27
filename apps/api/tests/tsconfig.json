@@ -1,0 +1,9 @@
+{
+  // 테스트 코드 타입 검사용 (빌드 대상 아님): npx tsc -p tests
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": ["../src/**/*.ts", "./**/*.ts", "../vitest.config.ts"]
+}
