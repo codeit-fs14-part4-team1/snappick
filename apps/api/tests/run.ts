@@ -26,6 +26,7 @@ const LABELS: Record<string, string> = {
   notifications: 'NOTI · 알림 목록 · 확인 · 읽음 · 생성',
   products: 'PRODUCT · 촬영 상품 추가 · 수정 · 삭제',
   auth: 'AUTH · 가입 · 로그인 · 토큰 갱신 · 로그아웃',
+  social: 'SOCIAL · 소셜 가입 · 로그인 · 계정 연결 (제공자 가짜 응답)',
 };
 
 const testsDir = new URL('.', import.meta.url);
