@@ -15,6 +15,7 @@ import { createInterface } from 'node:readline/promises';
 const LABELS: Record<string, string> = {
   feeds: 'FEED · 탐색 피드',
   payments: 'PAY · 결제 (토스 테스트 API 호출, 인터넷 필요)',
+  reservations: 'RESV · 예약 목록 · 예약 생성',
 };
 
 const testsDir = new URL('.', import.meta.url);

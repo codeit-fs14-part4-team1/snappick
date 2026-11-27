@@ -10,11 +10,13 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../../src/lib/prisma.js';
 import { api, bearer, createRecorder, tokenFor } from '../helpers.js';
+import {
+  DAY_MS,
+  createQuoteCase as createSharedQuoteCase,
+} from '../fixtures.js';
 import { mockToss } from '../toss-mock.js';
 
 const recorder = createRecorder('PAY BE · AC');
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // 계정: 결제하는 일반 사용자(owner), 다른 일반 사용자(other), 견적을 보낸 작가
 let owner = { userId: '', token: '' };
@@ -47,66 +49,20 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-/**
- * owner와 작가의 채팅방에 새 촬영 건을 만들고 견적을 versions개 발행한다
- * 마지막 버전이 최신 견적
- */
-async function createQuoteCase(
+/** owner(또는 userId)와 작가의 새 촬영 건에 견적을 발행한다 (tests/fixtures.ts) */
+const createQuoteCase = (
   options: {
     price?: number;
     shootAt?: Date;
     versions?: number;
     userId?: string;
   } = {},
-) {
-  const {
-    price = 150_000,
-    shootAt = new Date(Date.now() + 30 * DAY_MS),
-    versions = 1,
-    userId = owner.userId,
-  } = options;
-  const room = await prisma.chat_rooms.upsert({
-    where: {
-      user_id_photographer_id: {
-        user_id: userId,
-        photographer_id: photographer.id,
-      },
-    },
-    create: { user_id: userId, photographer_id: photographer.id },
-    update: {},
+) =>
+  createSharedQuoteCase({
+    ...options,
+    userId: options.userId ?? owner.userId,
+    photographerId: photographer.id,
   });
-  const shootingCase = await prisma.shooting_cases.create({
-    data: { chat_room_id: room.id },
-  });
-  const quotes = [];
-  for (let version = 1; version <= versions; version++) {
-    quotes.push(
-      await prisma.quotes.create({
-        data: {
-          chat_room_id: room.id,
-          shooting_case_id: shootingCase.id,
-          photographer_id: photographer.id,
-          quote_name: `QA 견적 v${version}`,
-          version,
-          shoot_at: shootAt,
-          location: '서울 성수동',
-          location_lat: 37.54,
-          location_lng: 127.05,
-          duration_minutes: 120,
-          price,
-          photo_count: 30,
-          includes_original: true,
-        },
-      }),
-    );
-  }
-  return {
-    roomId: room.id,
-    shootingCaseId: shootingCase.id,
-    quotes,
-    latest: quotes.at(-1)!,
-  };
-}
 
 const prepare = (quoteId: string, token = owner.token) =>
   api().post('/payments').set(bearer(token)).send({ quoteId });
