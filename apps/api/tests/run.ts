@@ -28,6 +28,8 @@ const LABELS: Record<string, string> = {
   auth: 'AUTH · 가입 · 로그인 · 토큰 갱신 · 로그아웃',
   social: 'SOCIAL · 소셜 가입 · 로그인 · 계정 연결 (제공자 가짜 응답)',
   profile: 'PROFILE · 작가 프로필 · 사진 · 상품 · 리뷰',
+  'profile-edit':
+    'PROFEDIT · 프로필 기본 정보 수정 · 준비 상태 · 프로필 이미지',
 };
 
 const testsDir = new URL('.', import.meta.url);
