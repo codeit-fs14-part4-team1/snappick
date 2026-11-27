@@ -33,23 +33,56 @@ export function expiredToken(accountId: string) {
   );
 }
 
+/** 기록 값 한 칸을 사람이 읽기 좋게: 짧으면 한 줄, 길면 들여쓴 여러 줄 */
+function formatValue(value: unknown, indent: string): string {
+  if (value === null || typeof value !== 'object') {
+    return String(value);
+  }
+  const oneLine = JSON.stringify(value);
+  if (oneLine.length <= 60) {
+    return oneLine;
+  }
+  return `\n${JSON.stringify(value, null, 2)
+    .split('\n')
+    .map((line) => `${indent}${line}`)
+    .join('\n')}`;
+}
+
 /**
- * "기록한다" 체크 줄용: 판정 대신 본 값을 모아 테스트가 끝나면 표로 출력한다
+ * "기록한다" 체크 줄용: 판정 대신 본 값을 모아 테스트가 끝나면 출력한다
+ * 긴 응답 본문도 줄이 깨지지 않게 항목마다 블록으로, 객체는 키마다 한 줄씩 출력한다
+ *
+ *   [기록] PROFILE BE · AC
+ *   ▸ PROFILE-AC-03
+ *       products: {"status":200,"count":1}
+ *       reviews: {"status":200,"totalCount":0}
  */
 export function createRecorder(title: string) {
-  const rows: { id: string; 결과: string }[] = [];
+  const rows: { id: string; value: unknown }[] = [];
   return {
     record(id: string, value: unknown) {
-      rows.push({
-        id,
-        결과: typeof value === 'string' ? value : JSON.stringify(value),
-      });
+      rows.push({ id, value });
     },
     print() {
-      if (rows.length > 0) {
-        console.log(`\n[기록] ${title}`);
-        console.table(rows);
+      if (rows.length === 0) {
+        return;
       }
+      const lines = [`\n[기록] ${title}`];
+      for (const { id, value } of rows) {
+        lines.push(`▸ ${id}`);
+        if (
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+        ) {
+          for (const [key, item] of Object.entries(value)) {
+            lines.push(`    ${key}: ${formatValue(item, '      ')}`);
+          }
+        } else {
+          lines.push(`    ${formatValue(value, '      ')}`);
+        }
+      }
+      console.log(lines.join('\n'));
     },
   };
 }

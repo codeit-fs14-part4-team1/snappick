@@ -11,5 +11,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 180_000,
+    // 통과한 테스트의 출력도 보여 준다 ("기록한다" 줄의 값을 보기 위해)
+    silent: false,
   },
 });
