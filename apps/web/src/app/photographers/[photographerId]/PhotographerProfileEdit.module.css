@@ -88,7 +88,7 @@
     padding: 16px 0 20px;
   }
 
-  /* 모바일에서 제목과 수정 버튼을 같은 행에 배치함 */
+  /* 모바일에서 제목, 상태 배지, 안내 문구, 수정 버튼을 한 줄씩 차례로 배치함 */
   .editHeader {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -103,9 +103,9 @@
     display: contents;
   }
 
-  /* 모바일 프로필 수정 제목 크기와 위치를 조정함 */
+  /* 모바일 프로필 수정 제목은 첫 줄 전체 너비를 사용해 줄바꿈되지 않게 함 */
   .editTitle {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 1;
     font-size: 20px;
     line-height: 28px;
@@ -124,11 +124,11 @@
     grid-row: 3;
   }
 
-  /* 수정 버튼을 제목 오른쪽에 배치함 */
+  /* 수정 버튼을 안내 문구 아래 마지막 줄 왼쪽에 배치함 */
   .editAction {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: start;
     width: auto;
   }
 
