@@ -72,7 +72,7 @@ jobs:
               'FEED', 'DETAIL', 'IMGSHARE', 'MYPICK', 'UPLOAD', 'MANAGE', 'HEADER',
               'AUTH', 'SOCIAL', 'GUEST', 'PROFILE', 'PROFSHARE', 'PROFEDIT', 'PRODUCT',
               'INQUIRY', 'QUOTE', 'PAY', 'RESV', 'RESVDETAIL', 'CANCEL', 'DELIVERY',
-              'REVIEW', 'MYPAGE',
+              'REVIEW', 'MYPAGE', 'NOTI',
             ];
             const featureInput = field('기능')?.toUpperCase() ?? null;
             if (featureInput && !FEATURES.includes(featureInput)) {
