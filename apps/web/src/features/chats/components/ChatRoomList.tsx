@@ -7,7 +7,6 @@ import type { ChatRoomSummary, ChatViewerRole } from '../types';
 import { getMessagePreview, getPartnerName } from '../utils';
 import ChatAvatar from './ChatAvatar';
 import styles from './ChatRooms.module.css';
-import useWindowActive from '@/hooks/useWindowActive';
 
 type ChatRoomListProps = {
   className?: string;
@@ -44,7 +43,6 @@ export default function ChatRoomList({
 }: ChatRoomListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const isWindowActive = useWindowActive();
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -156,15 +154,14 @@ export default function ChatRoomList({
                         <span className={styles.preview}>
                           {getMessagePreview(room)}
                         </span>
-                        {room.unreadCount > 0 &&
-                          !(isWindowActive && room.id === selectedRoomId) && (
-                            <span
-                              className={styles.unread}
-                              aria-label={`안 읽은 메시지 ${room.unreadCount}개`}
-                            >
-                              {room.unreadCount > 99 ? '99+' : room.unreadCount}
-                            </span>
-                          )}
+                        {room.unreadCount > 0 && (
+                          <span
+                            className={styles.unread}
+                            aria-label={`안 읽은 메시지 ${room.unreadCount}개`}
+                          >
+                            {room.unreadCount > 99 ? '99+' : room.unreadCount}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </Link>
