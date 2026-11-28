@@ -178,35 +178,39 @@ export default function PhotographerProductModal({
     <Modal
       open={open}
       onClose={handleClose}
+      // 상품 삭제 확인은 다른 삭제 확인창(리뷰 삭제)과 같은 확인창 형태로 표시함
+      variant={isDeleteConfirmOpen ? 'confirm' : 'default'}
       title={
         isDeleteConfirmOpen
-          ? '상품 삭제'
+          ? '상품을 삭제할까요?'
           : isEditing
             ? '상품 수정'
             : '상품 추가'
       }
-      className={styles.modalSurface}
+      description={
+        isDeleteConfirmOpen ? '수정 완료를 눌러야 최종 삭제돼요.' : undefined
+      }
+      className={
+        isDeleteConfirmOpen ? styles.deleteConfirmSurface : styles.modalSurface
+      }
       footer={
         isDeleteConfirmOpen ? (
-          <div className={styles.confirmActions}>
+          <>
             <Button
               variant="outline"
-              size="lg"
               onClick={() => setIsDeleteConfirmOpen(false)}
               disabled={isSavingEdit}
             >
               취소
             </Button>
-
-            <button
-              type="button"
-              className={styles.dangerButton}
+            <Button
+              variant="danger"
               onClick={handleDelete}
               disabled={isSavingEdit}
             >
               삭제
-            </button>
-          </div>
+            </Button>
+          </>
         ) : (
           <div className={styles.footerActions}>
             {/* 수정 모드에서만 상품 삭제 버튼을 표시함 */}
@@ -247,16 +251,8 @@ export default function PhotographerProductModal({
         )
       }
     >
-      {isDeleteConfirmOpen ? (
-        // 상품 삭제 전에 사용자에게 확인함
-        <div className={styles.deleteConfirm}>
-          <p className={styles.deleteConfirmTitle}>이 상품을 삭제할까요?</p>
-
-          <p className={styles.deleteConfirmDescription}>
-            삭제는 임시 적용되며, 최종 삭제는 수정 완료를 눌렀을 때 반영돼요.
-          </p>
-        </div>
-      ) : (
+      {/* 상품 삭제 확인 중에는 제목·설명만 표시하고 입력 폼을 숨김 */}
+      {!isDeleteConfirmOpen && (
         <form id={formId} className={styles.form} onSubmit={handleSubmit}>
           {/* 상품명 입력 */}
           <div className={styles.field}>

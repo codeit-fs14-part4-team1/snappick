@@ -4,6 +4,12 @@
   max-width: 100%;
 }
 
+/* 상품 삭제 확인 화면은 다른 확인창과 같은 너비로 표시함 */
+.deleteConfirmSurface {
+  width: 400px;
+  max-width: 100%;
+}
+
 /* 상품 입력 폼 */
 .form {
   display: flex;
@@ -179,51 +185,8 @@
   cursor: pointer;
 }
 
-/* 삭제 확인 화면 */
-.deleteConfirm {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 0 20px;
-}
-
-.deleteConfirmTitle {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.deleteConfirmDescription {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 22px;
-}
-
-/* 상품 삭제 확인 버튼 */
-.confirmActions {
-  display: flex;
-  width: 100%;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.dangerButton {
-  min-height: 52px;
-  padding: 0 24px;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-danger);
-  color: var(--color-bg-base);
-  font-family: inherit;
-  font-size: 16px;
-  cursor: pointer;
-}
-
 /* 저장 중 버튼 비활성화 */
 .deleteTrigger:disabled,
-.dangerButton:disabled,
 .choiceGroup > button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
