@@ -410,6 +410,12 @@
 }
 
 /* 모바일 평균 평점 크기 */
+/* 답글 삭제 확인창은 다른 확인창과 같은 너비로 표시함 */
+.confirm {
+  width: 400px;
+  max-width: 100%;
+}
+
 @media (max-width: 767px) {
   .rating {
     font-size: 18px;
