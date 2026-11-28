@@ -6,6 +6,7 @@ import {
   StyleLabel,
 } from '@/constants/enum-labels';
 import { timeSlotLabels } from './SchedulePicker';
+import { getInquiryMessageTitle } from '../utils';
 import styles from './InquiryCard.module.css';
 
 export default function InquiryCard({
@@ -48,9 +49,7 @@ export default function InquiryCard({
   ];
   return (
     <div className={styles.card} data-mine={isMine}>
-      <strong>
-        {isMine ? '촬영 문의를 보냈어요' : '촬영 문의가 도착했어요'}
-      </strong>
+      <strong>{getInquiryMessageTitle(isMine)}</strong>
       <dl>
         {rows.map(([label, value]) => (
           <div key={label}>

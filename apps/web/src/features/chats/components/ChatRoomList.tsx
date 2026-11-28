@@ -152,7 +152,7 @@ export default function ChatRoomList({
                       </span>
                       <span className={styles.roomBottom}>
                         <span className={styles.preview}>
-                          {getMessagePreview(room)}
+                          {getMessagePreview(room, role)}
                         </span>
                         {room.unreadCount > 0 && (
                           <span
