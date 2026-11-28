@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './config/app-secrets.js';
 import { app } from './app.js';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';

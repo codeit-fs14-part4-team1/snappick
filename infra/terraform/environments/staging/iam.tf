@@ -54,6 +54,7 @@ data "aws_iam_policy_document" "api_db_secret" {
       aws_db_instance.postgres.master_user_secret[0].secret_arn,
       data.aws_secretsmanager_secret.jwt_access.arn,
       data.aws_secretsmanager_secret.db_app.arn,
+      data.aws_secretsmanager_secret.app.arn,
     ]
   }
 }
