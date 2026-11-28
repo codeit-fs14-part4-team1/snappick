@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import { useToast } from '@/components/ui/ToastProvider';
 import { formatRelativeTime } from '@/utils/formatRelativeTime';
@@ -78,6 +80,11 @@ export default function PhotographerReviews({
 
   // 현재 답글 수정 중인 리뷰 ID를 관리함
   const [editingReplyReviewId, setEditingReplyReviewId] = useState<
+    string | null
+  >(null);
+
+  // 삭제 확인창을 띄운 답글의 리뷰 ID를 관리함
+  const [deletingReplyReviewId, setDeletingReplyReviewId] = useState<
     string | null
   >(null);
 
@@ -202,24 +209,32 @@ export default function PhotographerReviews({
     }
   };
 
-  // 기존 리뷰 답글을 삭제함
-  const handleDeleteReply = async (reviewId: string) => {
+  // 삭제 버튼을 누르면 삭제 확인창을 표시함
+  const handleRequestDeleteReply = (reviewId: string) => {
     if (!onDeleteReply || isSavingReply) return;
 
-    // 삭제 전 사용자에게 확인을 요청함
-    const isConfirmed = window.confirm(
-      '답글을 삭제하시겠어요?\n삭제한 답글은 복구할 수 없어요.',
-    );
+    setDeletingReplyReviewId(reviewId);
+  };
 
-    if (!isConfirmed) return;
+  // 삭제 요청 중에는 확인창을 닫지 않음
+  const handleCloseDeleteReply = () => {
+    if (isSavingReply) return;
+
+    setDeletingReplyReviewId(null);
+  };
+
+  // 확인창에서 삭제를 확정하면 기존 리뷰 답글을 삭제함
+  const handleDeleteReply = async () => {
+    if (!deletingReplyReviewId || !onDeleteReply || isSavingReply) return;
 
     // 삭제 중 중복 요청을 방지함
     setIsSavingReply(true);
 
     try {
       // 기존 Mutation을 통해 답글 삭제 API를 호출함
-      await onDeleteReply(reviewId);
+      await onDeleteReply(deletingReplyReviewId);
 
+      setDeletingReplyReviewId(null);
       showToast('답글을 삭제했어요.');
     } catch (error) {
       console.error('리뷰 답글 삭제 실패:', error);
@@ -392,7 +407,7 @@ export default function PhotographerReviews({
                               type="button"
                               className={styles.replyTextButton}
                               onClick={() =>
-                                void handleDeleteReply(review.reviewId)
+                                handleRequestDeleteReply(review.reviewId)
                               }
                               disabled={isSavingReply}
                             >
@@ -494,6 +509,36 @@ export default function PhotographerReviews({
           aria-label="작가 리뷰 페이지 이동"
         />
       )}
+
+      {/* 답글 삭제 확인창 (리뷰 삭제 확인창과 같은 형태) */}
+      <Modal
+        open={deletingReplyReviewId !== null}
+        onClose={handleCloseDeleteReply}
+        closeOnEscape={!isSavingReply}
+        closeOnBackdrop={!isSavingReply}
+        variant="confirm"
+        title="답글을 삭제하시겠어요?"
+        description="삭제한 답글은 복구할 수 없어요."
+        className={styles.confirm}
+        footer={
+          <>
+            <Button
+              variant="outline"
+              disabled={isSavingReply}
+              onClick={handleCloseDeleteReply}
+            >
+              취소
+            </Button>
+            <Button
+              variant="danger"
+              disabled={isSavingReply}
+              onClick={() => void handleDeleteReply()}
+            >
+              삭제
+            </Button>
+          </>
+        }
+      />
     </section>
   );
 }
