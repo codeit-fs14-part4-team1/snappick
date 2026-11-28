@@ -309,7 +309,11 @@ export async function getPhotos(query: PhotosQuery, viewer: Viewer) {
             },
           },
         },
-        { photoKeyword: { some: { keyword: { contains: keyword } } } },
+        {
+          photoKeyword: {
+            some: { keyword: { contains: keyword, mode: 'insensitive' } },
+          },
+        },
       ],
     }),
   };
