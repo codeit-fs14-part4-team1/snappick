@@ -100,6 +100,9 @@ function PasswordChangeForm({ onClose }: { onClose: () => void }) {
     serverErrors.newPassword ??
     (touched.newPassword ? errors.newPassword : undefined);
 
+  // 오류 문구를 우선 표시하고, 오류가 없으면 입력값이 비어 있을 때만 안내 문구를 표시함
+  const newHelp = newError ?? (values.newPassword ? undefined : PASSWORD_HINT);
+
   const confirmError = touched.confirmPassword
     ? errors.confirmPassword
     : undefined;
@@ -289,19 +292,21 @@ function PasswordChangeForm({ onClose }: { onClose: () => void }) {
               disabled={isSaving}
               required
               aria-invalid={Boolean(newError)}
-              aria-describedby={`${id}-new-help`}
+              aria-describedby={newHelp ? `${id}-new-help` : undefined}
               onChange={(event) =>
                 changeField('newPassword', event.target.value)
               }
               onBlur={() => blurField('newPassword')}
             />
 
-            <p
-              id={`${id}-new-help`}
-              className={newError ? styles.error : styles.help}
-            >
-              {newError ?? PASSWORD_HINT}
-            </p>
+            {newHelp && (
+              <p
+                id={`${id}-new-help`}
+                className={newError ? styles.error : styles.help}
+              >
+                {newHelp}
+              </p>
+            )}
           </div>
 
           {/* 새 비밀번호 확인 */}
