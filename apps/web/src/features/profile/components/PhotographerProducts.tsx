@@ -146,7 +146,7 @@ export default function PhotographerProducts({
               <div className={styles.addProductButton}>
                 <Button
                   variant="outline"
-                  size="lg"
+                  size="sm"
                   onClick={handleCreateProduct}
                   disabled={isSavingEdit}
                 >

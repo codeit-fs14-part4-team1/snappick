@@ -29,35 +29,6 @@
   gap: 8px;
 }
 
-/* 포트폴리오 관리 버튼 */
-.actionButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background-color: var(--color-bg-base);
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-/* 버튼에 마우스를 올리면 배경색을 변경함 */
-.actionButton:hover {
-  background-color: var(--color-bg-subtle);
-}
-
-/* 키보드로 버튼에 접근했을 때 포커스 상태를 표시함 */
-.actionButton:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgb(155 183 0 / 20%);
-}
-
 /* 사진 카드 스타일 */
 .photoItem {
   min-width: 0;
