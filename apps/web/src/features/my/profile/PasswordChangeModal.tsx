@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { getPasswordError, PASSWORD_HINT } from '@/features/auth/password';
 import { changeMyPassword } from './api';
 import { ApiError } from '@/lib/api';
 
@@ -30,8 +31,10 @@ function validatePasswords(values: PasswordValues): PasswordErrors {
     errors.currentPassword = '현재 비밀번호를 입력해 주세요.';
   }
 
-  if (values.newPassword.length < 8 || values.newPassword.length > 16) {
-    errors.newPassword = '8자 이상, 영문·숫자·특수문자를 포함해 주세요.';
+  const newPasswordError = getPasswordError(values.newPassword);
+
+  if (newPasswordError) {
+    errors.newPassword = newPasswordError;
   } else if (values.newPassword === values.currentPassword) {
     errors.newPassword = '현재 비밀번호와 다른 비밀번호를 입력해 주세요.';
   }
@@ -96,6 +99,9 @@ function PasswordChangeForm({ onClose }: { onClose: () => void }) {
   const newError =
     serverErrors.newPassword ??
     (touched.newPassword ? errors.newPassword : undefined);
+
+  // 오류 문구를 우선 표시하고, 오류가 없으면 입력값이 비어 있을 때만 안내 문구를 표시함
+  const newHelp = newError ?? (values.newPassword ? undefined : PASSWORD_HINT);
 
   const confirmError = touched.confirmPassword
     ? errors.confirmPassword
@@ -286,19 +292,21 @@ function PasswordChangeForm({ onClose }: { onClose: () => void }) {
               disabled={isSaving}
               required
               aria-invalid={Boolean(newError)}
-              aria-describedby={`${id}-new-help`}
+              aria-describedby={newHelp ? `${id}-new-help` : undefined}
               onChange={(event) =>
                 changeField('newPassword', event.target.value)
               }
               onBlur={() => blurField('newPassword')}
             />
 
-            <p
-              id={`${id}-new-help`}
-              className={newError ? styles.error : styles.help}
-            >
-              {newError ?? '  8자 이상, 영문·숫자·특수문자를 포함해 주세요. '}
-            </p>
+            {newHelp && (
+              <p
+                id={`${id}-new-help`}
+                className={newError ? styles.error : styles.help}
+              >
+                {newHelp}
+              </p>
+            )}
           </div>
 
           {/* 새 비밀번호 확인 */}
