@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import type { HeaderUser } from './Header';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -30,6 +31,7 @@ const photographerMenuItems = [
 export default function ProfileMenu({ user }: ProfileMenuProps) {
   const { logout } = useAuth();
   const { showToast } = useToast();
+  const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -47,6 +49,9 @@ export default function ProfileMenu({ user }: ProfileMenuProps) {
 
     try {
       await logout();
+      if (window.location.pathname.startsWith('/chats/')) {
+        router.replace('/chats');
+      }
     } catch (error) {
       console.error('로그아웃 실패:', error);
 

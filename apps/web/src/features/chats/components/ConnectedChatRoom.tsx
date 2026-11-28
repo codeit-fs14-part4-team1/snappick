@@ -11,17 +11,37 @@ export default function ConnectedChatRoom({ roomId }: { roomId: string }) {
   const { rooms, isLoading, isError, now } = useConnectedChatRooms();
   const { user } = useAuth();
   const room = rooms.find((item) => item.id === roomId);
-  if (!room)
+  if (!room && (isLoading || isError))
     return (
       <section className={styles.empty}>
         <h2>
           {isLoading
             ? '문의 정보를 불러오고 있어요'
-            : isError
-              ? '문의 정보를 불러오지 못했어요'
-              : '현재 목록에서 문의를 찾을 수 없어요'}
+            : '문의 정보를 불러오지 못했어요'}
         </h2>
         <Link className={styles.exploreLink} href="/chats">
+          문의 목록으로
+        </Link>
+      </section>
+    );
+
+  if (!room)
+    return (
+      <section className={styles.empty}>
+        <h2>대화를 찾을 수 없어요</h2>
+        {rooms.length > 0 && (
+          <p className={styles.unavailableHint}>
+            왼쪽 문의 목록에서 대화를 선택해 주세요.
+          </p>
+        )}
+        <Link
+          className={
+            rooms.length > 0
+              ? `${styles.exploreLink} ${styles.unavailableBackLink}`
+              : styles.exploreLink
+          }
+          href="/chats"
+        >
           문의 목록으로
         </Link>
       </section>

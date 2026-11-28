@@ -6,33 +6,33 @@ import {
   formatDateWithWeekday,
   formatTime,
 } from '@/utils/dateTime';
-import type { ChatReservation, ChatReservationEvent } from '../types';
+import type {
+  ChatReservation,
+  ChatReservationEvent,
+  ChatViewerRole,
+} from '../types';
+import { getReservationEventTitle } from '../utils';
 import styles from './ReservationEventCard.module.css';
 
 const eventCopy = {
   RESERVATION_CONFIRMED: {
     label: '예약 확정',
-    title: '예약이 확정됐어요',
     variant: 'confirmed',
   },
   RESERVATION_CANCELED: {
     label: '예약 취소',
-    title: '예약이 취소됐어요',
     variant: 'canceled',
   },
   RESERVATION_CANCEL_REQUESTED: {
     label: '취소 요청 접수',
-    title: '예약 취소를 요청했어요',
     variant: 'cancelRequested',
   },
   RESERVATION_CANCEL_REJECTED: {
     label: '취소 요청 반려',
-    title: '예약 취소 요청이 반려됐어요',
     variant: 'canceled',
   },
   RESERVATION_DELIVERED: {
     label: '결과물 전달',
-    title: '결과물이 전달됐어요',
     variant: 'delivered',
   },
 } as const;
@@ -40,12 +40,16 @@ const eventCopy = {
 export default function ReservationEventCard({
   reservation,
   now,
+  viewerRole,
 }: {
   reservation: ChatReservation & { event: ChatReservationEvent };
   now: string;
+  viewerRole: ChatViewerRole;
 }) {
-  const { label, title, variant } = eventCopy[reservation.event];
-  const isDelivery = reservation.event === 'RESERVATION_DELIVERED';
+  const { event } = reservation;
+  const { label, variant } = eventCopy[event];
+  const isDelivery = event === 'RESERVATION_DELIVERED';
+  const heading = getReservationEventTitle(event, viewerRole);
   const days = Math.round(
     (Date.parse(formatDate(reservation.shootAt).replaceAll('.', '-')) -
       Date.parse(formatDate(now).replaceAll('.', '-'))) /
@@ -64,7 +68,7 @@ export default function ReservationEventCard({
           )}
       </header>
       <div className={styles.heading}>
-        <h3>{title}</h3>
+        <h3>{heading}</h3>
         <p>{reservation.quoteName ?? '촬영 예약'}</p>
       </div>
       {!isDelivery && (

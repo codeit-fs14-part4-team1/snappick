@@ -32,6 +32,7 @@ export type ChatRoomSummary = {
       };
   lastMessage: {
     id: string;
+    messageType: MessageType;
     content: string;
     createdAt: string;
   } | null;

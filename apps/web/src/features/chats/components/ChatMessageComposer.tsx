@@ -23,17 +23,17 @@ export default function ChatMessageComposer({
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
-  const disabled = isSending || isWithdrawn || isBlocked;
+  const inputDisabled = isWithdrawn || isBlocked;
+  const sendDisabled = isSending || inputDisabled;
   const content = text.trim();
   const tooLong = content.length > 1000;
 
   async function submit() {
-    if (sendingRef.current || disabled || !content || tooLong) return;
+    if (sendingRef.current || sendDisabled || !content || tooLong) return;
     sendingRef.current = true;
     try {
       await onSend(content);
-      setText('');
-      requestAnimationFrame(() => inputRef.current?.focus());
+      setText((draft) => (draft === text ? '' : draft));
     } catch {
       // 안내는 데이터 연결부에서 제공하고, 사용자가 재시도할 수 있도록 입력을 보존합니다.
     } finally {
@@ -73,7 +73,7 @@ export default function ChatMessageComposer({
               ? '촬영 정보를 보내거나 건너뛰면 대화를 시작할 수 있어요'
               : '메시지를 입력하세요'
         }
-        disabled={disabled}
+        disabled={inputDisabled}
         value={text}
         maxLength={1000}
         onChange={(event) => setText(event.target.value)}
@@ -93,7 +93,13 @@ export default function ChatMessageComposer({
         type="submit"
         className={styles.send}
         aria-label="메시지 보내기"
-        disabled={disabled || !content || tooLong}
+        disabled={sendDisabled || !content || tooLong}
+        onPointerDown={(event) => {
+          // Keep the mobile keyboard open when tapping send from the input.
+          if (document.activeElement === inputRef.current) {
+            event.preventDefault();
+          }
+        }}
       >
         <svg
           width="17"

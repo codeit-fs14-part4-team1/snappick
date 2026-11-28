@@ -10,7 +10,7 @@ import ReservationEventCard from './ReservationEventCard';
 import type { Quote } from '../quote';
 import type { ChatMessageItem, ChatViewerRole } from '../types';
 import { useChatScroll } from '../useChatScroll';
-import { formatChatDate, formatChatTime } from '../utils';
+import { formatChatDate, formatChatTime, getChatMessageText } from '../utils';
 import styles from './ChatMessageList.module.css';
 
 type Props = {
@@ -69,6 +69,9 @@ export default function ChatMessageList({
     scrollToMessageId,
     startAtTop,
   });
+  const newMessageText = newMessage
+    ? getChatMessageText(newMessage, viewerRole)
+    : '';
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -227,6 +230,7 @@ export default function ChatMessageList({
                         <ReservationEventCard
                           reservation={reservation}
                           now={now}
+                          viewerRole={viewerRole}
                         />
                       ) : message.messageType === 'INITIAL_REQUEST' ? (
                         <InquiryCard
@@ -261,7 +265,7 @@ export default function ChatMessageList({
                           }
                         />
                       ) : (
-                        message.content
+                        getChatMessageText(message, viewerRole)
                       )}
                     </div>
                     {!system && (
@@ -298,8 +302,8 @@ export default function ChatMessageList({
           className={styles.newMessage}
           aria-label={
             newMessage.messageType === 'SYSTEM'
-              ? `새 메시지: ${newMessage.content}. 최하단으로 이동`
-              : `${partnerName}의 새 메시지: ${newMessage.content}. 최하단으로 이동`
+              ? `새 메시지: ${newMessageText}. 최하단으로 이동`
+              : `${partnerName}의 새 메시지: ${newMessageText}. 최하단으로 이동`
           }
           onClick={scrollToBottom}
         >
@@ -321,7 +325,7 @@ export default function ChatMessageList({
             }
             role="status"
           >
-            {newMessage.content}
+            {newMessageText}
           </span>
         </button>
       ) : (
