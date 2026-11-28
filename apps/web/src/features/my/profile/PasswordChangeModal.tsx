@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { getPasswordError, PASSWORD_HINT } from '@/features/auth/password';
 import { changeMyPassword } from './api';
 import { ApiError } from '@/lib/api';
 
@@ -30,8 +31,10 @@ function validatePasswords(values: PasswordValues): PasswordErrors {
     errors.currentPassword = '현재 비밀번호를 입력해 주세요.';
   }
 
-  if (values.newPassword.length < 8 || values.newPassword.length > 16) {
-    errors.newPassword = '8자 이상, 영문·숫자·특수문자를 포함해 주세요.';
+  const newPasswordError = getPasswordError(values.newPassword);
+
+  if (newPasswordError) {
+    errors.newPassword = newPasswordError;
   } else if (values.newPassword === values.currentPassword) {
     errors.newPassword = '현재 비밀번호와 다른 비밀번호를 입력해 주세요.';
   }
@@ -297,7 +300,7 @@ function PasswordChangeForm({ onClose }: { onClose: () => void }) {
               id={`${id}-new-help`}
               className={newError ? styles.error : styles.help}
             >
-              {newError ?? '  8자 이상, 영문·숫자·특수문자를 포함해 주세요. '}
+              {newError ?? PASSWORD_HINT}
             </p>
           </div>
 

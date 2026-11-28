@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/ToastProvider';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { getPasswordError, PASSWORD_HINT } from '@/features/auth/password';
 import type { AccountType } from '@snappick/shared';
 import styles from './SignupEmailForm.module.css';
 
@@ -38,29 +39,6 @@ function getEmailError(value: string): string {
 
   if (!EMAIL_PATTERN.test(trimmedEmail)) {
     return '올바른 이메일 형식이 아니에요.';
-  }
-
-  return '';
-}
-
-// 비밀번호 길이와 영문·숫자·특수문자 포함 여부를 확인함
-function getPasswordError(value: string): string {
-  if (value.length === 0) {
-    return '비밀번호를 입력해 주세요.';
-  }
-
-  const hasEnglish = /[A-Za-z]/.test(value);
-  const hasNumber = /[0-9]/.test(value);
-  const hasSpecialCharacter = /[^\p{L}\p{N}\s]/u.test(value);
-
-  if (
-    value.length < 8 ||
-    value.length > 16 ||
-    !hasEnglish ||
-    !hasNumber ||
-    !hasSpecialCharacter
-  ) {
-    return '비밀번호 입력 조건을 확인해 주세요.';
   }
 
   return '';
@@ -305,7 +283,7 @@ export default function SignupEmailForm({ accountType }: SignupEmailFormProps) {
               }
               id={passwordHintId}
             >
-              8자 이상, 영문·숫자·특수문자를 포함해 주세요.
+              {passwordError || PASSWORD_HINT}
             </p>
           )}
         </div>
