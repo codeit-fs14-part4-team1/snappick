@@ -1,3 +1,8 @@
+.productNoticeModal {
+  --modal-gap: 24px;
+  width: 384px;
+}
+
 .modal {
   --modal-gap: 8px;
   width: 720px;

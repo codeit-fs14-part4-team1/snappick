@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { usePhotographerProfile } from '@/features/profile/hooks/usePhotographerProfile';
@@ -11,6 +12,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { getQuote } from '../api';
 import { toQuoteDraft, type Quote, type QuoteDraft } from '../quote';
 import QuoteComposerModal from './QuoteComposerModal';
+import styles from './QuoteComposerModal.module.css';
 
 export default function ConnectedQuoteComposer({
   initialQuote,
@@ -25,6 +27,7 @@ export default function ConnectedQuoteComposer({
   onNewQuote: () => void;
   onSubmit: (draft: QuoteDraft) => Promise<void>;
 }) {
+  const router = useRouter();
   const { fetchWithAuth } = useAuth();
   const [closedCase, setClosedCase] = useState<{
     id: string;
@@ -46,7 +49,9 @@ export default function ConnectedQuoteComposer({
     : profile.isError || products.isError;
   const loading = initialQuote
     ? quote.isPending
-    : profile.isPending || products.isPending;
+    : profile.isPending ||
+      products.isPending ||
+      (products.isFetching && products.data?.items.length === 0);
   const reservationStatus =
     closedCase && closedCase.id === initialQuote?.shootingCaseId
       ? closedCase.status
@@ -103,7 +108,7 @@ export default function ConnectedQuoteComposer({
     return (
       <Modal
         open
-        title={initialQuote ? '견적 수정' : '견적 작성'}
+        title={initialQuote ? '견적 수정' : '촬영 상품 확인'}
         onClose={onClose}
       >
         {failed ? (
@@ -132,6 +137,28 @@ export default function ConnectedQuoteComposer({
         )}
       </Modal>
     );
+  if (!initialQuote && products.data?.items.length === 0) {
+    return (
+      <Modal
+        open
+        title="등록된 촬영 상품이 없어요"
+        description="프로필 관리에서 상품을 먼저 등록해 주세요."
+        className={styles.productNoticeModal}
+        onClose={onClose}
+        footer={
+          <Button
+            onClick={() => {
+              onClose();
+              router.push('/photographers/me');
+            }}
+          >
+            프로필 관리로 이동
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
     <QuoteComposerModal
       open
