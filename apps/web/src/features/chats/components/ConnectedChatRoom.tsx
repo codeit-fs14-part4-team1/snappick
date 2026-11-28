@@ -28,9 +28,7 @@ export default function ConnectedChatRoom({ roomId }: { roomId: string }) {
   if (!room)
     return (
       <section className={styles.empty}>
-        <h2 id="chat-room-title" tabIndex={-1}>
-          대화를 찾을 수 없어요
-        </h2>
+        <h2>대화를 찾을 수 없어요</h2>
         {rooms.length > 0 && (
           <p className={styles.unavailableHint}>
             왼쪽 문의 목록에서 대화를 선택해 주세요.
