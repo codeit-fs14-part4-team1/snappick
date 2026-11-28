@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import GuestLoginModal from '@/components/ui/GuestLoginModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AUTH_UNKNOWN_MESSAGE } from '@/features/auth/messages';
 import StartChatButton from '@/features/chats/components/StartChatButton';
 import { useTogglePhotographerSave } from '@/features/profile/hooks/useTogglePhotographerSave';
 
@@ -96,6 +97,12 @@ export default function PhotographerProfileInfo({
     // 비회원은 로그인 안내 모달을 표시함
     if (authStatus === 'unauthenticated') {
       handleGuestAction();
+      return;
+    }
+
+    // 로그인 확인이 실패하면 로그인 여부를 알 수 없으므로 새로고침을 안내함
+    if (authStatus === 'error') {
+      showToast(AUTH_UNKNOWN_MESSAGE, 'error');
       return;
     }
 
