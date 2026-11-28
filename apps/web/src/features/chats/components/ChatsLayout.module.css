@@ -96,6 +96,10 @@
   outline-offset: -2px;
 }
 
+.unavailableBackLink {
+  display: none;
+}
+
 @media (max-width: 1199px) {
   :global(#main-content):has(.page) {
     padding-inline: 0;
@@ -149,5 +153,11 @@
   }
   .empty {
     padding: 20px;
+  }
+  .empty .unavailableHint {
+    display: none;
+  }
+  .unavailableBackLink {
+    display: flex;
   }
 }
