@@ -181,25 +181,6 @@
   flex-shrink: 0;
 }
 
-/*상품 추가 버튼을 작게 표시 */
-.addProductButton > button {
-  display: flex;
-  height: 32px;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 14px;
-  border: 1px solid var(--color-border, #e5e5e5);
-  border-radius: 8px;
-  background: var(--color-bg-base, #fff);
-  color: var(--color-text-primary);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-  white-space: nowrap;
-}
-
 /* 상품 수정 버튼을 카드 하단에 배치 */
 .productEditAction {
   width: 100%;
@@ -289,10 +270,5 @@
     font-size: 12px;
     line-height: 18px;
     white-space: normal;
-  }
-
-  /* 모바일 상품 추가 버튼 글자 크기 */
-  .addProductButton > button {
-    font-size: 12px;
   }
 }

@@ -92,21 +92,14 @@ export default function PhotographerPortfolio({
         {/* 작가 본인이 프로필 수정 중일 때만 관리 버튼을 표시함 */}
         {isSelf && isEditing && (
           <div className={styles.headerActions}>
-            <button
-              type="button"
-              className={styles.actionButton}
-              onClick={onManagePhotos}
-            >
+            {/* 상품 추가 버튼과 같은 공통 버튼 크기(sm)를 사용함 */}
+            <Button variant="outline" size="sm" onClick={onManagePhotos}>
               사진 관리
-            </button>
+            </Button>
 
-            <button
-              type="button"
-              className={styles.actionButton}
-              onClick={onUploadPhotos}
-            >
+            <Button variant="outline" size="sm" onClick={onUploadPhotos}>
               + 사진 올리기
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -142,14 +142,14 @@
     gap: 6px;
   }
 
-  /* 모바일 화면에 맞게 수정 버튼 크기를 조정함 */
+  /* 모바일 화면에 맞게 수정 버튼 크기를 조정함 (좌우 여백을 넓혀 글자가 버튼에 붙지 않게 함) */
   .editButtonGroup > button {
     width: auto;
     min-width: 0;
     min-height: 36px;
     height: 36px;
-    padding: 0 8px;
-    font-size: 12px;
+    padding: 0 14px;
+    font-size: 13px;
     white-space: nowrap;
   }
 }
