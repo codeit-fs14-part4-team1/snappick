@@ -151,6 +151,12 @@ resource "aws_elastic_beanstalk_environment" "api" {
   }
 
   setting {
+    namespace = "aws:elasticbeanstalk:application:environmentsecrets"
+    name      = "APP_SECRETS"
+    value     = data.aws_secretsmanager_secret.app.arn
+  }
+
+  setting {
     namespace = "aws:elasticbeanstalk:command"
     name      = "Timeout"
     value     = "1200"
@@ -188,4 +194,8 @@ data "aws_secretsmanager_secret" "jwt_access" {
 
 data "aws_secretsmanager_secret" "db_app" {
   name = "snappick/staging/db-app"
+}
+
+data "aws_secretsmanager_secret" "app" {
+  name = "snappick/staging/app-secrets"
 }
